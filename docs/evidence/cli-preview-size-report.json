@@ -1,0 +1,47 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "architecture": "AMD64",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+  "commit": "45cb82f852f56809df4d0297bef1d40c6803e236",
+  "source_sha256": "955444e0a6e036da51828a288ac1e6ac19f01aa90332dad5b5ea389da2148830",
+  "cargo_lock_sha256": "22cf689a48264c8c31c3a04e913d36fbc0f3cb6b2541a3c68e312e98861f12fb",
+  "profile": "release, opt-level=s, LTO, codegen-units=1, strip",
+  "archive": "NekoPak-0.1.0-windows-x64-cli-preview.zip",
+  "compression": "ZIP DEFLATE level 9; executable + notices + resolved dependency licenses",
+  "executable_bytes": 7545344,
+  "archive_bytes": 4145258,
+  "executable_sha256": "74ee435220260371f9b3b467eff72c8bf3fa11d7458772b563c3189a01fbc662",
+  "archive_sha256": "196d99b7cc6c5b62e82cba8827647cb97a32c90d0d0742e953ab4be8cc20c312",
+  "external_requirements": [
+    "Windows x64",
+    "Microsoft Edge WebView2 Evergreen runtime (not bundled)"
+  ],
+  "not_bundled": [
+    "PikPak CLI",
+    "Rclone",
+    "WinFsp",
+    "Chromium",
+    "JVM",
+    "FFmpeg",
+    "mpv"
+  ],
+  "scope": "Offline Mock by default; explicit reviewed official CLI read-only preview. No real transfers or bundled official CLI.",
+  "runtime_measurement": "Not measured by this script; no memory/startup claim.",
+  "license_inventory_scope": "Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.",
+  "license_text_unresolved": [
+    "cesu8@1.1.0",
+    "libappindicator-sys@0.9.0",
+    "r-efi@5.3.0",
+    "r-efi@6.0.0",
+    "winapi-i686-pc-windows-gnu@0.4.0",
+    "winapi-x86_64-pc-windows-gnu@0.4.0"
+  ],
+  "windows_dependency_license_text_gaps": [],
+  "verification": {
+    "zip_crc": "passed",
+    "executable_hash": "matched",
+    "archive_entries": 729,
+    "official_cli_bundled": false
+  }
+}

@@ -75,3 +75,14 @@ Final rebuilt `npm run tauri -- build --no-bundle`: passed after review fixes.
 These are single samples taken five seconds after handle availability, not startup
 frame timing or performance comparisons. Both trees include WebView2 descendants.
 Raw results: cli-slice-mock-runtime.json and cli-preview-runtime.json under evidence/.
+
+Final packaging commit: `45cb82f`. `python scripts/package_release.py` passed;
+`NekoPak-0.1.0-windows-x64-cli-preview.zip` is 4,145,258 bytes (3.95 MiB),
+87,377 bytes larger than the M0 archive. Executable: 7,545,344 bytes (7.20 MiB).
+ZIP CRC and embedded executable SHA-256 passed, with 729 entries and no bundled
+official CLI. Windows dependency license-text gaps remain zero. The all-target
+inventory still records six unused other-platform license-text gaps.
+
+Archive SHA-256: `196d99b7cc6c5b62e82cba8827647cb97a32c90d0d0742e953ab4be8cc20c312`.
+Full record: `docs/evidence/cli-preview-size-report.json`. Both WebView2 and the
+optional user-owned PikPak CLI are external requirements, not included in ZIP size.
