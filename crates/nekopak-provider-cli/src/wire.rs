@@ -94,12 +94,13 @@ pub fn list(
     value: Value,
     parent: &str,
     previous_cursor: Option<&str>,
+    limit: usize,
 ) -> Result<Page<RemoteEntry>, ClientError> {
     let files = value
         .get("files")
         .and_then(Value::as_array)
         .ok_or_else(invalid)?;
-    if files.len() > 500 {
+    if files.len() > limit {
         return Err(invalid());
     }
     let mut ids = BTreeSet::new();

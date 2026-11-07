@@ -1,0 +1,70 @@
+{
+  "executable_sha256": "74ee435220260371f9b3b467eff72c8bf3fa11d7458772b563c3189a01fbc662",
+  "version": "10.0.26300",
+  "architecture": "64 位",
+  "method": "3 sequential warm launches by default; window handle availability is not first rendered frame. Sample >=5s after handle. Includes descendants such as WebView2. Total working set can double-count shared pages. No workload throughput or GUI click verification.",
+  "ui_automation": "Unavailable: computer-use native pipe missing. IPC command roundtrip covered by Rust mock-runtime test.",
+  "observations": [
+    {
+      "total_private_working_set_bytes": 95375360.0,
+      "processes": [
+        {
+          "private_committed_bytes": 48635904,
+          "name": "msedgewebview2#39",
+          "private_working_set_bytes": 37269504,
+          "pid": 37504,
+          "working_set_bytes": 143544320
+        },
+        {
+          "private_committed_bytes": 3010560,
+          "name": "msedgewebview2#40",
+          "private_working_set_bytes": 1982464,
+          "pid": 31604,
+          "working_set_bytes": 13209600
+        },
+        {
+          "private_committed_bytes": 92786688,
+          "name": "msedgewebview2#41",
+          "private_working_set_bytes": 21991424,
+          "pid": 36716,
+          "working_set_bytes": 75370496
+        },
+        {
+          "private_committed_bytes": 15376384,
+          "name": "msedgewebview2#42",
+          "private_working_set_bytes": 8122368,
+          "pid": 35836,
+          "working_set_bytes": 44302336
+        },
+        {
+          "private_committed_bytes": 9809920,
+          "name": "msedgewebview2#43",
+          "private_working_set_bytes": 3297280,
+          "pid": 33996,
+          "working_set_bytes": 20275200
+        },
+        {
+          "private_committed_bytes": 30240768,
+          "name": "msedgewebview2#44",
+          "private_working_set_bytes": 18337792,
+          "pid": 32560,
+          "working_set_bytes": 66846720
+        },
+        {
+          "private_committed_bytes": 5980160,
+          "name": "nekopak",
+          "private_working_set_bytes": 4374528,
+          "pid": 30480,
+          "working_set_bytes": 29011968
+        }
+      ],
+      "main_window_title": "NekoPak — Offline Mock",
+      "run": 1,
+      "window_handle_ms": 272,
+      "total_working_set_bytes": 392560640.0,
+      "sampled_after_ms": 6582,
+      "process_count": 7
+    }
+  ],
+  "os": "Microsoft Windows 11 家庭版 中文版"
+}

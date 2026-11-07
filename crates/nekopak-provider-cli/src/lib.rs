@@ -193,7 +193,7 @@ impl ProviderPort for OfficialCliProvider {
             wire::validate_cursor(cursor)?;
             arguments.push(format!("--token={cursor}"));
         }
-        wire::list(self.execute(&arguments).await?, parent, cursor)
+        wire::list(self.execute(&arguments).await?, parent, cursor, limit)
     }
 
     async fn stat(&self, id: &str) -> Result<RemoteEntry, ClientError> {

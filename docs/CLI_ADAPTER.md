@@ -86,6 +86,17 @@ CLI owns its credential files; NekoPak makes no claim that those external files 
 DPAPI/keychain-backed. In-app login/logout and secure managed credentials are a
 separate pending milestone.
 
+For this checkout's isolated development profile, the user can request read-only
+authorization with the reviewed binary (the final approval happens in the browser):
+
+```powershell
+$env:PIKPAK_DIR = (Resolve-Path 'target/cli-audit/probe-profile').Path
+& .\target\cli-audit\pikpak.exe auth login --scope files:read
+```
+
+This command has not been run by the agent. It is unnecessary for Mock and no
+password, token or authorization code should be pasted into the chat.
+
 To return to Mock, remove NEKOPAK_BACKEND (or set it to `mock`). CLI-preview tasks
 use `cli-preview.sqlite3` so they never operate on the offline mock task queue.
 There is no fallback to simulated data when a real-provider request fails.
@@ -106,3 +117,7 @@ Next: user authorizes the selected external profile, then verify root listing,
 multi-page listing, stat byte counts and permission/expiry behavior with sanitized
 fixtures. Only after those observations should live metadata be promoted from preview.
 Download/Range and mutation/idempotency probing remain separate work.
+
+Executed tests and review resolutions are recorded in CLI_TEST_REPORT.md. This
+preview adds no installer, referral, agent-skill, feedback upload or auto-update
+behavior. Only version/help/auth-status/list/stat commands are constructed.

@@ -1,0 +1,50 @@
+{
+  "auth": {
+    "account_tier": "unknown",
+    "authenticated": false,
+    "backend": "official_cli",
+    "credential_owner": "external_cli",
+    "message": "Run pikpak auth login in this explicitly configured profile, then refresh. NekoPak never receives your password or token."
+  },
+  "capabilities": {
+    "account_tier": "unknown",
+    "backend": "official_cli",
+    "checked_at": "2026-11-07T00:00:00Z",
+    "limitations": [
+      "Checksum, help flags and unauthenticated JSON errors were verified. Successful account listing is not yet live-tested.",
+      "Read-only preview needs an explicitly configured externally authorized profile. The CLI owns its credential storage; NekoPak does not import tokens.",
+      "Download, cloud writes, account quota and random reads are disabled. No automatic login, install, update or fallback."
+    ],
+    "operations": {
+      "cloud_task": false,
+      "download": false,
+      "list": false,
+      "quota": false,
+      "read_range": false,
+      "stat": false,
+      "upload": false
+    },
+    "status": "needs_login",
+    "version": "0.6.0"
+  },
+  "probe": {
+    "backend": "official_cli",
+    "binary_sha256": "b39a2bf29d69e561ab3a6f7ec2bfd899930008ed311eb3bd99c3697802e93b04",
+    "checked_at": "2026-11-07T00:00:00Z",
+    "limitations": [
+      "Checksum, help flags and unauthenticated JSON errors were verified. Successful account listing is not yet live-tested.",
+      "Read-only preview needs an explicitly configured externally authorized profile. The CLI owns its credential storage; NekoPak does not import tokens.",
+      "Download, cloud writes, account quota and random reads are disabled. No automatic login, install, update or fallback."
+    ],
+    "live_account_verified": false,
+    "status": "unavailable",
+    "verified_commands": [
+      "version",
+      "ls --raw -F json",
+      "get --raw -F json",
+      "auth status -F json"
+    ],
+    "version": "0.6.0"
+  },
+  "fixture_origin": "real v0.6.0 binary with isolated unauthenticated profile; timestamps normalized"
+}

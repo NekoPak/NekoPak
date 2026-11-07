@@ -46,6 +46,7 @@ async function refresh() {
   mockMode = status.mode === 'mock';
   $('mode').textContent = mockMode ? '离线 Mock 模式。文件、配额和进度均为模拟数据，不连接 PikPak，也不写入下载文件。' : '官方 CLI 只读预览。读取外部 CLI 的授权状态与文件元数据；下载、云任务写入、同步和挂载尚未启用。';
   $('cloud').hidden = !mockMode;
+  for (const control of $('cloud').elements) control.disabled = !mockMode;
   const [backends, quota, auth] = await Promise.allSettled([invoke('backend_discover'), invoke('quota_get'), invoke('auth_status')]);
   $('status').textContent = JSON.stringify({ status, backends, quota, auth }, null, 2);
   if (status.storage.error) fail(status.storage.error);

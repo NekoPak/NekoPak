@@ -193,6 +193,13 @@ fn main() {
             if !matches!(selected.as_str(), "mock" | "official_cli") {
                 return Err("NEKOPAK_BACKEND must be mock or official_cli".into());
             }
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_title(if selected == "official_cli" {
+                    "NekoPak — Official CLI Read-only Preview"
+                } else {
+                    "NekoPak — Offline Mock"
+                })?;
+            }
             let executable = std::env::var_os("NEKOPAK_CLI_PATH");
             let profile = std::env::var_os("NEKOPAK_CLI_PROFILE");
             let cli = Arc::new(match (executable, profile) {

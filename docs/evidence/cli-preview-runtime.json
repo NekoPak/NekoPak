@@ -1,0 +1,70 @@
+{
+  "executable_sha256": "74ee435220260371f9b3b467eff72c8bf3fa11d7458772b563c3189a01fbc662",
+  "version": "10.0.26300",
+  "architecture": "64 位",
+  "method": "3 sequential warm launches by default; window handle availability is not first rendered frame. Sample >=5s after handle. Includes descendants such as WebView2. Total working set can double-count shared pages. No workload throughput or GUI click verification.",
+  "ui_automation": "Unavailable: computer-use native pipe missing. IPC command roundtrip covered by Rust mock-runtime test.",
+  "observations": [
+    {
+      "total_private_working_set_bytes": 90456064.0,
+      "processes": [
+        {
+          "private_committed_bytes": 47644672,
+          "name": "msedgewebview2#39",
+          "private_working_set_bytes": 36274176,
+          "pid": 6456,
+          "working_set_bytes": 142295040
+        },
+        {
+          "private_committed_bytes": 3010560,
+          "name": "msedgewebview2#40",
+          "private_working_set_bytes": 1986560,
+          "pid": 36536,
+          "working_set_bytes": 13213696
+        },
+        {
+          "private_committed_bytes": 77533184,
+          "name": "msedgewebview2#41",
+          "private_working_set_bytes": 20357120,
+          "pid": 36544,
+          "working_set_bytes": 72560640
+        },
+        {
+          "private_committed_bytes": 15372288,
+          "name": "msedgewebview2#42",
+          "private_working_set_bytes": 8179712,
+          "pid": 33044,
+          "working_set_bytes": 44367872
+        },
+        {
+          "private_committed_bytes": 9814016,
+          "name": "msedgewebview2#43",
+          "private_working_set_bytes": 3309568,
+          "pid": 34172,
+          "working_set_bytes": 20275200
+        },
+        {
+          "private_committed_bytes": 27582464,
+          "name": "msedgewebview2#44",
+          "private_working_set_bytes": 15642624,
+          "pid": 29532,
+          "working_set_bytes": 62312448
+        },
+        {
+          "private_committed_bytes": 6369280,
+          "name": "nekopak",
+          "private_working_set_bytes": 4706304,
+          "pid": 35056,
+          "working_set_bytes": 29392896
+        }
+      ],
+      "main_window_title": "NekoPak — Official CLI Read-only Preview",
+      "run": 1,
+      "window_handle_ms": 144,
+      "total_working_set_bytes": 384417792.0,
+      "sampled_after_ms": 6311,
+      "process_count": 7
+    }
+  ],
+  "os": "Microsoft Windows 11 家庭版 中文版"
+}

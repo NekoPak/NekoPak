@@ -1,4 +1,4 @@
-name: Windows M0
+name: Windows backend
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
@@ -31,5 +31,5 @@ jobs:
       - run: python scripts/package_release.py
       - uses: actions/upload-artifact@v4
         with:
-          name: NekoPak-windows-x64-mock
+          name: NekoPak-windows-x64-cli-preview
           path: dist/

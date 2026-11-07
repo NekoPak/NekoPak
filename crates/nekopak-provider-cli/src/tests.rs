@@ -76,15 +76,30 @@ fn display_sizes_partial_pages_and_malformed_times_are_rejected() {
     let mut entry = raw_entry();
     entry["modified_time"] = json!("2026-11-07 12:00");
     assert!(wire::entry(&entry).is_err());
-    assert!(wire::list(json!({}), "root", None).is_err());
-    assert!(wire::list(json!({"files":[raw_entry(),raw_entry()]}), "root", None).is_err());
+    assert!(wire::list(json!({}), "root", None, 10).is_err());
+    assert!(wire::list(json!({"files":[raw_entry(),raw_entry()]}), "root", None, 10).is_err());
     assert!(wire::list(
         json!({"files":[raw_entry()],"next_page_token":"same"}),
         "root",
-        Some("same")
+        Some("same"),
+        10
     )
     .is_err());
-    assert!(wire::list(json!({"files":[],"next_page_token":"next"}), "root", None).is_err());
+    assert!(wire::list(
+        json!({"files":[],"next_page_token":"next"}),
+        "root",
+        None,
+        10
+    )
+    .is_err());
+    let entries: Vec<_> = (0..11)
+        .map(|i| {
+            let mut entry = raw_entry();
+            entry["id"] = json!(format!("file_{i}"));
+            entry
+        })
+        .collect();
+    assert!(wire::list(json!({"files":entries}), "root", None, 10).is_err());
 }
 
 #[test]
