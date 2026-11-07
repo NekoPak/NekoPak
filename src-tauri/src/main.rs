@@ -99,6 +99,17 @@ async fn files_stat(
     let request = requests.begin(request_id)?;
     service.files_stat(&id, &request.context).await
 }
+
+#[tauri::command(rename_all = "snake_case")]
+async fn files_path(
+    service: State<'_, Service>,
+    requests: State<'_, Requests>,
+    id: String,
+    request_id: Option<String>,
+) -> Result<Vec<RemoteEntry>, ClientError> {
+    let request = requests.begin(request_id)?;
+    service.files_path(&id, &request.context).await
+}
 #[tauri::command(rename_all = "snake_case")]
 fn transfers_list(
     service: State<'_, Service>,
@@ -183,6 +194,10 @@ fn main() {
         .manage(Requests::default())
         .setup(|app| {
             let directory = app.path().app_local_data_dir()?;
+            #[cfg(debug_assertions)]
+            let directory = std::env::var_os("NEKOPAK_TEST_DATA_DIR")
+                .map(std::path::PathBuf::from)
+                .unwrap_or(directory);
             std::fs::create_dir_all(&directory)?;
             let scenario = match std::env::var("NEKOPAK_MOCK_SCENARIO") {
                 Ok(value) => serde_json::from_value::<Scenario>(serde_json::Value::String(value))?,
@@ -271,6 +286,7 @@ fn main() {
             backend_discover,
             files_list,
             files_stat,
+            files_path,
             transfers_list,
             transfer_start,
             transfer_control,
@@ -325,6 +341,7 @@ mod tests {
                 backend_discover,
                 files_list,
                 files_stat,
+                files_path,
                 transfers_list,
                 transfer_start,
                 transfer_control,
@@ -354,6 +371,9 @@ mod tests {
         )
         .unwrap();
         assert_eq!(page["items"].as_array().unwrap().len(), 8);
+        let path = invoke(&webview, "files_path", json!({"id":"nested-file"})).unwrap();
+        assert_eq!(path[0]["id"], "documents");
+        assert_eq!(path[1]["id"], "nested-file");
         assert_eq!(
             invoke(&webview, "files_stat", json!({"id":"file-7"})).unwrap()["size_bytes"],
             "18446744073709551615"

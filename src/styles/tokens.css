@@ -1,0 +1,59 @@
+/*
+ * NekoPak non-colour tokens. Colours come from schemes.css (generated from
+ * seed colours with material-color-utilities). Geometry follows the
+ * "rounded island" frame studied from Piko's published design rules.
+ */
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system,
+    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Malgun Gothic", sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "SFMono-Regular", ui-monospace, "Noto Sans Mono CJK SC", monospace;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  --gap: 8px;            /* island gap */
+  --row-top: 56px;       /* caption row, aligned with sidebar head */
+  --row-cmd: 52px;       /* command row */
+  --row-foot: 48px;      /* footer row */
+  --sb-w: 248px;
+  --rail-w: 76px;
+
+  --frame: var(--surface-container);
+  --canvas: var(--surface);
+  --side: var(--surface-low);
+  --raised: var(--surface-lowest);
+
+  --hover: color-mix(in srgb, var(--on-surface) 7%, transparent);
+  --press: color-mix(in srgb, var(--on-surface) 11%, transparent);
+  --hover-primary: color-mix(in srgb, var(--primary) 9%, transparent);
+  --scrim: rgb(0 0 0 / 0.32);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.08), 0 1px 3px 1px rgb(0 0 0 / 0.05);
+  --shadow-2: 0 2px 6px 2px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.12);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 0.14), 0 2px 6px rgb(0 0 0 / 0.1);
+
+  /* WinUI-like desktop timings: 83 / 167 / 250 ms, standard easing. */
+  --t1: 83ms;
+  --t2: 167ms;
+  --t3: 250ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0, 0, 0, 1);
+}
+
+:root[data-reduce-motion] *,
+:root[data-reduce-motion] *::before,
+:root[data-reduce-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

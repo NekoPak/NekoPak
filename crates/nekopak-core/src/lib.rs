@@ -125,6 +125,42 @@ impl AppService {
             .await?;
         context.run(provider.stat(id)).await
     }
+    /// Bounded read-only ancestry lookup; never treats missing parents as a root directory.
+    pub async fn files_path(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<Vec<RemoteEntry>, ClientError> {
+        let provider = self
+            .router
+            .select(Operation::Stat, self.provider.id(), context)
+            .await?;
+        context
+            .run(async {
+                let mut path = Vec::new();
+                let mut next = id.to_owned();
+                let mut seen = std::collections::BTreeSet::new();
+                while next != "root" {
+                    if path.len() >= 128 || !seen.insert(next.clone()) {
+                        return Err(ClientError::new(
+                            ErrorCode::IntegrityFailed,
+                            "The remote ancestry is cyclic or exceeds the safe depth.",
+                        ));
+                    }
+                    let entry = provider.stat(&next).await?;
+                    next = entry.parent_id.clone().ok_or_else(|| {
+                        ClientError::new(
+                            ErrorCode::IntegrityFailed,
+                            "The provider did not supply the parent needed to resolve this path.",
+                        )
+                    })?;
+                    path.push(entry);
+                }
+                path.reverse();
+                Ok(path)
+            })
+            .await
+    }
     pub async fn quota_get(&self, context: &RequestContext) -> Result<QuotaReport, ClientError> {
         let provider = self
             .router

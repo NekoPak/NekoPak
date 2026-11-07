@@ -3,12 +3,12 @@
   "productName": "NekoPak Preview",
   "version": "0.1.0",
   "identifier": "io.nekopak.desktop",
-  "build": { "frontendDist": "../shell" },
+  "build": { "frontendDist": "../ui-dist", "devUrl": "http://localhost:5173", "beforeDevCommand": "npm run dev", "beforeBuildCommand": "npm run build" },
   "app": {
     "withGlobalTauri": true,
-    "windows": [{ "label": "main", "title": "NekoPak", "width": 960, "height": 680 }],
+    "windows": [{ "label": "main", "title": "NekoPak", "width": 1280, "height": 760, "minWidth": 720, "minHeight": 480, "decorations": false }],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'",
       "capabilities": ["main"]
     }
   },

@@ -63,6 +63,7 @@ export interface CommandMap {
   backend_discover: { args: { request_id?: string }; result: CapabilityReport[] };
   files_list: { args: { parent_id: string; cursor?: string; limit?: number; request_id?: string }; result: Page<RemoteEntry> };
   files_stat: { args: { id: string; request_id?: string }; result: RemoteEntry };
+  files_path: { args: { id: string; request_id?: string }; result: RemoteEntry[] };
   transfers_list: { args: { cursor?: string; limit?: number }; result: Page<TransferTask> };
   transfer_start: { args: { remote_id: string; destination: string; idempotency_key?: string; request_id?: string }; result: TaskRef };
   transfer_control: { args: { task_id: string; action: TransferAction }; result: void };

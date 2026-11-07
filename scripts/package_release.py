@@ -25,18 +25,35 @@ def main():
     executable = target / 'release' / 'nekopak.exe'
     if not executable.is_file():
         raise SystemExit('Build the Windows release executable first.')
-    build_inputs = [ROOT / 'Cargo.toml', ROOT / 'Cargo.lock'] + [p for base in ['crates', 'src-tauri', 'shell'] for p in (ROOT / base).rglob('*') if p.is_file() and 'gen' not in p.relative_to(ROOT).parts]
+    if not (ROOT / 'ui-dist/index.html').is_file():
+        raise SystemExit('Build the integrated frontend first (npm run build).')
+    source_roots = ['crates', 'src-tauri', 'src', 'public', 'ui-dist']
+    build_inputs = [ROOT / name for name in ['Cargo.toml', 'Cargo.lock', 'package.json', 'package-lock.json', 'vite.config.ts', 'index.html']] + [p for base in source_roots for p in (ROOT / base).rglob('*') if p.is_file() and 'gen' not in p.relative_to(ROOT).parts]
     if any(p.stat().st_mtime > executable.stat().st_mtime for p in build_inputs):
         raise SystemExit('Source files are newer than the executable; rebuild before packaging.')
     output = ROOT / 'dist'
     output.mkdir(exist_ok=True)
-    archive = output / 'NekoPak-0.1.0-windows-x64-cli-preview.zip'
+    archive = output / 'NekoPak-0.1.0-windows-x64-ui-preview.zip'
     license_entries = []
     supplemental_sources = json.loads((ROOT / 'licenses/sources.json').read_text(encoding='utf-8'))
+    # Actual bundled UI runtime + generated glyph/color assets. Test/build-only packages are not shipped.
+    ui_sources = ['preact', '@tauri-apps/api', '@material-symbols/svg-400', '@material/material-color-utilities']
+    ui_licenses = []
+    for name in ui_sources:
+        directory = ROOT / 'node_modules' / name
+        package = json.loads((directory / 'package.json').read_text(encoding='utf-8'))
+        texts = [p for p in directory.iterdir() if p.is_file() and p.name.lower().startswith(('license', 'licence', 'notice'))]
+        if not texts:
+            raise SystemExit(f'Missing frontend license text: {name}')
+        ui_licenses.append({'name': name, 'version': package['version'], 'license': package.get('license'), 'files': [p.name for p in texts]})
     # Published crate archives may normalize mtimes to 1970; ZIP starts at 1980.
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=False) as bundle:
-        for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md', ROOT / 'docs' / 'CLI_ADAPTER.md']:
+        for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md', ROOT / 'docs' / 'CLI_ADAPTER.md', ROOT / 'docs' / 'UI_INTEGRATION.md']:
             bundle.write(path, path.name)
+        for item in ui_licenses:
+            for name in item['files']:
+                bundle.write(ROOT / 'node_modules' / item['name'] / name, f"licenses/frontend/{item['name']}/{name}")
+        bundle.writestr('FRONTEND_LICENSES.json', json.dumps(ui_licenses, ensure_ascii=False, indent=2))
         for package in metadata['packages']:
             if package['source'] is None:
                 continue
@@ -66,7 +83,7 @@ def main():
     except subprocess.CalledProcessError:
         commit = None
     source_hash = hashlib.sha256()
-    for base in ['crates', 'src-tauri', 'shell']:
+    for base in source_roots:
         for file in sorted((ROOT / base).rglob('*')):
             if file.is_file() and 'gen' not in file.relative_to(ROOT).parts:
                 source_hash.update(file.relative_to(ROOT).as_posix().encode())
@@ -76,6 +93,9 @@ def main():
         'rustc': run('rustc', '-V'), 'cargo': run('cargo', '-V'),
         'commit': commit, 'source_sha256': source_hash.hexdigest(),
         'cargo_lock_sha256': hashlib.sha256((ROOT / 'Cargo.lock').read_bytes()).hexdigest(),
+        'npm_lock_sha256': hashlib.sha256((ROOT / 'package-lock.json').read_bytes()).hexdigest(),
+        'frontend_license_inventory': ui_licenses,
+        'frontend_assets_bytes': sum(p.stat().st_size for p in (ROOT / 'ui-dist').rglob('*') if p.is_file()),
         'profile': 'release, opt-level=s, LTO, codegen-units=1, strip',
         'archive': archive.name, 'compression': 'ZIP DEFLATE level 9; executable + notices + resolved dependency licenses',
         'executable_bytes': executable.stat().st_size, 'archive_bytes': archive.stat().st_size,
@@ -83,7 +103,7 @@ def main():
         'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
         'external_requirements': ['Windows x64', 'Microsoft Edge WebView2 Evergreen runtime (not bundled)'],
         'not_bundled': ['PikPak CLI', 'Rclone', 'WinFsp', 'Chromium', 'JVM', 'FFmpeg', 'mpv'],
-        'scope': 'Offline Mock by default; explicit reviewed official CLI read-only preview. No real transfers or bundled official CLI.',
+        'scope': 'Integrated supplied UI v2, independent Tasks sidebar, Rust Mock by default and configured CLI read-only preview. No real transfers or bundled official CLI.',
         'runtime_measurement': 'Not measured by this script; no memory/startup claim.',
         'license_inventory_scope': 'Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.',
         'license_text_unresolved': unresolved,
