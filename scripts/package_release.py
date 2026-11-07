@@ -26,7 +26,9 @@ def main():
     output.mkdir(exist_ok=True)
     archive = output / 'NekoPak-0.1.0-windows-x64-mock.zip'
     license_entries = []
-    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
+    supplemental_sources = json.loads((ROOT / 'licenses/sources.json').read_text(encoding='utf-8'))
+    # Published crate archives may normalize mtimes to 1970; ZIP starts at 1980.
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=False) as bundle:
         for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md']:
             bundle.write(path, path.name)
         for package in metadata['packages']:
@@ -34,13 +36,25 @@ def main():
                 continue
             base = Path(package['manifest_path']).parent
             files = sorted({p for pattern in ['LICENSE*', 'LICENCE*', 'COPYING*', 'NOTICE*', 'UNLICENSE*', 'license*', 'licenses/**/*'] for p in base.glob(pattern) if p.is_file()})
-            record = {'name': package['name'], 'version': package['version'], 'license': package.get('license'), 'source': package['source'], 'license_files': [str(p.relative_to(base)) for p in files]}
+            supplements = [entry for entry in supplemental_sources if entry['name'] == package['name'] and entry['version'] == package['version'] and 'file' in entry]
+            record = {'name': package['name'], 'version': package['version'], 'license': package.get('license'), 'source': package['source'], 'source_archive_url': f"https://static.crates.io/crates/{package['name']}/{package['name']}-{package['version']}.crate", 'license_files': [str(p.relative_to(base)) for p in files], 'supplemental_licenses': supplements}
             license_entries.append(record)
             for file in files:
                 bundle.write(file, f"licenses/{package['name']}-{package['version']}/{file.relative_to(base).as_posix()}")
+            for entry in supplements:
+                file = ROOT / entry['file']
+                if hashlib.sha256(file.read_bytes()).hexdigest() != entry['sha256']:
+                    raise SystemExit(f"Supplemental license checksum mismatch: {file.name}")
+                bundle.write(file, f"licenses/{package['name']}-{package['version']}/upstream/{file.name}")
         manifest = json.dumps(license_entries, ensure_ascii=False, indent=2)
         bundle.writestr('DEPENDENCY_LICENSES.json', manifest)
     (output / 'DEPENDENCY_LICENSES.json').write_text(manifest, encoding='utf-8')
+    windows_tree = run('cargo', 'tree', '--locked', '--offline', '-p', 'nekopak-app', '--target', 'x86_64-pc-windows-msvc', '--edges', 'normal,build', '--prefix', 'none')
+    windows_packages = {f"{parts[0]}@{parts[1][1:]}" for line in windows_tree.splitlines() if len(parts := line.split()) > 1 and parts[1].startswith('v')}
+    unresolved = [f"{p['name']}@{p['version']}" for p in license_entries if not p['license_files'] and not p['supplemental_licenses']]
+    windows_gaps = sorted(set(unresolved) & windows_packages)
+    if windows_gaps:
+        raise SystemExit('Missing Windows dependency license texts: ' + ', '.join(windows_gaps))
     try:
         commit = run('git', 'rev-parse', 'HEAD')
     except subprocess.CalledProcessError:
@@ -66,6 +80,8 @@ def main():
         'scope': 'Offline M0 mock backend; no live network provider or actual file downloads.',
         'runtime_measurement': 'Not measured by this script; no memory/startup claim.',
         'license_inventory_scope': 'Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.',
+        'license_text_unresolved': unresolved,
+        'windows_dependency_license_text_gaps': windows_gaps,
     }
     (output / 'size-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(report, ensure_ascii=False, indent=2))

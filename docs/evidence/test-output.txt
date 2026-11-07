@@ -1,0 +1,95 @@
+$ cargo test --workspace --locked --offline
+   Compiling nekopak-core v0.1.0 (D:\Program Files (x86)\ai\agent\codex\nekopak\crates\nekopak-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.20s
+     Running unittests src\main.rs (target\debug\deps\nekopak-a42f3bb493294b73.exe)
+
+running 2 tests
+test tests::request_ids_reject_duplicates_and_cleanup_on_drop ... ok
+test tests::tauri_command_wire_roundtrip_preserves_contract ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src\lib.rs (target\debug\deps\nekopak_core-62359b713fd97ba2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\backend.rs (target\debug\deps\backend-a53130197321d9ab.exe)
+
+running 16 tests
+test crash_writer_child ... ok
+test dangerous_paths_and_credential_urls_are_rejected ... ok
+test corrupt_database_is_not_modified_or_silently_replaced ... ok
+test zero_byte_database_is_preserved_for_explicit_recovery ... ok
+test future_schema_is_rejected_without_downgrade ... ok
+test concurrent_duplicate_requests_make_one_durable_task ... ok
+test cloud_idempotency_survives_restart_and_never_persists_urls ... ok
+test missing_idempotency_schema_is_not_silently_recreated ... ok
+test killed_process_rolls_back_uncommitted_transaction ... ok
+test stale_worker_update_cannot_undo_user_cancel ... ok
+test second_instance_cannot_recover_tasks_owned_by_live_worker ... ok
+test in_flight_restart_pauses_and_keeps_bytes ... ok
+test invalid_task_record_is_preserved_and_settings_damage_is_independent ... ok
+test download_controls_and_event_revisions_are_persisted ... ok
+test restart_above_disconnect_threshold_does_not_rewind_or_stop_worker ... ok
+test faults_never_look_like_success_and_37_percent_retry_resumes ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running unittests src\lib.rs (target\debug\deps\nekopak_domain-0fd19d744421a9ce.exe)
+
+running 3 tests
+test tests::errors_map_without_ambiguous_permission_or_quota_retry ... ok
+test tests::state_machine_never_completes_unverified_work ... ok
+test tests::u64_is_lossless_and_rejects_ambiguous_wire_values ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\nekopak_provider-341ccddaf1ef1f27.exe)
+
+running 1 test
+test tests::cancellation_and_timeout_are_bounded ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src\lib.rs (target\debug\deps\nekopak_provider_mock-b9ef5cd0f5e268cb.exe)
+
+running 4 tests
+test tests::changed_files_invalidate_pagination ... ok
+test tests::router_uses_capabilities_and_does_not_fallback_after_dispatch ... ok
+test tests::injected_errors_and_timeout_are_deterministic ... ok
+test tests::large_directory_is_complete_without_duplicates ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+   Doc-tests nekopak_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests nekopak_domain
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests nekopak_provider
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests nekopak_provider_mock
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+$ cargo fmt --all --check
+
+Fixture regeneration: 10 files byte-identical.
+
+ZIP integrity passed. 692 entries, 422 resolved dependency records. Executable hash matches.

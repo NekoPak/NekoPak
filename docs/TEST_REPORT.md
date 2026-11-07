@@ -7,9 +7,9 @@ but has not been dispatched to a hosted runner.
 
 ## Executed checks
 
-- `cargo test --workspace --offline --no-fail-fast`: PASS, 26 test entries,
-  0 failures (includes one subprocess helper entry). The lockfile was updated for
-  Tauri's dev-only mock runtime before this run.
+- `cargo test --workspace --locked --offline`: PASS, 26 test entries,
+  0 failures (includes one subprocess helper entry). Final raw output is in
+  `docs/evidence/test-output.txt`.
 - `cargo clippy --workspace --all-targets --locked --offline -- -D warnings`:
   PASS, no warnings.
 - `cargo fmt --all --check`: PASS.
@@ -17,7 +17,7 @@ but has not been dispatched to a hosted runner.
 - `npm test`: PASS, 4 tests including real Rust fixture/error data and reordered
   revisions above JavaScript's safe integer boundary.
 - `cargo run --locked --offline -p nekopak-core --example export_fixtures`:
-  PASS, 10 deterministic scenario files generated.
+  PASS, 10 deterministic scenario files generated; repeated export was byte-identical.
 - `cargo run --locked --offline -p nekopak-core --example mock_smoke`:
   PASS, 8 root entries and a simulated 100,000,000-byte task completed through the
   core state machine, with no destination file or network transfer.
@@ -64,6 +64,11 @@ became available. Raw evidence is in `docs/evidence/runtime-report.json`.
 
 Packaging bytes, archive SHA-256, toolchain, source/lock hashes and dependency
 inventory are generated in `dist/size-report.json` and retained as evidence.
+The executable is 7,345,664 bytes (7.01 MiB). ZIP size includes notices and the
+resolved license inventory; final ZIP bytes are recorded in the generated report.
+The final archive is integrity-tested and its executable hash checked against the
+built file. A dependency timestamp before 1980 exposed a Python ZIP limitation;
+packaging now clamps unsupported timestamps and preserves file contents.
 
 ## Review and remaining limits
 

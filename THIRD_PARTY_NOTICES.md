@@ -15,11 +15,23 @@ unlike the research candidates below. Tauri/Wry/Tao are MIT OR Apache-2.0;
 rusqlite is MIT; SQLite is public-domain software. The full resolved dependency
 license inventory is generated from Cargo metadata by scripts/package_release.py.
 
+Where published crates omit full license text, verified upstream license files are
+supplemented from pinned source commits under licenses/upstream, with URL and SHA-256
+records in licenses/sources.json. This copies license notices, not implementation
+code. selectors 0.38.0 declares MPL-2.0; Mozilla's canonical license text is included.
+Exact source archive URLs are provided for every registry dependency, including
+MPL-covered sources. No such dependency source was modified.
+
 The portable ZIP includes DEPENDENCY_LICENSES.json and the LICENSE/NOTICE files
 available in each resolved crate's published source archive. That inventory also
 includes build, test, and other-platform dependencies; it is intentionally broader
 than the set of machine code linked into this Windows binary. It does not certify
 compliance or replace a release-time legal/security audit.
+
+Some unused other-platform packages in the all-target lock graph do not supply a
+license file or verified upstream commit: these remain explicitly listed in the
+size report's license_text_unresolved field. This Windows build does not assert
+that Linux, Android, Apple, GNU Windows or UEFI distributions are license-audited.
 
 WebView2 is a Microsoft system runtime, required separately and not bundled.
 No official PikPak binary, Rclone, WinFsp, JVM, Chromium, FFmpeg or mpv is included.
