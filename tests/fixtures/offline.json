@@ -1,0 +1,60 @@
+{
+  "app_status": {
+    "contract_version": "0.1",
+    "features": {
+      "experimental_network": false,
+      "mock": true,
+      "mount": false,
+      "real_providers": false,
+      "sync": false,
+      "telemetry": false
+    },
+    "mode": "mock",
+    "storage": {
+      "schema_version": 1,
+      "status": "ready"
+    },
+    "version": "0.1.0"
+  },
+  "backend_discover": [
+    {
+      "account_tier": "free",
+      "backend": "mock",
+      "checked_at": "2026-11-07T00:00:00Z",
+      "limitations": [
+        "OFFLINE SIMULATION: all entries, quotas and transfers are synthetic; no file is downloaded.",
+        "Real providers, random reads, sync and mounting are not implemented."
+      ],
+      "operations": {
+        "cloud_task": true,
+        "download": true,
+        "list": true,
+        "quota": true,
+        "read_range": false,
+        "stat": true,
+        "trash": false,
+        "upload": false
+      },
+      "status": "ready",
+      "version": "mock-0.1"
+    }
+  ],
+  "contract_version": "0.1",
+  "files_list": {
+    "error": {
+      "backend": "mock",
+      "code": "TRANSIENT_NETWORK",
+      "message": "Mock network is offline.",
+      "retryable": true
+    }
+  },
+  "quota_get": {
+    "error": {
+      "backend": "mock",
+      "code": "TRANSIENT_NETWORK",
+      "message": "Mock network is offline.",
+      "retryable": true
+    }
+  },
+  "scenario": "offline"
+}

@@ -1,0 +1,153 @@
+{
+  "app_status": {
+    "contract_version": "0.1",
+    "features": {
+      "experimental_network": false,
+      "mock": true,
+      "mount": false,
+      "real_providers": false,
+      "sync": false,
+      "telemetry": false
+    },
+    "mode": "mock",
+    "storage": {
+      "schema_version": 1,
+      "status": "ready"
+    },
+    "version": "0.1.0"
+  },
+  "backend_discover": [
+    {
+      "account_tier": "free",
+      "backend": "mock",
+      "checked_at": "2026-11-07T00:00:00Z",
+      "limitations": [
+        "OFFLINE SIMULATION: all entries, quotas and transfers are synthetic; no file is downloaded.",
+        "Real providers, random reads, sync and mounting are not implemented."
+      ],
+      "operations": {
+        "cloud_task": true,
+        "download": true,
+        "list": true,
+        "quota": true,
+        "read_range": false,
+        "stat": true,
+        "trash": false,
+        "upload": false
+      },
+      "status": "ready",
+      "version": "mock-0.1"
+    }
+  ],
+  "contract_version": "0.1",
+  "files_list": {
+    "ok": {
+      "items": [
+        {
+          "etag": "mock-v1",
+          "id": "documents",
+          "kind": "folder",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "资料 📁",
+          "parent_id": "root",
+          "size_bytes": "0"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-1",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "示例 video.mp4",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-2",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "CON",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-3",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "文件 with spaces.txt",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-4",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "é.txt",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-5",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称.txt",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-6",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "零字节.txt",
+          "parent_id": "root",
+          "size_bytes": "0"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-7",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "大文件.bin",
+          "parent_id": "root",
+          "size_bytes": "18446744073709551615"
+        }
+      ]
+    }
+  },
+  "quota_get": {
+    "ok": {
+      "account_tier": "free",
+      "backend": "mock",
+      "checked_at": "2026-11-07T00:00:00Z",
+      "dimensions": [
+        {
+          "dimension": "download",
+          "limit_bytes": "100000000000",
+          "period": "synthetic_month",
+          "remaining_bytes": "42000000000"
+        },
+        {
+          "dimension": "upload",
+          "limit_bytes": "100000000000",
+          "period": "synthetic_month",
+          "remaining_bytes": "42000000000"
+        },
+        {
+          "dimension": "cloud_download",
+          "limit_bytes": "100000000000",
+          "period": "synthetic_month",
+          "remaining_bytes": "42000000000"
+        }
+      ],
+      "limitations": [
+        "Synthetic fixture values; not live account quota or a statement of service limits."
+      ],
+      "source": "mock"
+    }
+  },
+  "scenario": "disconnect_at37"
+}

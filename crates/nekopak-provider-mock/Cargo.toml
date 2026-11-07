@@ -1,0 +1,16 @@
+[package]
+name = "nekopak-provider-mock"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+nekopak-domain.workspace = true
+nekopak-provider.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+sha2.workspace = true
+

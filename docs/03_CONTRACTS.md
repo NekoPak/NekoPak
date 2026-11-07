@@ -157,3 +157,39 @@ pub trait BackendPort: Send + Sync {
 - 文件命名含：汉字、emoji、空格、超长路径、Windows 保留名、UTF-8 组合字符；任何系统路径操作必须安全转义。
 - `mock` 必须支持确定性故障注入：下载到 37% 时断网、进度事件乱序、退出时事务未提交、完整性检查失败、配额耗尽。
 - P0 开始后仅增加字段不随意改动既有字段含义；破坏性修改需要 `contract_version` 和同步 PR。
+
+## 7. M0 后端冻结补充（2026-11-07）
+
+本节冻结首轮实际实现，原有字段和命令名保持不变。前端以 `src/lib/api-types.ts`
+为完整声明，`tests/fixtures/*.json` 由 Rust 导出。`contract_version = "0.1"`。
+
+- 当前仅 `mock` 被注册；其他后端不返回虚假的安装/授权状态。
+- 已实现：app_status、backend_discover、files_list、files_stat、transfers_list、
+  transfer_start、transfer_control、cloud_task_create、quota_get、request_cancel。
+  未列出的设计命令尚未注册，UI 必须禁用。
+- 参数一律 snake_case。根目录 ID 是 `root`；分页 limit 默认 100、范围 1–500；
+  cursor 是不透明字符串。失效/无效 cursor 返回 CONFLICT，必须重新读第一页。
+- TaskRef 是 `{ task_id: string }`。transfer_control.action 是
+  `pause | resume | cancel | retry`。终态 completed 不允许重开；cancelled 不允许重试。
+- TransferTask 和 progress/changed 事件新增 `revision: string`（十进制 u64，
+  SQLite 全局递增）及 `simulated: boolean`。事件同时携带 updated_at 和完整进度。
+  客户端通过 BigInt 比较 revision，丢弃重复/乱序旧事件。
+- AppStatus 为 `{ version, contract_version, mode: "mock", storage: { status:
+  "ready" | "recovery_required", schema_version, error? }, features: Record<string, boolean> }`。
+- QuotaReport 为 `{ backend, account_tier, source: "mock", checked_at, limitations,
+  dimensions: [{ dimension, period, limit_bytes?, remaining_bytes?, resets_at? }] }`。
+  M0 额度明确为 synthetic_month 样本，不代表实际服务限额；缺失额度字段不得补成零。
+- 异步 provider 命令可追加 `request_id?: string`，调用 `request_cancel({request_id})`
+  取消该请求；同一时刻 ID 不得重复。每个 provider 调用 15 秒超时。取消不撤销已提交事务。
+- transfer_start 可追加 `idempotency_key?: string`；缺省表示创建新模拟任务。
+  cloud_task_create 必须传 key。同一个操作内同 key+同参数返回原任务，即使重启；
+  同 key 不同参数返回 CONFLICT。key 限 1–128 ASCII 字母数字及 `-_.:`。
+- Mock 只模拟下载，不创建 destination 文件；路径输入仍拒绝穿越、设备名、UNC、
+  特殊前缀和 ADS。真实落盘前必须增加句柄级 symlink/reparse 校验。
+- 已实现事件：transfer/progress、transfer/changed（均为 TransferEvent）；
+  新增 `nekopak://transfer/resync-required`（null）及 `nekopak://storage/error`（ClientError）。
+  其他设计事件暂未发布，因为 M0 不含相应动态服务。
+- 可靠启动序列：读取全分页任务快照 → 订阅 → 再次读取快照补齐窗口期 → 按 revision 合并。
+  总线溢出或未知 task_id 要重新读快照，不能把事件当作数据库。
+
+本补充为后端交接基线，尚无另一位前端开发者的实际集成确认。

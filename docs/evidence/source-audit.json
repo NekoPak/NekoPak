@@ -1,0 +1,188 @@
+{
+  "date": "2026-11-07",
+  "observations": {
+    "pikpaktui_repo": {
+      "url": "https://api.github.com/repos/Bengerthelorf/pikpaktui",
+      "observation": {
+        "default_branch": "main",
+        "license": {
+          "key": "apache-2.0",
+          "name": "Apache License 2.0",
+          "spdx_id": "Apache-2.0",
+          "url": "https://api.github.com/licenses/apache-2.0",
+          "node_id": "MDc6TGljZW5zZTI="
+        },
+        "language": "Rust"
+      }
+    },
+    "pikpaktui_head": {
+      "url": "https://api.github.com/repos/Bengerthelorf/pikpaktui/commits/HEAD",
+      "observation": {
+        "sha": "68b7a6bdf6e4abe2a049974dec2c38e736f2a25c"
+      }
+    },
+    "pikpaktui_manifest": {
+      "url": "https://raw.githubusercontent.com/Bengerthelorf/pikpaktui/main/Cargo.toml",
+      "observation": {
+        "content": "[package]\nname = \"pikpaktui\"\nversion = \"0.0.63\"\nedition = \"2024\"\nrust-version = \"1.90\"\ndescription = \"A TUI and CLI client for PikPak cloud storage\"\nlicense = \"Apache-2.0\"\nrepository = \"https://github.com/Bengerthelorf/pikpaktui\"\nhomepage = \"https://app.snaix.homes/pikpaktui/\"\ndocumentation = \"https://app.snaix.homes/pikpaktui/\"\nkeywords = [\"tui\", \"pikpak\", \"cloud-storage\", \"cli\"]\ncategories = [\"command-line-utilities\"]\ninclude = [\n    \"/src/**/*.rs\",\n    \"/docs/configuration.md\",\n    \"/docs/zh/configuration.md\",\n    \"/docs/zh-Hant/configuration.md\",\n    \"/Cargo.toml\",\n    \"/Cargo.lock\",\n    \"/LICENSE\",\n    \"/README.md\",\n]\n\n[dependencies]\nanyhow = \"1\"\ncrossterm = \"0.29\"\nratatui = \"0.30.0\"\ndirs = \"6\"\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\nreqwest = { version = \"0.12\", default-features = false, features = [\"blocking\", \"json\", \"rustls-tls\"] }\ntoml = \"0.9.8\"\nsha1 = \"0.10\"\nsha2 = \"0.10\"\nmd-5 = \"0.10\"\nhmac = \"0.12\"\nbase64 = \"0.22\"\nunicode-width = \"0.2\"\nsyntect = { version = \"5.3.0\", default-features = false, features = [\"default-syntaxes\", \"default-themes\", \"regex-fancy\", \"plist-load\"] }\nimage = \"0.25\"\nratatui-image = { version = \"10.0\", default-features = false, features = [\"crossterm\"] }\nself_update = { version = \"0.43\", default-features = false, features = [\"archive-tar\", \"archive-zip\", \"compression-flate2\", \"compression-zip-deflate\", \"reqwest\", \"rustls\"] }\n\n[profile.release]\ncodegen-units = 1\nlto = true\nopt-level = \"s\"\nstrip = true\n"
+      }
+    },
+    "piko_release": {
+      "url": "https://api.github.com/repos/NihilDigit/piko/releases/tags/v1.4.0",
+      "observation": {
+        "assets": [
+          {
+            "name": "multiple.intoto.jsonl",
+            "bytes": 24427,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/multiple.intoto.jsonl"
+          },
+          {
+            "name": "piko-1.4.0-arm64-v8a.apk",
+            "bytes": 16545279,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-1.4.0-arm64-v8a.apk"
+          },
+          {
+            "name": "piko-1.4.0-armeabi-v7a.apk",
+            "bytes": 16110447,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-1.4.0-armeabi-v7a.apk"
+          },
+          {
+            "name": "piko-1.4.0-mapping.txt",
+            "bytes": 129641188,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-1.4.0-mapping.txt"
+          },
+          {
+            "name": "piko-1.4.0-universal.apk",
+            "bytes": 40302013,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-1.4.0-universal.apk"
+          },
+          {
+            "name": "piko-1.4.0-x86_64.apk",
+            "bytes": 17602603,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-1.4.0-x86_64.apk"
+          },
+          {
+            "name": "piko-linux-x64-1.4.0.AppImage",
+            "bytes": 115509752,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-linux-x64-1.4.0.AppImage"
+          },
+          {
+            "name": "piko-linux-x64-1.4.0.AppImage.zsync",
+            "bytes": 197637,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-linux-x64-1.4.0.AppImage.zsync"
+          },
+          {
+            "name": "piko-linux-x64-1.4.0.tar.gz",
+            "bytes": 122286795,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-linux-x64-1.4.0.tar.gz"
+          },
+          {
+            "name": "piko-macos-arm64-1.4.0.dmg",
+            "bytes": 98449855,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-macos-arm64-1.4.0.dmg"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0-app.zip",
+            "bytes": 88185881,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0-app.zip"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0-files.json",
+            "bytes": 39918,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0-files.json"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0-from-1.1.0.zip",
+            "bytes": 47036579,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0-from-1.1.0.zip"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0-from-1.2.0.zip",
+            "bytes": 44570303,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0-from-1.2.0.zip"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0-from-1.3.0.zip",
+            "bytes": 42890288,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0-from-1.3.0.zip"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0-image.zip",
+            "bytes": 116681594,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0-image.zip"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0.7z",
+            "bytes": 88672850,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0.7z"
+          },
+          {
+            "name": "piko-windows-arm64-1.4.0.msi",
+            "bytes": 118235136,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-arm64-1.4.0.msi"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0-app.zip",
+            "bytes": 89419381,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0-app.zip"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0-files.json",
+            "bytes": 53159,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0-files.json"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0-from-1.1.0.zip",
+            "bytes": 48162290,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0-from-1.1.0.zip"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0-from-1.2.0.zip",
+            "bytes": 45680777,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0-from-1.2.0.zip"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0-from-1.3.0.zip",
+            "bytes": 43996552,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0-from-1.3.0.zip"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0-image.zip",
+            "bytes": 124106115,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0-image.zip"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0.7z",
+            "bytes": 95271444,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0.7z"
+          },
+          {
+            "name": "piko-windows-x64-1.4.0.msi",
+            "bytes": 125558784,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/piko-windows-x64-1.4.0.msi"
+          },
+          {
+            "name": "release.json",
+            "bytes": 31771,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/release.json"
+          },
+          {
+            "name": "SHA256SUMS.txt",
+            "bytes": 2439,
+            "url": "https://github.com/NihilDigit/piko/releases/download/v1.4.0/SHA256SUMS.txt"
+          }
+        ]
+      }
+    },
+    "official_cli": {
+      "url": "https://mypikpak.com/en-US/cli",
+      "observation": {
+        "http_ok": true,
+        "page_bytes": 66217,
+        "title_excerpt": "<!DOCTYPE html><html  dir=\"ltr\" lang=\"en-US\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no\"><title>PikPak CLI | PikPak - Private Cloud, Video Saver</title><script src=\"/register.js?5548b5f0\" async></script><script src=\"/scripts/gtag.js?f25e4f63\" async></script><script src=\"/scripts/adjust.min.js?af87c64b\" async></script><script src=\"/scripts/set-style.js?8f78139c\" async></script><script src=\"/scripts",
+        "binary_executed": false,
+        "capabilities_verified": false
+      }
+    }
+  }
+}

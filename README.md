@@ -4,7 +4,7 @@
 >
 > 独立社区项目，非 PikPak 官方客户端，与 PikPak 服务提供者无隶属关系。
 
-**状态：** `Planning / Pre-alpha`（架构文档与任务书阶段；未宣称功能已经实现）  
+**状态：** `M0 / Offline Mock`（Rust 后端、持久任务和最小 Tauri 验收壳已实现；尚未连接真实 PikPak）  
 **文档基线：** 2026-11-07  
 **首要平台：** Windows x64；后续 Linux x64 / macOS；Android 不列入首版承诺。
 
@@ -61,3 +61,21 @@ NekoPak 的目标不是再包装一个网页，而是构建具有原生 Rust 核
 - Tauri Windows WebView2: <https://tauri.app/zh-cn/distribute/windows-installer/>
 
 进一步参考请见 `docs/04_SOURCES_LICENSES.md`。**未经许可证核查请勿复制第三方源码。**
+
+## 当前后端交付
+
+运行与打包见 [docs/RUNNING.md](docs/RUNNING.md)，实现边界与前端交接见
+[docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md)。Rust Core 可独立测试，
+Tauri 验收壳只展示离线样本。真实登录、下载字节、同步和挂载仍未实现。
+
+```powershell
+npm ci
+cargo test --workspace --locked
+npm run check
+npm test
+cargo run -p nekopak-app --locked
+```
+
+本轮选择独立 Rust 仓库、MIT 许可。参考项目与实际依赖分别记录于
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。Bern 作为协议/引擎/宿主分层参考，
+没有复制其源码，也没有引入 Bern 运行时。

@@ -1,0 +1,12 @@
+[package]
+name = "nekopak-provider"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+nekopak-domain.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+
