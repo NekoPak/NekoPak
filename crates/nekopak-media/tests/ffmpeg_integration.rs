@@ -165,7 +165,7 @@ async fn failure_timeout_and_conflict_do_not_replace_user_data() {
     let mut config = configuration();
     let directory = tempfile::tempdir().unwrap();
     let source = directory.path().join("broken.mkv");
-    fs::write(&source, b"not media").unwrap();
+    fs::write(&source, [0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
     let destination = directory.path().join("clip.mp4");
     assert!(render_clip(
         &config,
@@ -175,11 +175,14 @@ async fn failure_timeout_and_conflict_do_not_replace_user_data() {
             start_ms: 1_000,
             end_ms: 2_000
         },
-        None
+        Some(12_000)
     )
     .await
     .is_err());
-    wait_cleanup(directory.path()).await;
+    assert!(
+        no_temps(directory.path()),
+        "ordinary failure must clean before returning"
+    );
     assert!(!destination.exists());
     fs::write(&destination, b"existing file must stay").unwrap();
     assert_eq!(
@@ -191,7 +194,7 @@ async fn failure_timeout_and_conflict_do_not_replace_user_data() {
                 start_ms: 1_000,
                 end_ms: 2_000
             },
-            None
+            Some(12_000)
         )
         .await
         .unwrap_err()
@@ -211,11 +214,14 @@ async fn failure_timeout_and_conflict_do_not_replace_user_data() {
             start_ms: 1_000,
             end_ms: 2_000
         },
-        None
+        Some(12_000)
     )
     .await
     .is_err());
-    wait_cleanup(directory.path()).await;
+    assert!(
+        no_temps(directory.path()),
+        "timeout must reap and clean before returning"
+    );
     assert!(!timed.exists());
 }
 
@@ -250,7 +256,7 @@ async fn audio_only_and_local_playlist_inputs_are_rejected() {
             start_ms: 0,
             end_ms: 1_000
         },
-        None
+        Some(3_000)
     )
     .await
     .is_err());
@@ -269,7 +275,7 @@ async fn audio_only_and_local_playlist_inputs_are_rejected() {
             start_ms: 0,
             end_ms: 1_000
         },
-        None
+        Some(3_000)
     )
     .await
     .is_err());
@@ -315,4 +321,34 @@ async fn cancelling_active_render_reaps_process_and_removes_its_temp() {
     assert!(task.await.unwrap_err().is_cancelled());
     wait_cleanup(directory.path()).await;
     assert!(!destination.exists());
+}
+
+#[tokio::test]
+#[ignore = "explicit external FFmpeg required; run scripts/test-media.ps1"]
+async fn unknown_duration_or_end_beyond_source_is_rejected_before_publish() {
+    let config = configuration();
+    let directory = tempfile::tempdir().unwrap();
+    let source = directory.path().join("source.mkv");
+    generate(&config, &source);
+    let output = directory.path().join("clip.mp4");
+    let range = ClipRange {
+        start_ms: 11_000,
+        end_ms: 13_000,
+    };
+    assert_eq!(
+        render_clip(&config, &source, &output, range, None)
+            .await
+            .unwrap_err()
+            .code,
+        ErrorCode::Unsupported
+    );
+    assert_eq!(
+        render_clip(&config, &source, &output, range, Some(12_000))
+            .await
+            .unwrap_err()
+            .code,
+        ErrorCode::Conflict
+    );
+    assert!(!output.exists());
+    assert!(no_temps(directory.path()));
 }

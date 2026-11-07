@@ -1,0 +1,8 @@
+{
+  "local_example_exit": 0,
+  "local_example_stdout": "Output bytes: 119955\nOutput duration ms: 4491\nSHA256: a312fdbf96e852040cf570fa8b02617682523fda50615f17e49babc4fdc1435c\nStream copy may begin at an earlier keyframe; the requested start is not frame-exact.\nEmbedded subtitles/data/attachments are omitted. Unsupported audio/container combinations fail instead of silently transcoding or dropping audio.",
+  "output_sha256": "a312fdbf96e852040cf570fa8b02617682523fda50615f17e49babc4fdc1435c",
+  "invalid_container_example_exit": 1,
+  "invalid_container_error": "IntegrityFailed: The source or its tracks could not be copied into MP4. No output was committed.",
+  "temporary_files_after_exit": 0
+}

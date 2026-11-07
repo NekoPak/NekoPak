@@ -4,8 +4,8 @@ use std::{path::PathBuf, time::Duration};
 #[tokio::main]
 async fn main() {
     let arguments: Vec<_> = std::env::args().skip(1).collect();
-    if arguments.len() != 6 {
-        eprintln!("Usage: clip_local <ffmpeg.exe> <sha256> <source.mp4|mkv> <new-output.mp4> <start_ms> <end_ms>");
+    if arguments.len() != 7 {
+        eprintln!("Usage: clip_local <ffmpeg.exe> <sha256> <source.mp4|mkv> <new-output.mp4> <start_ms> <end_ms> <verified_source_duration_ms>");
         std::process::exit(2);
     }
     let (Ok(start_ms), Ok(end_ms)) = (arguments[4].parse::<u64>(), arguments[5].parse::<u64>())
@@ -18,12 +18,16 @@ async fn main() {
         expected_sha256: arguments[1].clone(),
         timeout: Duration::from_secs(1800),
     };
+    let Ok(source_duration_ms) = arguments[6].parse::<u64>() else {
+        eprintln!("Source duration must be verified nonnegative integer milliseconds.");
+        std::process::exit(2);
+    };
     match render_clip(
         &config,
         &PathBuf::from(&arguments[2]),
         &PathBuf::from(&arguments[3]),
         ClipRange { start_ms, end_ms },
-        None,
+        Some(source_duration_ms),
     )
     .await
     {

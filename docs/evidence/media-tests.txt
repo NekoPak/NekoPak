@@ -1,0 +1,153 @@
+$ cargo test --workspace --locked --offline
+
+running 2 tests
+test tests::request_ids_reject_duplicates_and_cleanup_on_drop ... ok
+test tests::tauri_command_wire_roundtrip_preserves_contract ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 16 tests
+test crash_writer_child ... ok
+test dangerous_paths_and_credential_urls_are_rejected ... ok
+test zero_byte_database_is_preserved_for_explicit_recovery ... ok
+test corrupt_database_is_not_modified_or_silently_replaced ... ok
+test future_schema_is_rejected_without_downgrade ... ok
+test concurrent_duplicate_requests_make_one_durable_task ... ok
+test cloud_idempotency_survives_restart_and_never_persists_urls ... ok
+test killed_process_rolls_back_uncommitted_transaction ... ok
+test missing_idempotency_schema_is_not_silently_recreated ... ok
+test invalid_task_record_is_preserved_and_settings_damage_is_independent ... ok
+test stale_worker_update_cannot_undo_user_cancel ... ok
+test second_instance_cannot_recover_tasks_owned_by_live_worker ... ok
+test in_flight_restart_pauses_and_keeps_bytes ... ok
+test download_controls_and_event_revisions_are_persisted ... ok
+test restart_above_disconnect_threshold_does_not_rewind_or_stop_worker ... ok
+test faults_never_look_like_success_and_37_percent_retry_resumes ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+
+running 3 tests
+test tests::errors_map_without_ambiguous_permission_or_quota_retry ... ok
+test tests::state_machine_never_completes_unverified_work ... ok
+test tests::u64_is_lossless_and_rejects_ambiguous_wire_values ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test tests::ranges_and_timeline_are_validated_without_rounding ... ok
+test tests::arguments_are_stream_copy_local_only_and_require_video ... ok
+test mp4::tests::rejects_truncated_and_invalid_boxes ... ok
+test tests::final_hash_has_timeout_and_cancellation_points ... ok
+test tests::existing_paths_and_traversal_are_rejected ... ok
+test tests::unknown_tool_checksum_is_rejected ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 6 tests
+test audio_only_and_local_playlist_inputs_are_rejected ... ignored, explicit external FFmpeg required; run scripts/test-media.ps1
+test cancelling_active_render_reaps_process_and_removes_its_temp ... ignored, explicit external FFmpeg required; run scripts/test-media.ps1
+test failure_timeout_and_conflict_do_not_replace_user_data ... ignored, explicit external FFmpeg required; run scripts/test-media.ps1
+test mkv_and_mp4_produce_decodable_keyframe_aligned_mp4 ... ignored, explicit external FFmpeg required; run scripts/test-media.ps1
+test ts_is_explicitly_unsupported_until_seek_parity_is_met ... ignored, explicit external FFmpeg required; run scripts/test-media.ps1
+test unknown_duration_or_end_beyond_source_is_rejected_before_publish ... ignored, explicit external FFmpeg required; run scripts/test-media.ps1
+
+test result: ok. 0 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test tests::cancellation_and_timeout_are_bounded ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 13 tests
+test process::tests::child_flood ... ok
+test process::tests::child_wait ... ok
+test tests::auth_error_observed_from_real_binary_maps_to_contract ... ok
+test tests::unauthorized_discovery_never_claims_live_capability ... ok
+test tests::arguments_are_fixed_and_cursor_cannot_become_option ... ok
+test tests::raw_mapping_preserves_bytes_normalizes_utc_and_removes_urls ... ok
+test tests::authorized_preview_only_advertises_read_metadata ... ok
+test tests::no_configuration_executes_nothing_and_opt_in_is_required ... ok
+test tests::every_error_class_is_redacted_including_unrecognized_diagnostics ... ok
+test tests::version_drift_fails_before_any_account_request ... ok
+test tests::display_sizes_partial_pages_and_malformed_times_are_rejected ... ok
+test process::tests::process_output_is_bounded_and_hash_is_checked ... ok
+test process::tests::timeout_and_cancellation_kill_the_child ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.48s
+
+
+running 4 tests
+test tests::changed_files_invalidate_pagination ... ok
+test tests::router_uses_capabilities_and_does_not_fallback_after_dispatch ... ok
+test tests::injected_errors_and_timeout_are_deterministic ... ok
+test tests::large_directory_is_complete_without_duplicates ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling nekopak-media v0.1.0 (D:\Program Files (x86)\ai\agent\codex\nekopak\crates\nekopak-media)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.56s
+     Running unittests src\main.rs (target\debug\deps\nekopak-a809c95fa33fdcbb.exe)
+     Running unittests src\lib.rs (target\debug\deps\nekopak_core-79482ab44985860e.exe)
+     Running tests\backend.rs (target\debug\deps\backend-89c8228fd358a7f3.exe)
+     Running unittests src\lib.rs (target\debug\deps\nekopak_domain-0fd19d744421a9ce.exe)
+     Running unittests src\lib.rs (target\debug\deps\nekopak_media-e4cde31fc70dc8bf.exe)
+     Running tests\ffmpeg_integration.rs (target\debug\deps\ffmpeg_integration-03e64af765556099.exe)
+     Running unittests src\lib.rs (target\debug\deps\nekopak_provider-b4d089fcdb9dd639.exe)
+     Running unittests src\lib.rs (target\debug\deps\nekopak_provider_cli-5f3c165d01cbb8ee.exe)
+     Running unittests src\lib.rs (target\debug\deps\nekopak_provider_mock-90445f82cf905a41.exe)
+   Doc-tests nekopak_core
+   Doc-tests nekopak_domain
+   Doc-tests nekopak_media
+   Doc-tests nekopak_provider
+   Doc-tests nekopak_provider_cli
+   Doc-tests nekopak_provider_mock
+
+$ cargo fmt --all --check
+
+$ python -m unittest discover -s tests -p test_parity.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.188s
+
+OK

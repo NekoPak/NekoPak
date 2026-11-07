@@ -34,5 +34,15 @@ class ParityGate(unittest.TestCase):
         feature['evidence'] = ['docs/NOT_REAL.md']
         self.assertTrue(PARITY.check(self.manifest))
 
+    def test_feature_flags_do_not_replace_current_upstream_release_review(self):
+        for feature in self.manifest['features']:
+            if feature['mandatory_windows']:
+                feature['status'] = 'verified'
+                feature['evidence'] = ['docs/UPSTREAM_PARITY_RESEARCH.md']
+        self.assertTrue(PARITY.check(self.manifest, release=True))
+        self.manifest['baseline'].pop('reviewed_at')
+        self.manifest['baseline']['latest_stable_review_required_before_release'] = False
+        self.assertTrue(PARITY.check(self.manifest))
+
 if __name__ == '__main__':
     unittest.main()

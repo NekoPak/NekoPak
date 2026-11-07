@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-07",
+  "baseline_commit": "d61c1580783911be557d4c39026c300517187bcb",
+  "scope": "Local indexed MP4/MKV experimental clip core; remote/TS parity incomplete",
+  "ffmpeg": {
+    "version": "7.1-essentials_build-www.gyan.dev",
+    "source": "Existing imageio_ffmpeg binary installed before task",
+    "sha256": "2ce797a0f88d7f067180338fb227f7b1928ea727bd9a4d7a1d022f7c52af71a3",
+    "license_build_flags": [
+      "--enable-gpl",
+      "--enable-version3"
+    ],
+    "bundled": false
+  },
+  "ts_initial_failure": {
+    "fixture": "Generated 12s H264 AAC with 2s keyframes",
+    "requested_start_ms": 5000,
+    "requested_end_ms": 8500,
+    "expected_output_window_ms": [
+      4000,
+      5000
+    ],
+    "observed_output_duration_ms": 3755,
+    "action": "Disable TS input; retain mandatory blocked parity item, not counted as TS support"
+  },
+  "manifest_validation": {
+    "command": "python scripts/check_parity.py",
+    "exit_code": 0,
+    "output": "Windows functional parity: 0/24 required groups verified; previews are not parity releases.",
+    "expected_exit": 0
+  },
+  "release_gate": {
+    "command": "python scripts/check_parity.py --release",
+    "exit_code": 1,
+    "output": "Windows functional parity: 0/24 required groups verified; previews are not parity releases.\nA named release-candidate review of the selected baseline is required.\nRelease review date is required.\nLatest-stable release review evidence file is required.\nUnfinished required parity: auth_accounts (partial)\nUnfinished required parity: file_browser_index (partial)\nUnfinished required parity: file_mutations (planned)\nUnfinished required parity: batch_rename_undo (planned)\nUnfinished required parity: duplicates (planned)\nUnfinished required parity: download_full (planned)\nUnfinished required parity: transfer_queue (partial)\nUnfinished required parity: upload (planned)\nUnfinished required parity: cloud_tasks (planned)\nUnfinished required parity: quota (planned)\nUnfinished required parity: media_representations (planned)\nUnfinished required parity: segment_local (partial)\nUnfinished required parity: segment_remote (planned)\nUnfinished required parity: segment_ts (blocked)\nUnfinished required parity: segment_tasks (partial)\nUnfinished required parity: player_subtitles (planned)\nUnfinished required parity: gallery_feed (planned)\nUnfinished required parity: share_preview (planned)\nUnfinished required parity: archive_references (planned)\nUnfinished required parity: archive_browser (planned)\nUnfinished required parity: local_folder_mount (planned)\nUnfinished required parity: workspace_navigation (planned)\nUnfinished required parity: preferences_i18n (planned)\nUnfinished required parity: desktop_distribution (partial)",
+    "expected_exit": 1
+  },
+  "checks": {
+    "rust_workspace": {
+      "passed": 45,
+      "external_media_tests_ignored_by_default": 6
+    },
+    "explicit_ffmpeg_integration": {
+      "passed": 6,
+      "failed": 0,
+      "tool_sha256": "2ce797a0f88d7f067180338fb227f7b1928ea727bd9a4d7a1d022f7c52af71a3"
+    },
+    "typescript_tests_passed": 6,
+    "parity_tests_passed": 4,
+    "clippy": "passed with -D warnings",
+    "fmt": "passed",
+    "typecheck": "passed"
+  }
+}

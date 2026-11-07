@@ -105,6 +105,10 @@ pub async fn render_clip(
     range: ClipRange,
     known_duration_ms: Option<u64>,
 ) -> Result<ClipResult, ClientError> {
+    let deadline = tokio::time::Instant::now() + config.timeout;
+    if known_duration_ms.is_none() {
+        return Err(error(ErrorCode::Unsupported, "A validated media duration is required before local clip export; automatic media probing is not implemented yet."));
+    }
     range.validate(known_duration_ms)?;
     checked_path(source, false)?;
     checked_path(destination, true)?;
@@ -122,6 +126,8 @@ pub async fn render_clip(
         .parent()
         .ok_or_else(|| error(ErrorCode::Conflict, "A destination directory is required."))?;
     let tool_guard = config.verified_file()?;
+    tokio::task::yield_now().await;
+    check_deadline(deadline)?;
     let mut source_guard = read_guard(source, false)?;
     validate_container(&mut source_guard)?;
     let directory_guard = read_guard(parent, true)?;
@@ -188,14 +194,18 @@ pub async fn render_clip(
         }
         Ok(())
     };
-    tokio::time::timeout(config.timeout, work)
+    let outcome = tokio::time::timeout_at(deadline, work)
         .await
-        .map_err(|_| {
-            error(
+        .unwrap_or_else(|_| {
+            Err(error(
                 ErrorCode::TransientNetwork,
                 "Clip extraction timed out; temporary output is being cleaned.",
-            )
-        })??;
+            ))
+        });
+    if let Err(error) = outcome {
+        session.cleanup().await;
+        return Err(error);
+    }
     session.child.take();
     let temporary = session.temporary.as_mut().ok_or_else(integrity)?;
     temporary.as_file().sync_all().map_err(|_| {
@@ -218,7 +228,11 @@ pub async fn render_clip(
         .metadata()
         .map_err(|_| integrity())?
         .len();
-    let output_sha256 = hash_file(temporary.as_file_mut())?;
+    let output_sha256 = hash_output(temporary.as_file_mut(), deadline).await?;
+    // Cancellation is observed before the small no-clobber publication section.
+    // Once publication has started, cancellation does not undo the committed file.
+    tokio::task::yield_now().await;
+    check_deadline(deadline)?;
     let temporary = session.temporary.take().ok_or_else(integrity)?;
     let published = temporary.persist_noclobber(&destination).map_err(|_| {
         error(
@@ -289,6 +303,16 @@ struct Session {
     child: Option<Child>,
     temporary: Option<NamedTempFile>,
     guards: Option<(File, File, File)>,
+}
+impl Session {
+    async fn cleanup(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            let _ = child.start_kill();
+            let _ = child.wait().await;
+        }
+        self.temporary.take();
+        self.guards.take();
+    }
 }
 impl Drop for Session {
     fn drop(&mut self) {
@@ -452,6 +476,33 @@ fn hash_file(file: &mut File) -> Result<String, ClientError> {
     }
     Ok(format!("{:x}", digest.finalize()))
 }
+async fn hash_output(
+    file: &mut File,
+    deadline: tokio::time::Instant,
+) -> Result<String, ClientError> {
+    file.seek(SeekFrom::Start(0)).map_err(|_| integrity())?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0; 64 * 1024];
+    loop {
+        tokio::task::yield_now().await;
+        check_deadline(deadline)?;
+        let read = file.read(&mut buffer).map_err(|_| integrity())?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+fn check_deadline(deadline: tokio::time::Instant) -> Result<(), ClientError> {
+    if tokio::time::Instant::now() >= deadline {
+        return Err(error(
+            ErrorCode::TransientNetwork,
+            "Clip verification exceeded its time budget; no output was committed.",
+        ));
+    }
+    Ok(())
+}
 fn format_seconds(milliseconds: u64) -> String {
     format!("{}.{:03}", milliseconds / 1000, milliseconds % 1000)
 }
@@ -545,5 +596,23 @@ mod tests {
             config.verify().unwrap_err().code,
             ErrorCode::IntegrityFailed
         );
+    }
+    #[tokio::test]
+    async fn final_hash_has_timeout_and_cancellation_points() {
+        use std::io::Write;
+        let mut file = tempfile::tempfile().unwrap();
+        file.write_all(&vec![7u8; 2 * 1024 * 1024]).unwrap();
+        assert!(hash_output(&mut file, tokio::time::Instant::now())
+            .await
+            .is_err());
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
+        let (started, mut seen) = tokio::sync::mpsc::channel(1);
+        let task = tokio::spawn(async move {
+            started.send(()).await.unwrap();
+            hash_output(&mut file, deadline).await
+        });
+        seen.recv().await.unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
     }
 }

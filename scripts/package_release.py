@@ -1,5 +1,6 @@
 """Package an existing release; measure bytes and collect actual resolved dependency licenses."""
 import hashlib
+import argparse
 import json
 from pathlib import Path
 import platform
@@ -12,6 +13,11 @@ def run(*args):
     return subprocess.check_output(args, cwd=ROOT, text=True, encoding='utf-8').strip()
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--parity-release', action='store_true', help='Require complete upstream Windows parity before packaging.')
+    options = parser.parse_args()
+    if options.parity_release:
+        subprocess.run(['python', 'scripts/check_parity.py', '--release'], cwd=ROOT, check=True)
     # Full resolved-graph license inventory includes non-Windows packages too.
     subprocess.run(['cargo', 'fetch', '--locked'], cwd=ROOT, check=True)
     metadata = json.loads(run('cargo', 'metadata', '--locked', '--offline', '--format-version', '1'))

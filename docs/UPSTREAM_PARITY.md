@@ -35,8 +35,13 @@ Windows x64 用户行为。pikpaktui、pikpak-kotlin、Rclone 和官方 CLI 是�
 
 `python scripts/check_parity.py` 校验清单格式并报告差距；
 `python scripts/check_parity.py --release` 是正式 Windows 功能对齐版的门禁。
+打包可用 `python scripts/package_release.py --parity-release` 强制先过门禁；
+CI 的 `parity-*` 标签同样执行严格门禁，默认开发预览不会冒充对齐版。
 
 所有 mandatory_windows 项均需 `verified`、真实验证证据路径和验收说明。
+正式候选还必须在清单中提供 release_review（release_candidate、baseline_commit、reviewer、
+reviewed_at、evidence）；复核记录需在7天内且指向存在的最新稳定版审计文件。脚本验证
+结构/时效/证据存在性，证据真实性和完整功能行为仍需人工审阅，不能把布尔值当实测。
 `partial`、`planned`、`blocked`、`unverified` 都不能通过正式门禁，Mock 不计为真实实现。
 新增/删除/降级清单项须说明来源或用户明确的范围变更。P0/P1/P2 只表示顺序；体积、
 缺少一个后端或允许可选依赖都不能成为自动删除能力的理由。外部组件缺失时禁用功能
