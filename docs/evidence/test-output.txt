@@ -93,3 +93,5 @@ $ cargo fmt --all --check
 Fixture regeneration: 10 files byte-identical.
 
 ZIP integrity passed. 692 entries, 422 resolved dependency records. Executable hash matches.
+
+Final package: NekoPak-0.1.0-windows-x64-mock.zip; 4057881 bytes; 726 entries; ZIP CRC and executable SHA-256 verified.

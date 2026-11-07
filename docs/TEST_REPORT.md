@@ -64,11 +64,19 @@ became available. Raw evidence is in `docs/evidence/runtime-report.json`.
 
 Packaging bytes, archive SHA-256, toolchain, source/lock hashes and dependency
 inventory are generated in `dist/size-report.json` and retained as evidence.
-The executable is 7,345,664 bytes (7.01 MiB). ZIP size includes notices and the
-resolved license inventory; final ZIP bytes are recorded in the generated report.
+The executable is 7,345,664 bytes (7.01 MiB). The final ZIP is 4,057,881 bytes
+(3.87 MiB), including notices and the resolved license inventory (726 archive
+entries, 422 dependency records). No WebView2 runtime is bundled. This meets the
+5 MiB challenge for the M0 simulation only, not the future real-service client.
+Archive SHA-256: `923d88786534e1d0315fbc58f519751dad95be3e8003635982937ce2cc250cc0`.
 The final archive is integrity-tested and its executable hash checked against the
 built file. A dependency timestamp before 1980 exposed a Python ZIP limitation;
 packaging now clamps unsupported timestamps and preserves file contents.
+Windows normal/build dependency license-text gaps: zero after pinned supplements.
+Six unused other-platform dependency records still lack verified license text;
+they remain explicit in the all-target inventory and must be resolved before those
+platforms are distributed. Measurements refer to packaging commit `bb37b3e` and
+core-source hash `ccee8d3947e3be398c9d0a29d6aac3b0e031b0b3ac972a76717e4dc8536f82e9`.
 
 ## Review and remaining limits
 
