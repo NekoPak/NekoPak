@@ -1,0 +1,190 @@
+{
+  "executable_sha256": "1b3976495652d5616980ed065c5001fac0ceb7e131e26a4e8c60c6a4bc680f63",
+  "architecture": "64 位",
+  "version": "10.0.26300",
+  "os": "Microsoft Windows 11 家庭版 中文版",
+  "observations": [
+    {
+      "window_handle_ms": 258,
+      "total_private_working_set_bytes": 100380672.0,
+      "main_window_title": "NekoPak — Offline Mock",
+      "process_count": 7,
+      "sampled_after_ms": 6675,
+      "run": 1,
+      "total_working_set_bytes": 402509824.0,
+      "processes": [
+        {
+          "private_working_set_bytes": 37625856,
+          "private_committed_bytes": 50262016,
+          "working_set_bytes": 144089088,
+          "name": "msedgewebview2#20",
+          "pid": 10384
+        },
+        {
+          "private_working_set_bytes": 1974272,
+          "private_committed_bytes": 3002368,
+          "working_set_bytes": 13201408,
+          "name": "msedgewebview2#21",
+          "pid": 15676
+        },
+        {
+          "private_working_set_bytes": 23711744,
+          "private_committed_bytes": 93601792,
+          "working_set_bytes": 82632704,
+          "name": "msedgewebview2#22",
+          "pid": 29204
+        },
+        {
+          "private_working_set_bytes": 8433664,
+          "private_committed_bytes": 15695872,
+          "working_set_bytes": 44683264,
+          "name": "msedgewebview2#23",
+          "pid": 26364
+        },
+        {
+          "private_working_set_bytes": 3321856,
+          "private_committed_bytes": 9818112,
+          "working_set_bytes": 20238336,
+          "name": "msedgewebview2#24",
+          "pid": 26708
+        },
+        {
+          "private_working_set_bytes": 21053440,
+          "private_committed_bytes": 33161216,
+          "working_set_bytes": 69226496,
+          "name": "msedgewebview2#25",
+          "pid": 23188
+        },
+        {
+          "private_working_set_bytes": 4259840,
+          "private_committed_bytes": 5844992,
+          "working_set_bytes": 28438528,
+          "name": "nekopak",
+          "pid": 10516
+        }
+      ]
+    },
+    {
+      "window_handle_ms": 138,
+      "total_private_working_set_bytes": 97316864.0,
+      "main_window_title": "NekoPak — Offline Mock",
+      "process_count": 7,
+      "sampled_after_ms": 6108,
+      "run": 2,
+      "total_working_set_bytes": 389775360.0,
+      "processes": [
+        {
+          "private_working_set_bytes": 36208640,
+          "private_committed_bytes": 47579136,
+          "working_set_bytes": 142200832,
+          "name": "msedgewebview2#20",
+          "pid": 12084
+        },
+        {
+          "private_working_set_bytes": 1978368,
+          "private_committed_bytes": 3006464,
+          "working_set_bytes": 13209600,
+          "name": "msedgewebview2#21",
+          "pid": 12792
+        },
+        {
+          "private_working_set_bytes": 22089728,
+          "private_committed_bytes": 91037696,
+          "working_set_bytes": 72110080,
+          "name": "msedgewebview2#22",
+          "pid": 9272
+        },
+        {
+          "private_working_set_bytes": 8118272,
+          "private_committed_bytes": 15339520,
+          "working_set_bytes": 44318720,
+          "name": "msedgewebview2#23",
+          "pid": 29664
+        },
+        {
+          "private_working_set_bytes": 3391488,
+          "private_committed_bytes": 9924608,
+          "working_set_bytes": 20361216,
+          "name": "msedgewebview2#24",
+          "pid": 24380
+        },
+        {
+          "private_working_set_bytes": 21225472,
+          "private_committed_bytes": 34381824,
+          "working_set_bytes": 69451776,
+          "name": "msedgewebview2#25",
+          "pid": 11636
+        },
+        {
+          "private_working_set_bytes": 4304896,
+          "private_committed_bytes": 5906432,
+          "working_set_bytes": 28123136,
+          "name": "nekopak",
+          "pid": 29260
+        }
+      ]
+    },
+    {
+      "window_handle_ms": 146,
+      "total_private_working_set_bytes": 95096832.0,
+      "main_window_title": "NekoPak — Offline Mock",
+      "process_count": 7,
+      "sampled_after_ms": 6104,
+      "run": 3,
+      "total_working_set_bytes": 387846144.0,
+      "processes": [
+        {
+          "private_working_set_bytes": 36392960,
+          "private_committed_bytes": 47783936,
+          "working_set_bytes": 142381056,
+          "name": "msedgewebview2#20",
+          "pid": 29032
+        },
+        {
+          "private_working_set_bytes": 1978368,
+          "private_committed_bytes": 2998272,
+          "working_set_bytes": 13209600,
+          "name": "msedgewebview2#21",
+          "pid": 29340
+        },
+        {
+          "private_working_set_bytes": 22360064,
+          "private_committed_bytes": 93560832,
+          "working_set_bytes": 72433664,
+          "name": "msedgewebview2#22",
+          "pid": 24356
+        },
+        {
+          "private_working_set_bytes": 8359936,
+          "private_committed_bytes": 15745024,
+          "working_set_bytes": 44711936,
+          "name": "msedgewebview2#23",
+          "pid": 7156
+        },
+        {
+          "private_working_set_bytes": 3379200,
+          "private_committed_bytes": 9916416,
+          "working_set_bytes": 20340736,
+          "name": "msedgewebview2#24",
+          "pid": 29288
+        },
+        {
+          "private_working_set_bytes": 18182144,
+          "private_committed_bytes": 31301632,
+          "working_set_bytes": 66473984,
+          "name": "msedgewebview2#25",
+          "pid": 13372
+        },
+        {
+          "private_working_set_bytes": 4444160,
+          "private_committed_bytes": 6090752,
+          "working_set_bytes": 28295168,
+          "name": "nekopak",
+          "pid": 21672
+        }
+      ]
+    }
+  ],
+  "method": "3 sequential warm launches by default; window handle availability is not first rendered frame. Sample >=5s after handle. Includes descendants such as WebView2. Total working set can double-count shared pages. No workload throughput or GUI click verification.",
+  "ui_automation": "Unavailable: computer-use native pipe missing. IPC command roundtrip covered by Rust mock-runtime test."
+}

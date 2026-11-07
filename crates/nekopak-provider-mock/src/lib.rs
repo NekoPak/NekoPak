@@ -277,6 +277,7 @@ impl ProviderPort for MockProvider {
                 let increment = (total / 10).max(1);
                 let proposed = current.saturating_add(increment).min(total);
                 if self.scenario == Scenario::DisconnectAt37
+                    && current < breakpoint
                     && proposed >= breakpoint
                     && data.disconnected.insert(task.id.clone())
                 {

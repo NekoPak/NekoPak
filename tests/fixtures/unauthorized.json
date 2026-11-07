@@ -40,6 +40,7 @@
     }
   ],
   "contract_version": "0.1",
+  "file_pages": [],
   "files_list": {
     "error": {
       "backend": "mock",
@@ -48,6 +49,8 @@
       "retryable": false
     }
   },
+  "ordered_events": [],
+  "out_of_order_events": [],
   "quota_get": {
     "error": {
       "backend": "mock",
@@ -56,5 +59,17 @@
       "retryable": false
     }
   },
-  "scenario": "unauthorized"
+  "scenario": "unauthorized",
+  "transfer_controls": [],
+  "transfer_start": {
+    "error": {
+      "backend": "mock",
+      "code": "AUTH_EXPIRED",
+      "message": "Authorize this backend before continuing.",
+      "retryable": false
+    }
+  },
+  "transfers_list": {
+    "items": []
+  }
 }

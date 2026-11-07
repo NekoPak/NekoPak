@@ -41,10 +41,12 @@ async function tasks() {
 }
 async function refresh() {
   $('error').textContent = '';
-  const [status, backends, quota] = await Promise.all([invoke('app_status'), invoke('backend_discover'), invoke('quota_get')]);
+  const status = await invoke('app_status');
+  const [backends, quota] = await Promise.allSettled([invoke('backend_discover'), invoke('quota_get')]);
   $('status').textContent = JSON.stringify({ status, backends, quota }, null, 2);
   if (status.storage.error) fail(status.storage.error);
-  await Promise.all([files(), tasks()]);
+  const results = await Promise.allSettled([files(), tasks()]);
+  for (const result of results) if (result.status === 'rejected') fail(result.reason);
 }
 $('refresh').onclick = () => refresh().catch(fail);
 $('root').onclick = () => { parent = 'root'; files().catch(fail); };
@@ -54,7 +56,7 @@ $('cloud').onsubmit = async (event) => {
   try { await invoke('cloud_task_create', { source_url: $('url').value, parent_id: parent, idempotency_key: crypto.randomUUID() }); await tasks(); } catch (error) { fail(error); }
 };
 async function start() {
-  await tasks();
+  try { await tasks(); } catch (error) { fail(error); }
   await listen('nekopak://transfer/changed', () => tasks().catch(fail));
   await listen('nekopak://transfer/resync-required', () => tasks().catch(fail));
   await listen('nekopak://storage/error', ({ payload }) => fail(payload));

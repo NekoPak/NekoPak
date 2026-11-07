@@ -40,6 +40,84 @@
     }
   ],
   "contract_version": "0.1",
+  "file_pages": [
+    {
+      "items": [
+        {
+          "etag": "mock-v1",
+          "id": "documents",
+          "kind": "folder",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "资料 📁",
+          "parent_id": "root",
+          "size_bytes": "0"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-1",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "示例 video.mp4",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-2",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "CON",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-3",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "文件 with spaces.txt",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-4",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "é.txt",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-5",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称超长名称.txt",
+          "parent_id": "root",
+          "size_bytes": "100000000"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-6",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "零字节.txt",
+          "parent_id": "root",
+          "size_bytes": "0"
+        },
+        {
+          "etag": "mock-v1",
+          "id": "file-7",
+          "kind": "file",
+          "modified_at": "2026-11-07T00:00:00Z",
+          "name": "大文件.bin",
+          "parent_id": "root",
+          "size_bytes": "18446744073709551615"
+        }
+      ]
+    }
+  ],
   "files_list": {
     "ok": {
       "items": [
@@ -118,6 +196,289 @@
       ]
     }
   },
+  "ordered_events": [
+    {
+      "revision": "1",
+      "simulated": true,
+      "state": "queued",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "2",
+      "simulated": true,
+      "state": "paused",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "3",
+      "simulated": true,
+      "state": "queued",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "4",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "5",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "10000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "6",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "20000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "7",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "30000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "8",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "40000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "9",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "50000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "10",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "60000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "11",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "70000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "12",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "80000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "13",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "90000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "14",
+      "simulated": true,
+      "state": "verifying",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "100000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "15",
+      "simulated": true,
+      "state": "completed",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "100000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    }
+  ],
+  "out_of_order_events": [
+    {
+      "revision": "15",
+      "simulated": true,
+      "state": "completed",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "100000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "15",
+      "simulated": true,
+      "state": "completed",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "100000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "14",
+      "simulated": true,
+      "state": "verifying",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "100000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "13",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "90000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "12",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "80000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "11",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "70000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "10",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "60000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "9",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "50000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "8",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "40000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "7",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "30000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "6",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "20000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "5",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "10000000",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "4",
+      "simulated": true,
+      "state": "running",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "3",
+      "simulated": true,
+      "state": "queued",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "2",
+      "simulated": true,
+      "state": "paused",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    },
+    {
+      "revision": "1",
+      "simulated": true,
+      "state": "queued",
+      "task_id": "fixture-transfer-1",
+      "total_bytes": "100000000",
+      "transferred_bytes": "0",
+      "updated_at": "2026-11-07T00:00:00Z"
+    }
+  ],
   "quota_get": {
     "ok": {
       "account_tier": "free",
@@ -149,5 +510,61 @@
       "source": "mock"
     }
   },
-  "scenario": "free"
+  "scenario": "free",
+  "transfer_controls": [
+    {
+      "action": "pause",
+      "snapshot": {
+        "backend": "mock",
+        "created_at": "2026-11-07T00:00:00Z",
+        "id": "fixture-transfer-1",
+        "kind": "download",
+        "remote_id": "file-1",
+        "revision": "2",
+        "simulated": true,
+        "state": "paused",
+        "total_bytes": "100000000",
+        "transferred_bytes": "0",
+        "updated_at": "2026-11-07T00:00:00Z"
+      }
+    },
+    {
+      "action": "resume",
+      "snapshot": {
+        "backend": "mock",
+        "created_at": "2026-11-07T00:00:00Z",
+        "id": "fixture-transfer-1",
+        "kind": "download",
+        "remote_id": "file-1",
+        "revision": "3",
+        "simulated": true,
+        "state": "queued",
+        "total_bytes": "100000000",
+        "transferred_bytes": "0",
+        "updated_at": "2026-11-07T00:00:00Z"
+      }
+    }
+  ],
+  "transfer_start": {
+    "ok": {
+      "task_id": "fixture-transfer-1"
+    }
+  },
+  "transfers_list": {
+    "items": [
+      {
+        "backend": "mock",
+        "created_at": "2026-11-07T00:00:00Z",
+        "id": "fixture-transfer-1",
+        "kind": "download",
+        "remote_id": "file-1",
+        "revision": "15",
+        "simulated": true,
+        "state": "completed",
+        "total_bytes": "100000000",
+        "transferred_bytes": "100000000",
+        "updated_at": "2026-11-07T00:00:00Z"
+      }
+    ]
+  }
 }

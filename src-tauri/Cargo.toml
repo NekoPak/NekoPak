@@ -22,6 +22,10 @@ nekopak-provider-mock.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+tempfile.workspace = true
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

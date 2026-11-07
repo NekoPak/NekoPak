@@ -227,3 +227,137 @@ fn main() {
         std::process::exit(1);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+
+    fn invoke(
+        webview: &tauri::WebviewWindow<tauri::test::MockRuntime>,
+        command: &str,
+        body: Value,
+    ) -> Result<Value, Value> {
+        tauri::test::get_ipc_response(
+            webview,
+            tauri::webview::InvokeRequest {
+                cmd: command.into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "http://tauri.localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(body),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.into(),
+            },
+        )
+        .map(|body| body.deserialize::<Value>().unwrap())
+    }
+
+    #[test]
+    fn tauri_command_wire_roundtrip_preserves_contract() {
+        let dir = tempfile::tempdir().unwrap();
+        let service = Arc::new(AppService::mock(&dir.path().join("ipc.db"), Scenario::Free));
+        let app = tauri::test::mock_builder()
+            .manage(service.clone())
+            .manage(Requests::default())
+            .invoke_handler(tauri::generate_handler![
+                app_status,
+                backend_discover,
+                files_list,
+                files_stat,
+                transfers_list,
+                transfer_start,
+                transfer_control,
+                cloud_task_create,
+                quota_get,
+                request_cancel
+            ])
+            .build(tauri::generate_context!())
+            .unwrap();
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        assert_eq!(
+            invoke(&webview, "app_status", json!({})).unwrap()["storage"]["status"],
+            "ready"
+        );
+        assert_eq!(
+            invoke(&webview, "backend_discover", json!({})).unwrap()[0]["backend"],
+            "mock"
+        );
+        let page = invoke(
+            &webview,
+            "files_list",
+            json!({"parent_id":"root","limit":100}),
+        )
+        .unwrap();
+        assert_eq!(page["items"].as_array().unwrap().len(), 8);
+        assert_eq!(
+            invoke(&webview, "files_stat", json!({"id":"file-7"})).unwrap()["size_bytes"],
+            "18446744073709551615"
+        );
+        let task = invoke(
+            &webview,
+            "transfer_start",
+            json!({"remote_id":"file-1","destination":"C:/Mock/ipc.bin","idempotency_key":"ipc"}),
+        )
+        .unwrap();
+        invoke(
+            &webview,
+            "transfer_control",
+            json!({"task_id":task["task_id"],"action":"pause"}),
+        )
+        .unwrap();
+        assert_eq!(
+            invoke(&webview, "transfers_list", json!({})).unwrap()["items"][0]["state"],
+            "paused"
+        );
+        let error = invoke(
+            &webview,
+            "files_list",
+            json!({"parent_id":"root","limit":0}),
+        )
+        .unwrap_err();
+        assert_eq!(error["code"], "CONFLICT");
+        assert_eq!(error["retryable"], false);
+        assert_eq!(
+            invoke(&webview, "quota_get", json!({})).unwrap()["source"],
+            "mock"
+        );
+        let cloud = json!({"source_url":"https://example.com/file", "parent_id":"root", "idempotency_key":"ipc-cloud"});
+        assert_eq!(
+            invoke(&webview, "cloud_task_create", cloud.clone()),
+            invoke(&webview, "cloud_task_create", cloud)
+        );
+        invoke(
+            &webview,
+            "request_cancel",
+            json!({"request_id":"already-finished"}),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn request_ids_reject_duplicates_and_cleanup_on_drop() {
+        let requests = Requests::default();
+        let guard = requests.begin(Some("cancel-me".into())).unwrap();
+        assert!(requests.begin(Some("cancel-me".into())).is_err());
+        requests
+            .0
+            .lock()
+            .unwrap()
+            .get("cancel-me")
+            .unwrap()
+            .cancel();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        assert_eq!(
+            runtime
+                .block_on(guard.context.run(async { Ok(()) }))
+                .unwrap_err()
+                .code,
+            ErrorCode::Cancelled
+        );
+        drop(guard);
+        assert!(requests.begin(Some("cancel-me".into())).is_ok());
+    }
+}

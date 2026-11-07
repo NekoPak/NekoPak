@@ -1,11 +1,18 @@
 use crate::now;
 use nekopak_domain::*;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension, Transaction};
-use std::{path::Path, sync::Mutex, time::Duration};
+use std::{
+    fs::{File, OpenOptions},
+    path::Path,
+    sync::Mutex,
+    time::Duration,
+};
 
 pub const SCHEMA_VERSION: u32 = 1;
 pub struct Store {
     connection: Mutex<Connection>,
+    // OS ownership lock releases on process death; stale sidecar files are harmless.
+    _ownership: File,
 }
 
 pub fn storage_error(error: rusqlite::Error) -> ClientError {
@@ -74,9 +81,41 @@ fn locked() -> ClientError {
 
 impl Store {
     pub fn open(path: &Path) -> Result<Self, ClientError> {
-        if path.exists() {
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        let parent = parent.canonicalize().map_err(|_| {
+            ClientError::new(
+                ErrorCode::PermissionDenied,
+                "The database directory is inaccessible.",
+            )
+        })?;
+        let path = parent.join(path.file_name().ok_or_else(damaged)?);
+        let mut lock_name = path.as_os_str().to_os_string();
+        lock_name.push(".lock");
+        let ownership = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(lock_name)
+            .map_err(|_| {
+                ClientError::new(
+                    ErrorCode::PermissionDenied,
+                    "Cannot open the task database ownership lock.",
+                )
+            })?;
+        ownership.try_lock().map_err(|_| ClientError::new(ErrorCode::Conflict, "Another NekoPak process owns this task database. Close that process before reopening."))?;
+        let existing = path.try_exists().map_err(|_| {
+            ClientError::new(
+                ErrorCode::PermissionDenied,
+                "Cannot inspect the task database.",
+            )
+        })?;
+        if existing {
             // Read-only preflight BEFORE WAL, migrations or any task updates. Corruption must never become an empty queue.
-            let check = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            let check = Connection::open_with_flags(&path, OpenFlags::SQLITE_OPEN_READ_ONLY)
                 .map_err(storage_error)?;
             check
                 .busy_timeout(Duration::from_secs(2))
@@ -97,11 +136,10 @@ impl Store {
                 ));
             }
             if version == 0 {
-                let tables: u32 = check.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'", [], |row| row.get(0)).map_err(storage_error)?;
-                if tables != 0 {
-                    return Err(damaged());
-                }
+                // A pre-existing empty/truncated file is not a trusted first installation.
+                return Err(damaged());
             } else {
+                validate_schema(&check)?;
                 let mut statement = check
                     .prepare("SELECT id, revision, payload FROM tasks")
                     .map_err(|_| damaged())?;
@@ -143,7 +181,7 @@ impl Store {
                 }
             }
         }
-        let mut connection = Connection::open(path).map_err(storage_error)?;
+        let mut connection = Connection::open(&path).map_err(storage_error)?;
         connection
             .busy_timeout(Duration::from_secs(2))
             .map_err(storage_error)?;
@@ -152,12 +190,15 @@ impl Store {
                 "PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON;",
             )
             .map_err(storage_error)?;
-        let tx = connection.transaction().map_err(storage_error)?;
-        tx.execute_batch(include_str!("../migrations/001_initial.sql"))
-            .map_err(storage_error)?;
-        tx.commit().map_err(storage_error)?;
+        if !existing {
+            let tx = connection.transaction().map_err(storage_error)?;
+            tx.execute_batch(include_str!("../migrations/001_initial.sql"))
+                .map_err(storage_error)?;
+            tx.commit().map_err(storage_error)?;
+        }
         let store = Self {
             connection: Mutex::new(connection),
+            _ownership: ownership,
         };
         store.recover()?;
         Ok(store)
@@ -364,6 +405,37 @@ impl Store {
         }
         tx.commit().map_err(storage_error)
     }
+}
+
+fn validate_schema(check: &Connection) -> Result<(), ClientError> {
+    // Validate all schema-v1 definitions, including uniqueness/FKs. Never reconstruct missing dedup state.
+    let reference = Connection::open_in_memory().map_err(storage_error)?;
+    reference
+        .execute_batch(include_str!("../migrations/001_initial.sql"))
+        .map_err(storage_error)?;
+    fn definitions(connection: &Connection) -> Result<Vec<(String, String)>, ClientError> {
+        let mut statement = connection.prepare("SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map_err(|_| damaged())?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|_| damaged())?;
+        rows.map(|row| {
+            let (name, sql) = row.map_err(|_| damaged())?;
+            Ok((
+                name,
+                sql.split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    .to_lowercase(),
+            ))
+        })
+        .collect()
+    }
+    if definitions(check)? != definitions(&reference)? {
+        return Err(damaged());
+    }
+    Ok(())
 }
 
 fn get(connection: &Connection, id: &str) -> Result<TransferTask, ClientError> {

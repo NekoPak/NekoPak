@@ -72,6 +72,32 @@ async fn in_flight_restart_pauses_and_keeps_bytes() {
 }
 
 #[tokio::test]
+async fn restart_above_disconnect_threshold_does_not_rewind_or_stop_worker() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("tasks.db");
+    let app = AppService::mock(&path, Scenario::DisconnectAt37);
+    let id = start(&app).await;
+    for _ in 0..6 {
+        app.tick().await.unwrap();
+    }
+    assert_eq!(app.task(&id).unwrap().transferred_bytes.0, 37_000_000);
+    app.transfer_control(&id, TransferAction::Retry).unwrap();
+    for _ in 0..3 {
+        app.tick().await.unwrap();
+    }
+    assert!(app.task(&id).unwrap().transferred_bytes.0 > 37_000_000);
+    drop(app);
+    let restored = AppService::mock(&path, Scenario::DisconnectAt37);
+    restored
+        .transfer_control(&id, TransferAction::Resume)
+        .unwrap();
+    for _ in 0..16 {
+        restored.tick().await.unwrap();
+    }
+    assert_eq!(restored.task(&id).unwrap().state, TaskState::Completed);
+}
+
+#[tokio::test]
 async fn faults_never_look_like_success_and_37_percent_retry_resumes() {
     for (scenario, code) in [
         (Scenario::QuotaExhausted, ErrorCode::QuotaExceeded),
@@ -176,6 +202,56 @@ fn corrupt_database_is_not_modified_or_silently_replaced() {
         ErrorCode::IntegrityFailed
     );
     assert_eq!(fs::read(path).unwrap(), bytes);
+}
+
+#[test]
+fn zero_byte_database_is_preserved_for_explicit_recovery() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("empty.db");
+    fs::write(&path, b"").unwrap();
+    let app = AppService::mock(&path, Scenario::Free);
+    assert_eq!(
+        app.app_status().storage.error.unwrap().code,
+        ErrorCode::IntegrityFailed
+    );
+    assert_eq!(fs::metadata(&path).unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn second_instance_cannot_recover_tasks_owned_by_live_worker() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("tasks.db");
+    let first = AppService::mock(&path, Scenario::Free);
+    let id = start(&first).await;
+    first.tick().await.unwrap();
+    let second = AppService::mock(&path, Scenario::Free);
+    assert_eq!(
+        second.app_status().storage.error.unwrap().code,
+        ErrorCode::Conflict
+    );
+    assert_eq!(first.task(&id).unwrap().state, TaskState::Running);
+    drop(first);
+    let third = AppService::mock(&path, Scenario::Free);
+    assert_eq!(third.task(&id).unwrap().state, TaskState::Paused);
+}
+
+#[tokio::test]
+async fn missing_idempotency_schema_is_not_silently_recreated() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("tasks.db");
+    let app = AppService::mock(&path, Scenario::Free);
+    start(&app).await;
+    drop(app);
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    connection.execute("DROP TABLE idempotency", []).unwrap();
+    drop(connection);
+    let before = fs::read(&path).unwrap();
+    let app = AppService::mock(&path, Scenario::Free);
+    assert_eq!(
+        app.app_status().storage.error.unwrap().code,
+        ErrorCode::IntegrityFailed
+    );
+    assert_eq!(fs::read(&path).unwrap(), before);
 }
 
 #[tokio::test]

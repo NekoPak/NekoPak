@@ -27,6 +27,7 @@ jobs:
       - run: npm test
       - run: cargo run --locked -p nekopak-core --example mock_smoke
       - run: npm run tauri -- build --no-bundle
+      - run: cargo fetch --locked
       - run: python scripts/package_release.py
       - uses: actions/upload-artifact@v4
         with:

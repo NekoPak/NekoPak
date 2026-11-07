@@ -183,6 +183,24 @@
         "binary_executed": false,
         "capabilities_verified": false
       }
+    },
+    "bern": {
+      "url": "https://github.com/AimesSoft/Bern/tree/a86bbb85bd525d6c9b0c011ef1571caae4273490",
+      "observation": {
+        "sha": "a86bbb85bd525d6c9b0c011ef1571caae4273490",
+        "version": "0.1.9",
+        "rust_version": "1.99",
+        "license": "MIT",
+        "copyright": "2026 MCDFSteve",
+        "files_read": [
+          "README.zh-CN.md",
+          "Cargo.toml",
+          "LICENSE"
+        ],
+        "status": "early preview (upstream statement)",
+        "code_reused": false,
+        "benchmarks_reproduced": false
+      }
     }
   }
 }

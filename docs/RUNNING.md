@@ -6,7 +6,7 @@ upload, delete or mount real files. All displayed quotas and progress are synthe
 ## Windows prerequisites
 
 - Windows x64; Microsoft Edge WebView2 Evergreen installed separately.
-- Rust stable MSVC (tested with 1.98.0), Visual Studio C++ desktop tools and Windows SDK.
+- Rust 1.98+ MSVC (tested with 1.98.0), Visual Studio C++ desktop tools and Windows SDK.
 - Node.js 22+ and npm for the contract checks and Tauri CLI; Python 3.12+ for packaging.
 
 From the repository root:
@@ -38,7 +38,9 @@ The scenario is an application-wide development fixture, including on restart.
 The one-time 37% fault resets on process restart.
 
 Storage lives in Tauri's per-user local app data directory for `io.nekopak.desktop`,
-in `tasks.sqlite3` plus SQLite WAL/SHM files. A damaged database is left in place and
+in `tasks.sqlite3` plus SQLite WAL/SHM files and an OS-locked `.lock` sidecar. Only one
+process may own the store. A damaged database (including an existing empty file or
+missing schema table) is left in place and
 commands return `INTEGRITY_FAILED`; there is no automatic deletion, reset or repair.
 Settings are not implemented and cannot overwrite the task store. Do not delete a
 task database to address a configuration problem.

@@ -17,7 +17,10 @@ was created. Real-service feasibility remains open and does not block offline M0
 - `nekopak-core`: one owner for task state, transactional SQLite migration, WAL with
   synchronous=FULL, durable idempotency, optimistic task revision checks, simulated
   worker, error-safe recovery. Corrupt databases and semantically invalid task
-  records fail read-only validation before migrations or recovery writes.
+  records fail read-only validation before migrations or recovery writes. Existing
+  zero-byte/version-0 databases and missing v1 tables also fail closed; only a new
+  absent database receives the initial migration. A lifetime OS file lock prevents
+  concurrent app instances from treating each other's live work as interrupted.
 - `src-tauri`: 10 IPC commands, event forwarding, request cancellation registry,
   500 ms mock worker. CSP confines the local acceptance shell. No shell/fs plugins,
   no password UI, no automatic telemetry or external network configuration.
@@ -32,6 +35,11 @@ small values. `app_status`, `quota_get`, TaskRef and action argument shapes are 
 concrete. Optional `request_id` supports request_cancel; transfer_start optionally
 accepts idempotency_key. Cloud task creation requires a key. Details are appended to
 03_CONTRACTS.md, mirrored in TypeScript and Rust-produced fixtures.
+
+The 10 fixture scenarios include normalized task IDs/times, create/control/final
+snapshots, ordered and duplicated/reversed events, and relevant second file pages.
+The 37% network fault only fires when crossing the threshold from below, so restart
+after that point cannot rewind progress.
 
 Snapshots remain authoritative. A UI should read a snapshot, subscribe, reconcile a
 second snapshot (closing the subscription gap), then reject duplicate/older event
@@ -102,5 +110,6 @@ and write fixtures before any live write or cloud-task retry logic is enabled.
 ## Verification
 
 Commands and measured results are recorded in `docs/TEST_REPORT.md` after execution.
-Release measurements are generated in dist/size-report.json. No production memory,
+Release measurements are generated in dist/size-report.json. Local warm-start memory
+samples include WebView2 descendants and are recorded with their limitations. No production memory,
 throughput or clean-machine compatibility claim follows from a mock build.

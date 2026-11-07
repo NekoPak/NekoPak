@@ -34,3 +34,18 @@ test('Rust-produced fixtures preserve large u64 values and unavailable capabilit
   assert.equal(unauthorized.files_list.error.code, 'AUTH_EXPIRED');
 });
 
+test('Rust fault fixtures include observable task errors, collisions and reordered events', () => {
+  const load = (name) => JSON.parse(readFileSync(new URL(`fixtures/${name}.json`, import.meta.url), 'utf8'));
+  for (const [scenario, code] of [['disconnect_at37', 'TRANSIENT_NETWORK'], ['disk_full', 'DISK_FULL'], ['integrity_failure', 'INTEGRITY_FAILED']]) {
+    const fixture = load(scenario);
+    assert.equal(fixture.transfers_list.items[0].state, 'failed');
+    assert.equal(fixture.transfers_list.items[0].error.code, code);
+    let task = fixture.transfer_controls[0].snapshot;
+    for (const event of fixture.out_of_order_events) task = applyTransferEvent(task, event);
+    assert.equal(task.revision, fixture.transfers_list.items[0].revision);
+    assert.equal(task.state, 'failed');
+  }
+  const entries = load('name_conflict').file_pages.flatMap((page) => page.items);
+  assert.ok(entries.length > new Set(entries.map((entry) => entry.name)).size);
+});
+

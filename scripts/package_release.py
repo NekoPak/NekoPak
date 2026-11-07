@@ -1,7 +1,6 @@
 """Package an existing release; measure bytes and collect actual resolved dependency licenses."""
 import hashlib
 import json
-import os
 from pathlib import Path
 import platform
 import subprocess
@@ -13,11 +12,16 @@ def run(*args):
     return subprocess.check_output(args, cwd=ROOT, text=True, encoding='utf-8').strip()
 
 def main():
+    # Full resolved-graph license inventory includes non-Windows packages too.
+    subprocess.run(['cargo', 'fetch', '--locked'], cwd=ROOT, check=True)
     metadata = json.loads(run('cargo', 'metadata', '--locked', '--offline', '--format-version', '1'))
     target = Path(metadata['target_directory'])
     executable = target / 'release' / 'nekopak.exe'
     if not executable.is_file():
         raise SystemExit('Build the Windows release executable first.')
+    build_inputs = [ROOT / 'Cargo.toml', ROOT / 'Cargo.lock'] + [p for base in ['crates', 'src-tauri', 'shell'] for p in (ROOT / base).rglob('*') if p.is_file() and 'gen' not in p.relative_to(ROOT).parts]
+    if any(p.stat().st_mtime > executable.stat().st_mtime for p in build_inputs):
+        raise SystemExit('Source files are newer than the executable; rebuild before packaging.')
     output = ROOT / 'dist'
     output.mkdir(exist_ok=True)
     archive = output / 'NekoPak-0.1.0-windows-x64-mock.zip'
@@ -55,6 +59,7 @@ def main():
         'profile': 'release, opt-level=s, LTO, codegen-units=1, strip',
         'archive': archive.name, 'compression': 'ZIP DEFLATE level 9; executable + notices + resolved dependency licenses',
         'executable_bytes': executable.stat().st_size, 'archive_bytes': archive.stat().st_size,
+        'executable_sha256': hashlib.sha256(executable.read_bytes()).hexdigest(),
         'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
         'external_requirements': ['Windows x64', 'Microsoft Edge WebView2 Evergreen runtime (not bundled)'],
         'not_bundled': ['PikPak CLI', 'Rclone', 'WinFsp', 'Chromium', 'JVM', 'FFmpeg', 'mpv'],
