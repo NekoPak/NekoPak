@@ -18,6 +18,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: cargo fmt --all --check
+      - run: python scripts/check_parity.py
+      - run: python -m unittest discover -s tests -p test_parity.py
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo run --locked -p nekopak-core --example export_fixtures

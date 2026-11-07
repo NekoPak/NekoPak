@@ -164,7 +164,7 @@ impl ProviderPort for MockProvider {
         Ok(CapabilityReport {
             backend: BackendId::Mock,
             status: if self.scenario == Scenario::Unauthorized { BackendStatus::NeedsLogin } else { BackendStatus::Ready },
-            operations: [Operation::List, Operation::Stat, Operation::Download, Operation::CloudTask, Operation::Quota].into_iter().map(|op| (op, true)).chain([(Operation::ReadRange, false), (Operation::Upload, false), (Operation::Trash, false)]).collect(),
+            operations: [Operation::List, Operation::Stat, Operation::Download, Operation::CloudTask, Operation::Quota].into_iter().map(|op| (op, true)).chain([(Operation::ReadRange, false), (Operation::SegmentDownload, false), (Operation::Upload, false), (Operation::Trash, false)]).collect(),
             account_tier: Some(if self.scenario == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free }),
             version: Some("mock-0.1".into()),
             limitations: vec!["OFFLINE SIMULATION: all entries, quotas and transfers are synthetic; no file is downloaded.".into(), "Real providers, random reads, sync and mounting are not implemented.".into()],

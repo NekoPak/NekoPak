@@ -11,4 +11,5 @@
 *.db.lock
 *.sqlite3.lock
 *.log
+__pycache__/
 

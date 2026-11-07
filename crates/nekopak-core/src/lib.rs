@@ -79,6 +79,7 @@ impl AppService {
                     self.provider.id() != BackendId::Mock,
                 ),
                 ("real_transfers".into(), false),
+                ("segment_download".into(), false),
                 ("sync".into(), false),
                 ("mount".into(), false),
                 ("experimental_network".into(), false),

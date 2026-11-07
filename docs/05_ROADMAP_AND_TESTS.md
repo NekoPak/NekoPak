@@ -2,6 +2,10 @@
 
 版本：2026-11-07 / v0.1。**每个 Gate 必须先验证后推进**；不要一次并行写完大量未经验证的模块。
 
+**最终发布门槛更新：** 用户要求功能不少于上游且允许参考第三方 API。`UPSTREAM_PARITY.md`
+和 `parity-manifest.json` 是产品验收基线；本页 M0–M5 是实施顺序。阶段预览可发布，
+但未通过 `scripts/check_parity.py --release` 不得标为功能对齐版。小包优化不能删功能。
+
 ## Gate 0 — 来源、许可证、可行性（先于实际编码）
 
 - [ ] 选择路径 A（Piko AGPL Fork）或 B（Rust 独立仓 + 只读 Fork 参考）；以 `04_SOURCES_LICENSES.md` 为依据。
@@ -27,6 +31,7 @@
 - 文件浏览：分页、目录缓存、搜索、元数据；新建/移动/重命名/回收站。
 - 云下载：磁力链/URL 可用能力、创建任务与进度查询，精确报错。
 - 下载：小文件/大文件并发、暂停/继续、`.part`、故障恢复与校验。
+- 视频片段：先本地媒体核心，再社区 API/CLI 可授权随机读取、共享块缓存与持久片段任务；MP4/MKV/TS、关键帧、音轨、画质、取消及恢复都需实际样本。
 - 安全：日志脱敏、路径规范化、防重复副作用、配额显示。
 
 **验收：** 文件大小和 bytes 一致；断网、磁盘满、宕机后能恢复；连续 20 次登录/退出不遗留可读明文密钥；不把失败任务显示完成。
@@ -79,6 +84,13 @@
 8. `[ui] Transfer dashboard + live progress and task controls` — 使用完整事件/快照策略。
 9. `[sync] Read-only scan and dry-run plan engine` — 无破坏性变更。
 10. `[build] Size baseline, feature flags, third-party notice scanner` — 体积报表。
+
+追加优先事项：
+
+11. `[media] Local clip core and keyframe/MP4 validation` — 本地 MP4/MKV 实验核心；TS 定位缺口独立跟踪。
+12. `[provider] Community API protocol audit and authorized Range PoC` — 参考 pikpak-kotlin/pikpaktui/Rclone，核验授权、Range/版本/配额/错误；CLI 不支持不删需求。
+13. `[media] Remote clip plan, shared cache and durable tasks` — 不默认整片下载，画质与账号隔离、进度、取消重启、输出校验。
+14. `[parity] Close published Windows feature gaps` — 搜索/整理/分享/归档/压缩包/播放器/本地映射等逐项真实验收。
 
 ## 自动化测试矩阵
 

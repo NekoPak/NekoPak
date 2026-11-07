@@ -1,7 +1,7 @@
 // NekoPak IPC contract 0.1. Manually maintained alongside nekopak-domain and docs/03_CONTRACTS.md.
 export type DecimalU64 = string;
 export type BackendId = 'official_cli' | 'rust_compat' | 'webdav' | 'rclone' | 'mock';
-export type Operation = 'list' | 'stat' | 'search' | 'mkdir' | 'rename' | 'move' | 'copy' | 'trash' | 'upload' | 'download' | 'cloud_task' | 'stream_url' | 'read_range' | 'quota';
+export type Operation = 'list' | 'stat' | 'search' | 'mkdir' | 'rename' | 'move' | 'copy' | 'trash' | 'upload' | 'download' | 'cloud_task' | 'stream_url' | 'read_range' | 'quota' | 'segment_download';
 export type ErrorCode = 'AUTH_EXPIRED' | 'ACCOUNT_RESTRICTED' | 'PERMISSION_DENIED' | 'QUOTA_EXCEEDED' | 'NOT_FOUND' | 'UNSUPPORTED' | 'TRANSIENT_NETWORK' | 'DISK_FULL' | 'INTEGRITY_FAILED' | 'CONFLICT' | 'CANCELLED' | 'INTERNAL';
 export interface ClientError { code: ErrorCode; message: string; retryable: boolean; backend?: BackendId; request_id?: string; details?: Record<string, unknown> }
 export interface CapabilityReport {
@@ -21,7 +21,7 @@ export interface Page<T> { items: T[]; next_cursor?: string }
 export type TaskState = 'queued' | 'running' | 'paused' | 'retrying' | 'verifying' | 'completed' | 'failed' | 'cancelled';
 export type TransferAction = 'pause' | 'resume' | 'cancel' | 'retry';
 export interface TransferTask {
-  id: string; remote_id: string; kind: 'download' | 'upload' | 'cloud_download'; state: TaskState;
+  id: string; remote_id: string; kind: 'download' | 'upload' | 'cloud_download' | 'segment_download'; state: TaskState;
   transferred_bytes: DecimalU64; total_bytes?: DecimalU64; speed_bytes_per_sec?: number;
   backend: BackendId; error?: ClientError; created_at: string; updated_at: string;
   revision: DecimalU64; simulated: boolean;
@@ -31,6 +31,16 @@ export interface TransferEvent {
   speed_bytes_per_sec?: number; error?: ClientError; revision: DecimalU64; updated_at: string; simulated: boolean;
 }
 export interface TaskRef { task_id: string }
+/** Reserved contract; segment commands are not registered in Tauri yet. */
+export interface SegmentDownloadRequest {
+  remote_id: string; destination: string; start_ms: DecimalU64; end_ms: DecimalU64;
+  expected_duration_ms?: DecimalU64; representation_id?: string; idempotency_key: string;
+}
+export interface SegmentDownloadPlan {
+  plan_id: string; remote_id: string; representation_id?: string; start_ms: DecimalU64; end_ms: DecimalU64;
+  output_format: string; stream_copy: boolean; starts_at_previous_keyframe: boolean;
+  aligned_start_ms?: DecimalU64; subtitle_warning: string; requires_random_read: boolean;
+}
 export interface StorageStatus { status: 'ready' | 'recovery_required'; schema_version: number; error?: ClientError }
 export interface AppStatus { version: string; contract_version: string; mode: 'mock' | 'official_cli_preview'; storage: StorageStatus; features: Record<string, boolean> }
 export interface AuthState { backend: BackendId; authenticated: boolean; credential_owner: 'none' | 'external_cli'; account_tier: 'free' | 'premium' | 'unknown'; message: string }

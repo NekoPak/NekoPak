@@ -1955,6 +1955,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nekopak-media"
+version = "0.1.0"
+dependencies = [
+ "nekopak-domain",
+ "nekopak-provider",
+ "sha2",
+ "tempfile",
+ "time",
+ "tokio",
+]
+
+[[package]]
 name = "nekopak-provider"
 version = "0.1.0"
 dependencies = [

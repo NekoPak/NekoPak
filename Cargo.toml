@@ -5,6 +5,7 @@ members = [
   "crates/nekopak-provider",
   "crates/nekopak-provider-mock",
   "crates/nekopak-provider-cli",
+  "crates/nekopak-media",
   "crates/nekopak-core",
   "src-tauri",
 ]
@@ -13,6 +14,7 @@ default-members = [
   "crates/nekopak-provider",
   "crates/nekopak-provider-mock",
   "crates/nekopak-provider-cli",
+  "crates/nekopak-media",
   "crates/nekopak-core",
 ]
 

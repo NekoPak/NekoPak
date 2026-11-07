@@ -79,6 +79,12 @@ nekopak/
 
 ## 4. 下载引擎
 
+视频“片段下载”是按媒体时间范围裁剪/转封装，与下载器字节分块并发是两件事。
+采用 Provider 的授权随机读取 + 内容/账号/表示身份隔离的共享缓存 + 独立媒体处理核心。
+社区 API 可以提供 CLI 缺失的能力，统一通过 ProviderPort 测试和能力协商。
+不能按总字节乘时间比例替代媒体 seek，也不能默认整片预下载后宣称节省片段流量。
+本地媒体核心起步实现见 `MEDIA_SEGMENTS.md`，整体上游对齐见 `UPSTREAM_PARITY.md`。
+
 - 后台下载使用有界并发和排队；连接数默认保守且可调，遇到限流不增加连接数猛冲。
 - 任务状态：`queued → running → paused|retrying|verifying → completed|failed|cancelled`。中断后持久化状态，不依赖 UI 存活。
 - 使用 `file.part` + `.part.meta`；写入块级状态并校验服务器 `Content-Range`、文件长度、ETag/版本（如果可用）。

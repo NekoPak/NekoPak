@@ -154,6 +154,7 @@ impl ProviderPort for OfficialCliProvider {
                 (Operation::List, enabled),
                 (Operation::Stat, enabled),
                 (Operation::ReadRange, false),
+                (Operation::SegmentDownload, false),
                 (Operation::Download, false),
                 (Operation::CloudTask, false),
                 (Operation::Upload, false),

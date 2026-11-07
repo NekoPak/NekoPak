@@ -15,6 +15,10 @@
 
 ## 产品方向
 
+用户追加硬要求：最终功能不能少于上游，包含视频指定片段下载；第三方 API 可以作为后端
+能力来源。请同步阅读 docs/UPSTREAM_PARITY.md 与 docs/MEDIA_SEGMENTS.md，按时间段、
+画质、关键帧/字幕提示和真实任务状态设计，不能以当前 CLI 支持范围删减最终入口。
+
 产品名 **NekoPak**，副标题 *A lightweight, Rust-powered PikPak desktop client*。Windows x64 为首版。参考 Piko 的成熟交互，但做全新、独立的 UI：简洁、克制、有细节、键鼠友好、浅色/深色主题，避免臃肿 UI 套件、大型图标字体、过多动画和廉价玻璃/科幻风。可借鉴 Piko 的功能组织与 `PikPak Enhancement Master` 的用户便利功能，但在复用实际代码/素材前确认许可证并在 THIRD_PARTY_NOTICES 记录。
 
 Tauri v2 + TypeScript/CSS；必要时 React + Vite。通过系统 WebView2，尽量降低 JavaScript 包体和整体内存；不得为了 5MiB 指标牺牲真实交互与可访问性。

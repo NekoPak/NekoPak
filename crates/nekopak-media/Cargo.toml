@@ -1,0 +1,16 @@
+[package]
+name = "nekopak-media"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+nekopak-domain.workspace = true
+tokio.workspace = true
+sha2.workspace = true
+time.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+nekopak-provider.workspace = true

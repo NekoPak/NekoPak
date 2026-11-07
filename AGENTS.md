@@ -18,6 +18,8 @@ Build a lightweight Rust-powered, Tauri v2 desktop PikPak client. Windows x64 fi
 8. **Experimental networking:** Default off. Never silently edit system Hosts, bypass account controls, or secretly change global OS settings.
 9. **Test honestly:** Execute relevant tests and provide commands and results. If a platform build is unavailable, report the limitation.
 10. **No false UI:** Do not create decorative buttons that appear functional. Unimplemented functionality must be disabled and labeled.
+11. **Upstream functional parity (user requirement, 2026-11-07):** Final NekoPak must not lose published upstream functions, including video time-segment download. Follow `docs/UPSTREAM_PARITY.md` and `docs/parity-manifest.json`; M0/M1 previews are intermediate, not parity completion. Priorities and Lite size limits do not remove requirements. Review current upstream stable releases before declaring parity.
+12. **Third-party APIs are valid candidates:** Research and independently adapt community/third-party APIs to fill capability gaps; official CLI is not the product's functional ceiling. Audit source licenses, authorization, exact protocol behavior and actual tests; do not copy secrets, bypass controls or relabel private compatibility protocols as official APIs.
 
 ## Role assignment
 

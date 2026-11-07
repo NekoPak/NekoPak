@@ -1,5 +1,5 @@
 use nekopak_core::AppService;
-use nekopak_domain::TransferAction;
+use nekopak_domain::{DecimalU64, SegmentDownloadRequest, TransferAction};
 use nekopak_provider::RequestContext;
 use nekopak_provider_mock::{Scenario, FIXTURE_TIME};
 use serde_json::{json, Value};
@@ -94,5 +94,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     println!("Exported 10 offline fixture scenarios.");
+    let segment = SegmentDownloadRequest {
+        remote_id: "fixture-video".into(),
+        destination: "C:/NekoPak-Mock/clip.mp4".into(),
+        start_ms: DecimalU64(5000),
+        end_ms: DecimalU64(8500),
+        expected_duration_ms: Some(DecimalU64(12000)),
+        representation_id: None,
+        idempotency_key: "segment-fixture".into(),
+    };
+    std::fs::write(
+        root.join("segment_contract.json"),
+        serde_json::to_string_pretty(
+            &json!({"contract_version":"0.1","request":segment,"executable_in_tauri":false,"capability":false}),
+        )? + "\n",
+    )?;
     Ok(())
 }

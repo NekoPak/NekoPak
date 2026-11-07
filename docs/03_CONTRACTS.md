@@ -216,3 +216,23 @@ pub trait BackendPort: Send + Sync {
 - download/cloud_task/upload/quota/read_range 保持 false；授权配额未知，不从账户容量推导。
 - auth_begin/auth_logout 尚未注册。用户在外部 CLI 完成官方授权；NekoPak 不收集凭据，
   不承诺外部 CLI 的凭据文件使用系统安全存储。
+
+## 9. 视频片段预留契约与状态（2026-11-07）
+
+Operation、TaskKind 加入 `segment_download`，现有 provider 显式报告 false。
+app_status.features.segment_download=false。新枚举仅预留，当前不创建该任务，不改既有
+字段/命令；前端新增分支应显示未实现。旧客户端应容忍未知未来 kind。
+
+领域/TS 类型新增 SegmentDownloadRequest：remote_id、destination、start_ms、end_ms、
+expected_duration_ms?、representation_id?、idempotency_key。时间单位毫秒，按十进制
+u64 字符串传输；representation_id 缺省表示原画，不准无提示换转码画质。
+
+SegmentDownloadPlan：plan_id、remote_id、representation_id?、start_ms、end_ms、
+output_format、stream_copy、starts_at_previous_keyframe、aligned_start_ms?、
+subtitle_warning、requires_random_read。aligned_start_ms 未实测时省略，不填请求起点冒充。
+计划不能包含签名 URL/令牌。所有本地/远端来源身份与版本由后端持有。
+
+规划中的 `media_probe`、`segment_plan`、`segment_start` **尚未注册 Tauri 命令**，
+不添加可点击假入口。已实现 `nekopak-media` 本地实验库和 `clip_local` 示例，独立于 IPC。
+远端命令须在随机读取、缓存、持久任务、取消恢复、画质/轨道和真实账号验证完成后接入。
+此阶段不能宣称已实现云端片段下载；TS 明确待补齐，详见 MEDIA_SEGMENTS.md。

@@ -43,8 +43,21 @@ wire_enum!(
     Operation,
     "snake_case",
     [
-        List, Stat, Search, Mkdir, Rename, Move, Copy, Trash, Upload, Download, CloudTask,
-        StreamUrl, ReadRange, Quota
+        List,
+        Stat,
+        Search,
+        Mkdir,
+        Rename,
+        Move,
+        Copy,
+        Trash,
+        Upload,
+        Download,
+        CloudTask,
+        StreamUrl,
+        ReadRange,
+        Quota,
+        SegmentDownload
     ]
 );
 wire_enum!(
@@ -55,7 +68,11 @@ wire_enum!(
 wire_enum!(AccountTier, "snake_case", [Free, Premium, Unknown]);
 wire_enum!(EntryKind, "snake_case", [File, Folder]);
 wire_enum!(HashAlgorithm, "lowercase", [Md5, Sha1, Sha256]);
-wire_enum!(TaskKind, "snake_case", [Download, Upload, CloudDownload]);
+wire_enum!(
+    TaskKind,
+    "snake_case",
+    [Download, Upload, CloudDownload, SegmentDownload]
+);
 wire_enum!(
     TaskState,
     "snake_case",
@@ -261,6 +278,37 @@ impl TaskState {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TaskRef {
     pub task_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SegmentDownloadRequest {
+    pub remote_id: String,
+    pub destination: String,
+    pub start_ms: DecimalU64,
+    pub end_ms: DecimalU64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_duration_ms: Option<DecimalU64>,
+    /// Absence means original; never silently switch media quality.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub representation_id: Option<String>,
+    pub idempotency_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SegmentDownloadPlan {
+    pub plan_id: String,
+    pub remote_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub representation_id: Option<String>,
+    pub start_ms: DecimalU64,
+    pub end_ms: DecimalU64,
+    pub output_format: String,
+    pub stream_copy: bool,
+    pub starts_at_previous_keyframe: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aligned_start_ms: Option<DecimalU64>,
+    pub subtitle_warning: String,
+    pub requires_random_read: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

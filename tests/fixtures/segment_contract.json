@@ -1,0 +1,13 @@
+{
+  "capability": false,
+  "contract_version": "0.1",
+  "executable_in_tauri": false,
+  "request": {
+    "destination": "C:/NekoPak-Mock/clip.mp4",
+    "end_ms": "8500",
+    "expected_duration_ms": "12000",
+    "idempotency_key": "segment-fixture",
+    "remote_id": "fixture-video",
+    "start_ms": "5000"
+  }
+}

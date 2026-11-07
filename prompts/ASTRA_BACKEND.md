@@ -24,6 +24,10 @@
 
 ## 首轮必须交付（不要只输出架构建议）
 
+用户后续硬要求：最终功能不少于 Piko 已发布能力，尤其视频指定片段下载；参考第三方 API
+与社区兼容层是允许的。首轮/CLI 预览不等于完成；按 docs/UPSTREAM_PARITY.md 跟踪全部
+必需项，官方 CLI 不是功能上限。片段要有媒体时间语义、Range/缓存、取消恢复与轨道验证。
+
 1. 初始化可编译的 Rust workspace + Tauri v2 Shell（可以先用最小静态 UI/Mock）。
 2. `nekopak-domain`：RemoteEntry、Capabilities、Task、SyncPlan、ClientError 等类型，遵守 `docs/03_CONTRACTS.md`；确保 u64 与 JS 精度规则正确。
 3. `ProviderPort` 抽象、MockProvider，可注入 401/403/404/429、超时、配额、分页、文件变化；能力协商而非固定顺序失败回退。

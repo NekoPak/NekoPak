@@ -7,6 +7,7 @@
       "mount": false,
       "real_providers": false,
       "real_transfers": false,
+      "segment_download": false,
       "sync": false,
       "telemetry": false
     },
@@ -32,6 +33,7 @@
         "list": true,
         "quota": true,
         "read_range": false,
+        "segment_download": false,
         "stat": true,
         "trash": false,
         "upload": false

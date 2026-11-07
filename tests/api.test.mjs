@@ -62,3 +62,14 @@ test('official CLI observed fixture never exposes an unauthorized live capabilit
   assert.deepEqual(calls, [{ command: 'auth_status', args: { request_id: 'status-1' } }]);
 });
 
+test('segment time contract is lossless and not advertised as executable', () => {
+  const fixture = JSON.parse(readFileSync(new URL('fixtures/segment_contract.json', import.meta.url), 'utf8'));
+  assert.equal(fixture.request.start_ms, '5000');
+  assert.equal(fixture.request.end_ms, '8500');
+  assert.equal(fixture.capability, false);
+  assert.equal(fixture.executable_in_tauri, false);
+  const mock = JSON.parse(readFileSync(new URL('fixtures/free.json', import.meta.url), 'utf8'));
+  assert.equal(mock.backend_discover[0].operations.segment_download, false);
+  assert.equal(mock.app_status.features.segment_download, false);
+});
+

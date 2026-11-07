@@ -88,3 +88,11 @@ Reviewed-by: <reviewer>
 - PikPak Connected Apps：<https://mypikpak.com/en-US/connect-apps-faq>
 
 **非法律意见：** 许可证合规最终依实际源码、构建和发行材料核查。
+
+## 7. 用户确认的第三方 API 研究范围（2026-11-07）
+
+第三方/社区 API 可以参考和独立适配，官方 CLI 不是产品能力上限。已核对 Piko v1.4.0、
+pikpak-kotlin `8eaf5587a883ed4ea9bcca7b43a9194118719e63`、pikpaktui
+`68b7a6bdf6e4abe2a049974dec2c38e736f2a25c`、Rclone
+`82cb84b2014bec6a167dc28eb53233b2d4abe1b3` 的行为/协议资料。未复制实现。
+具体证据在 UPSTREAM_PARITY_RESEARCH.md，真实授权/协议验收仍逐适配器完成。
