@@ -1,0 +1,130 @@
+{
+  "date": "2026-11-07",
+  "binary_sha256": "b39a2bf29d69e561ab3a6f7ec2bfd899930008ed311eb3bd99c3697802e93b04",
+  "binary_bytes": 41731584,
+  "source": "https://download.mypikpak.com/cli/release/v0.6.0/pikpak_windows_amd64.exe",
+  "authenticode": "NotSigned",
+  "profile": "isolated initially empty test profile",
+  "commands": [
+    {
+      "args": [
+        "version"
+      ],
+      "exit_code": 0,
+      "stdout": "pikpak version v0.6.0\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "PikPak cloud storage command-line tool\nSupports file management, folder management, cloud add, and more\n\nUsage:\n  pikpak [flags]\n  pikpak [command]\n\nAvailable Commands:\n  auth           Authentication management\n  completion     Generate the autocompletion script for the specified shell\n  config         CLI settings\n  cp             Copy file or folder\n  download       Download files\n  feedback       Feedback to PikPak support\n  get            Get file information\n  help           Help about any command\n  ls             List files and folders\n  mcp            Start MCP server for external LLM integration\n  mkdir          Create folder\n  mv             Move file or folder\n  play           Play media file\n  rename         Rename file or folder\n  rm             Move files or folders to the recycle bin\n  share          Share management\n  skill          Install the PikPak skill into your AI coding agents\n  star           Star a file\n  task           Task management\n  trash          Browse the recycle bin and restore files\n  unstar         Unstar a file\n  update         Update pikpak to the latest version\n  upload         Upload a file or directory\n  version        Display version information\n\nFlags:\n  -F, --format string   Output format: json, yaml (default: human-readable)\n  -h, --help            help for pikpak\n  -v, --verbose         Enable verbose output\n      --version         Show version\n\nUse \"pikpak [command] --help\" for more information about a command.\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "ls",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "List contents of a directory. Use --type=file or --type=folder to filter\n\nUsage:\n  pikpak ls [folderID] [flags]\n\nFlags:\n  -h, --help            help for ls\n  -l, --limit int       Items per page (default 100)\n  -p, --parent string   Parent folder ID\n      --raw             Return the unmodified PikPak API JSON (structured output; -F yaml converts it)\n  -t, --token string    Page token\n      --type string     Filter type: file or folder\n\nGlobal Flags:\n  -F, --format string   Output format: json, yaml (default: human-readable)\n  -v, --verbose         Enable verbose output\n      --version         Show version\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "get",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "Get detailed file information.\nBy default returns basic info. Use --url-type to return URLs (download, play, or all).\nUse --raw to return the API response unchanged, including fields the typed output drops (params, medias, apps, audit).\n\nUsage:\n  pikpak get <fileID> [flags]\n\nFlags:\n  -h, --help              help for get\n      --raw               Return the unmodified PikPak API JSON (structured output; -F yaml converts it)\n      --url-type string   URL type: download, play, or all\n\nGlobal Flags:\n  -F, --format string   Output format: json, yaml (default: human-readable)\n  -v, --verbose         Enable verbose output\n      --version         Show version\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "auth",
+        "status",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "Show whether you are logged in and, if so, the active account's profile, VIP membership and storage quota.\n\nUsage:\n  pikpak auth status [flags]\n\nFlags:\n  -h, --help   help for status\n\nGlobal Flags:\n  -F, --format string   Output format: json, yaml (default: human-readable)\n  -v, --verbose         Enable verbose output\n      --version         Show version\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "auth",
+        "login",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "Login to PikPak account via Web or Device authorization\n\nUsage:\n  pikpak auth login [flags]\n\nFlags:\n      --continue string     Poll device code status once and exit (use with -F json)\n      --force               Create a new session even if already logged in\n  -h, --help                help for login\n  -l, --label string        Session label (default: hostname · parent_process)\n  -m, --method string       Login method: 'device' or 'browser' (auto-detect if unset)\n      --no-launch-browser   Don't open browser automatically (manual mode)\n      --scope string        Pre-select OAuth scopes (comma-separated API identifiers)\n\nGlobal Flags:\n  -F, --format string   Output format: json, yaml (default: human-readable)\n  -v, --verbose         Enable verbose output\n      --version         Show version\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "auth",
+        "status",
+        "-F",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"logged_in\": false\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "ls",
+        "--raw",
+        "-l",
+        "10"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Error: Failed to get list\n  Code: UNAUTHENTICATED\n  Reason: Unauthenticated, please re-login\n  HTTP Status: 401\n  Request ID: [redacted]\n  Hint: Run 'pikpak auth login' to authenticate again.\n  More info: rerun with --verbose to show technical details\n"
+    },
+    {
+      "args": [
+        "get",
+        "NEKOPAK_NONEXISTENT_PROBE",
+        "--raw"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "[upstream diagnostic removed]\nError: Failed to get file info\n  Code: UNAUTHENTICATED\n  Reason: Unauthenticated, please re-login\n  HTTP Status: 401\n  Request ID: [redacted]\n  Hint: Run 'pikpak auth login' to authenticate again.\n  More info: rerun with --verbose to show technical details\n"
+    },
+    {
+      "args": [
+        "ls",
+        "--raw",
+        "-F",
+        "json",
+        "-l",
+        "10"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "{\n  \"error\": {\n    \"code\": \"UNAUTHENTICATED\",\n    \"message\": \"Failed to get list\",\n    \"reason\": \"Unauthenticated, please re-login\",\n    \"status\": 401,\n    \"hint\": \"Run 'pikpak auth login' to authenticate again.\",\n    \"request_id\": \"[redacted]\"\n  }\n}\n"
+    },
+    {
+      "args": [
+        "get",
+        "NEKOPAK_NONEXISTENT_PROBE",
+        "--raw",
+        "-F",
+        "json"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "{\n  \"error\": {\n    \"code\": \"UNAUTHENTICATED\",\n    \"message\": \"Failed to get file info\",\n    \"reason\": \"Unauthenticated, please re-login\",\n    \"status\": 401,\n    \"hint\": \"Run 'pikpak auth login' to authenticate again.\",\n    \"request_id\": \"[redacted]\"\n  }\n}\n"
+    },
+    {
+      "args": [
+        "download",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "Download one or more files from PikPak cloud storage to the local filesystem.\nUse -o to specify the output path (single file only), or files are saved with their\noriginal names in the current directory.\nUse --url-only to only print the download URL without downloading.\n\nUsage:\n  pikpak download <fileID> [fileID...] [flags]\n\nFlags:\n  -h, --help            help for download\n  -o, --output string   Output file path\n      --parallel int    Connections per file, 1-8 (files at least 16MB are split into ranges) (default 8)\n      --url-only        Print the download URL instead of downloading\n\nGlobal Flags:\n  -F, --format string   Output format: json, yaml (default: human-readable)\n  -v, --verbose         Enable verbose output\n      --version         Show version\n",
+      "stderr": ""
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use nekopak_core::AppService;
 use nekopak_domain::*;
-use nekopak_provider::RequestContext;
-use nekopak_provider_mock::Scenario;
+use nekopak_provider::{ProviderPort, RequestContext};
+use nekopak_provider_cli::OfficialCliProvider;
+use nekopak_provider_mock::{MockProvider, Scenario};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -157,6 +158,26 @@ async fn quota_get(
     service.quota_get(&request.context).await
 }
 
+#[tauri::command(rename_all = "snake_case")]
+async fn auth_status(
+    service: State<'_, Service>,
+    requests: State<'_, Requests>,
+    request_id: Option<String>,
+) -> Result<AuthState, ClientError> {
+    let request = requests.begin(request_id)?;
+    service.auth_status(&request.context).await
+}
+
+#[tauri::command(rename_all = "snake_case")]
+async fn official_cli_probe(
+    provider: State<'_, Arc<OfficialCliProvider>>,
+    requests: State<'_, Requests>,
+    request_id: Option<String>,
+) -> Result<CliProbeReport, ClientError> {
+    let request = requests.begin(request_id)?;
+    request.context.run(provider.probe()).await
+}
+
 fn main() {
     let result = tauri::Builder::default()
         .manage(Requests::default())
@@ -168,7 +189,36 @@ fn main() {
                 Err(std::env::VarError::NotPresent) => Scenario::Free,
                 Err(error) => return Err(error.into()),
             };
-            let service = Arc::new(AppService::mock(&directory.join("tasks.sqlite3"), scenario));
+            let selected = std::env::var("NEKOPAK_BACKEND").unwrap_or_else(|_| "mock".into());
+            if !matches!(selected.as_str(), "mock" | "official_cli") {
+                return Err("NEKOPAK_BACKEND must be mock or official_cli".into());
+            }
+            let executable = std::env::var_os("NEKOPAK_CLI_PATH");
+            let profile = std::env::var_os("NEKOPAK_CLI_PROFILE");
+            let cli = Arc::new(match (executable, profile) {
+                (Some(executable), Some(profile)) => OfficialCliProvider::configured(
+                    std::path::Path::new(&executable),
+                    std::path::Path::new(&profile),
+                    selected == "official_cli",
+                )?,
+                (None, None) if selected == "mock" => OfficialCliProvider::not_configured(),
+                _ => return Err(
+                    "Set both NEKOPAK_CLI_PATH and NEKOPAK_CLI_PROFILE to use the reviewed CLI."
+                        .into(),
+                ),
+            });
+            let mock: Arc<dyn ProviderPort> = Arc::new(MockProvider::new(scenario));
+            let (active, database): (Arc<dyn ProviderPort>, &str) = if selected == "official_cli" {
+                (cli.clone(), "cli-preview.sqlite3")
+            } else {
+                (mock.clone(), "tasks.sqlite3")
+            };
+            let service = Arc::new(AppService::with_backends(
+                &directory.join(database),
+                active,
+                vec![mock, cli.clone()],
+            ));
+            app.manage(cli);
             let mut receiver = service.subscribe();
             app.manage(service.clone());
             let handle = app.handle().clone();
@@ -219,6 +269,8 @@ fn main() {
             transfer_control,
             cloud_task_create,
             quota_get,
+            auth_status,
+            official_cli_probe,
             request_cancel
         ])
         .run(tauri::generate_context!());
@@ -259,6 +311,7 @@ mod tests {
         let service = Arc::new(AppService::mock(&dir.path().join("ipc.db"), Scenario::Free));
         let app = tauri::test::mock_builder()
             .manage(service.clone())
+            .manage(Arc::new(OfficialCliProvider::not_configured()))
             .manage(Requests::default())
             .invoke_handler(tauri::generate_handler![
                 app_status,
@@ -270,6 +323,8 @@ mod tests {
                 transfer_control,
                 cloud_task_create,
                 quota_get,
+                auth_status,
+                official_cli_probe,
                 request_cancel
             ])
             .build(tauri::generate_context!())
@@ -308,6 +363,14 @@ mod tests {
             json!({"task_id":task["task_id"],"action":"pause"}),
         )
         .unwrap();
+        assert_eq!(
+            invoke(&webview, "auth_status", json!({})).unwrap()["credential_owner"],
+            "none"
+        );
+        assert_eq!(
+            invoke(&webview, "official_cli_probe", json!({})).unwrap()["status"],
+            "not_installed"
+        );
         assert_eq!(
             invoke(&webview, "transfers_list", json!({})).unwrap()["items"][0]["state"],
             "paused"

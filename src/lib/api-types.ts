@@ -32,7 +32,12 @@ export interface TransferEvent {
 }
 export interface TaskRef { task_id: string }
 export interface StorageStatus { status: 'ready' | 'recovery_required'; schema_version: number; error?: ClientError }
-export interface AppStatus { version: string; contract_version: string; mode: 'mock'; storage: StorageStatus; features: Record<string, boolean> }
+export interface AppStatus { version: string; contract_version: string; mode: 'mock' | 'official_cli_preview'; storage: StorageStatus; features: Record<string, boolean> }
+export interface AuthState { backend: BackendId; authenticated: boolean; credential_owner: 'none' | 'external_cli'; account_tier: 'free' | 'premium' | 'unknown'; message: string }
+export interface CliProbeReport {
+  backend: BackendId; status: CapabilityReport['status']; version?: string; binary_sha256?: string;
+  verified_commands: string[]; live_account_verified: boolean; limitations: string[]; checked_at: string;
+}
 export interface QuotaReport {
   backend: BackendId; account_tier: 'free' | 'premium' | 'unknown'; source: 'mock'; checked_at: string; limitations: string[];
   dimensions: { dimension: string; period: string; limit_bytes?: DecimalU64; remaining_bytes?: DecimalU64; resets_at?: string }[];
@@ -54,5 +59,7 @@ export interface CommandMap {
   cloud_task_create: { args: { source_url: string; parent_id: string; idempotency_key: string; request_id?: string }; result: TaskRef };
   quota_get: { args: { request_id?: string }; result: QuotaReport };
   request_cancel: { args: { request_id: string }; result: void };
+  auth_status: { args: { request_id?: string }; result: AuthState };
+  official_cli_probe: { args: { request_id?: string }; result: CliProbeReport };
 }
 

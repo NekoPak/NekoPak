@@ -193,3 +193,26 @@ pub trait BackendPort: Send + Sync {
   总线溢出或未知 task_id 要重新读快照，不能把事件当作数据库。
 
 本补充为后端交接基线，尚无另一位前端开发者的实际集成确认。
+
+## 8. 官方 CLI 只读预览补充（2026-11-07）
+
+兼容增加以下字段/命令；contract_version 仍为 0.1。第 7 节的 M0 状态是历史基线。
+
+- app_status.mode 增加 `official_cli_preview`；features 增加 `real_transfers: false`。
+  real_providers 表示选择了真实适配器，不表示账号已授权或成功请求已实测。
+- 宿主 backend_discover 注册 mock 和 official_cli；未显式配置的 CLI 返回
+  `not_installed`，其含义是未配置可用安装，不声称已全盘搜索系统。
+- 新增 `official_cli_probe({ request_id? }) -> CliProbeReport`：包含 backend、status、
+  version?、binary_sha256?、verified_commands、live_account_verified、limitations、checked_at。
+  probe 只检查本地版本/帮助，不触发登录；成功探测也不意味着 ready。
+- `auth_status({ request_id? }) -> AuthState`：backend、authenticated、credential_owner
+  (`none | external_cli`)、account_tier、message。无 token/password/email/user_id 字段。
+- CLI 只读预览需显式配置 NEKOPAK_BACKEND=official_cli、NEKOPAK_CLI_PATH 和
+  NEKOPAK_CLI_PROFILE。仅允许已核验 Windows x64 v0.6.0 的 SHA-256。
+- files_list/stat 的 JSON 类型不变；CLI 分页 limit 限 10–500，低于 10 返回 CONFLICT，
+  不静默超出请求上限。raw parent_id 空串映射 root；字节数字串严格校验；时间转 UTC。
+- 仅当明确启用预览且外部 CLI 的 auth status 返回 logged_in=true 才启用 list/stat。
+  capabilities.limitations 始终注明尚未完成真实授权目录验证。
+- download/cloud_task/upload/quota/read_range 保持 false；授权配额未知，不从账户容量推导。
+- auth_begin/auth_logout 尚未注册。用户在外部 CLI 完成官方授权；NekoPak 不收集凭据，
+  不承诺外部 CLI 的凭据文件使用系统安全存储。

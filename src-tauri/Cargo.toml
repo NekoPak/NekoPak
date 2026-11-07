@@ -19,6 +19,7 @@ nekopak-core.workspace = true
 nekopak-domain.workspace = true
 nekopak-provider.workspace = true
 nekopak-provider-mock.workspace = true
+nekopak-provider-cli.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 

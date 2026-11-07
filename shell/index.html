@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NekoPak 后端验收壳</title><link rel="stylesheet" href="style.css"></head>
 <body>
-<h1>NekoPak · M0 后端验收</h1>
-<p class="notice">离线 Mock 模式。文件、配额和进度均为模拟数据，不连接 PikPak，也不写入下载文件。</p>
+<h1>NekoPak · 后端验收</h1>
+<p class="notice" id="mode">正在读取后端状态…</p>
 <div class="toolbar"><button id="refresh">刷新快照</button><button id="root">根目录</button><button id="more" disabled>下一页</button><button disabled title="M3 尚未实现">同步 · 未实现</button><button disabled title="未验证随机读取能力">挂载 · 不可用</button></div>
 <p id="error" role="alert"></p>
 <details><summary>后端与存储状态</summary><pre id="status"></pre></details>

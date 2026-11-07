@@ -49,7 +49,7 @@ PikPak mark or third-party image/font asset.
 - [Rclone](https://github.com/rclone/rclone), MIT per kit: EXTERNAL_TOOL_OPTIONAL in future; not detected, run, copied or bundled.
 - [WinFsp](https://github.com/winfsp/winfsp), GPLv3 plus FLOSS exception per kit: EXTERNAL_TOOL_OPTIONAL in future; no linking, driver installation or redistribution.
 - [Cloud Files API](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfregistersyncroot): NOT_USED; future Windows platform integration, separate from drive-letter mounting.
-- [Official PikPak CLI](https://mypikpak.com/en-US/cli): EXTERNAL_TOOL_OPTIONAL in future; public landing page retrieved, no executable present on PATH. CLI version, JSON, authentication, Range support and redistribution rights remain unverified.
+- [Official PikPak CLI](https://mypikpak.com/en-US/cli): EXTERNAL_TOOL_OPTIONAL, v0.6.0 Windows x64 binary hash `b39a2bf29d69e561ab3a6f7ec2bfd899930008ed311eb3bd99c3697802e93b04` verified against official checksums; version/help/unauthenticated JSON probed. Independently written read-only adapter, opt-in external profile, no binary/source redistribution. Authenticated success/Range/redistribution rights remain unverified. See docs/CLI_ADAPTER.md.
 - [OpenList](https://github.com/OpenListTeam/OpenList): NOT_USED; license not audited.
 - [Bern](https://github.com/AimesSoft/Bern), MIT © 2026 MCDFSteve: DESIGN_REFERENCE, README/Cargo.toml/LICENSE at `a86bbb85bd525d6c9b0c011ef1571caae4273490`. Protocol/engine/host separation is relevant. No source or dependency included; no Bern benchmark reproduced.
 

@@ -1,5 +1,9 @@
 # M0 backend implementation and handoff
 
+后续进展：M1 的官方 CLI 只读探测/适配切片已实现，详见
+[CLI_ADAPTER.md](CLI_ADAPTER.md)。以下保留 M0 历史说明；官方 CLI 的当前版本、
+JSON 支持和未授权行为以新文档及对应实测证据为准。
+
 Baseline: supplied NekoPak Development Kit v0.1, 2026-11-07. Scope: backend first
 iteration only. Gate 0 source strategy: route B, independent Rust workspace with MIT
 license. No third-party client source was copied; no research mirror or remote repo

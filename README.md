@@ -4,7 +4,7 @@
 >
 > 独立社区项目，非 PikPak 官方客户端，与 PikPak 服务提供者无隶属关系。
 
-**状态：** `M0 / Offline Mock`（Rust 后端、持久任务和最小 Tauri 验收壳已实现；尚未连接真实 PikPak）  
+**状态：** `M1 slice / CLI read-only preview`（默认离线 Mock；已增加显式启用的官方 CLI 只读适配器，真实授权目录仍待验证）  
 **文档基线：** 2026-11-07  
 **首要平台：** Windows x64；后续 Linux x64 / macOS；Android 不列入首版承诺。
 
@@ -66,7 +66,8 @@ NekoPak 的目标不是再包装一个网页，而是构建具有原生 Rust 核
 
 运行与打包见 [docs/RUNNING.md](docs/RUNNING.md)，实现边界与前端交接见
 [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md)。Rust Core 可独立测试，
-Tauri 验收壳只展示离线样本。真实登录、下载字节、同步和挂载仍未实现。
+Tauri 默认验收壳展示离线样本。[官方 CLI 只读预览](docs/CLI_ADAPTER.md)已实现并完成
+无账号实测。应用内登录、真实下载字节、同步和挂载仍未实现。
 
 ```powershell
 npm ci

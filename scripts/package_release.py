@@ -24,12 +24,12 @@ def main():
         raise SystemExit('Source files are newer than the executable; rebuild before packaging.')
     output = ROOT / 'dist'
     output.mkdir(exist_ok=True)
-    archive = output / 'NekoPak-0.1.0-windows-x64-mock.zip'
+    archive = output / 'NekoPak-0.1.0-windows-x64-cli-preview.zip'
     license_entries = []
     supplemental_sources = json.loads((ROOT / 'licenses/sources.json').read_text(encoding='utf-8'))
     # Published crate archives may normalize mtimes to 1970; ZIP starts at 1980.
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=False) as bundle:
-        for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md']:
+        for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md', ROOT / 'docs' / 'CLI_ADAPTER.md']:
             bundle.write(path, path.name)
         for package in metadata['packages']:
             if package['source'] is None:
@@ -77,7 +77,7 @@ def main():
         'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
         'external_requirements': ['Windows x64', 'Microsoft Edge WebView2 Evergreen runtime (not bundled)'],
         'not_bundled': ['PikPak CLI', 'Rclone', 'WinFsp', 'Chromium', 'JVM', 'FFmpeg', 'mpv'],
-        'scope': 'Offline M0 mock backend; no live network provider or actual file downloads.',
+        'scope': 'Offline Mock by default; explicit reviewed official CLI read-only preview. No real transfers or bundled official CLI.',
         'runtime_measurement': 'Not measured by this script; no memory/startup claim.',
         'license_inventory_scope': 'Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.',
         'license_text_unresolved': unresolved,

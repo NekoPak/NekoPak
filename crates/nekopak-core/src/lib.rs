@@ -25,6 +25,13 @@ impl AppService {
         Self::with_provider(path, Arc::new(MockProvider::new(scenario)))
     }
     pub fn with_provider(path: &Path, provider: Arc<dyn ProviderPort>) -> Self {
+        Self::with_backends(path, provider.clone(), vec![provider])
+    }
+    pub fn with_backends(
+        path: &Path,
+        provider: Arc<dyn ProviderPort>,
+        providers: Vec<Arc<dyn ProviderPort>>,
+    ) -> Self {
         let (store, storage_error) = match Store::open(path) {
             Ok(store) => (Some(store), None),
             Err(error) => (None, Some(error)),
@@ -33,7 +40,7 @@ impl AppService {
         Self {
             store,
             storage_error,
-            router: ProviderRouter::new(vec![provider.clone()]),
+            router: ProviderRouter::new(providers),
             provider,
             events,
         }
@@ -49,7 +56,12 @@ impl AppService {
         AppStatus {
             version: env!("CARGO_PKG_VERSION").into(),
             contract_version: CONTRACT_VERSION.into(),
-            mode: "mock".into(),
+            mode: if self.provider.id() == BackendId::Mock {
+                "mock"
+            } else {
+                "official_cli_preview"
+            }
+            .into(),
             storage: StorageStatus {
                 status: if self.store.is_some() {
                     "ready"
@@ -61,8 +73,12 @@ impl AppService {
                 error: self.storage_error.clone(),
             },
             features: BTreeMap::from([
-                ("mock".into(), true),
-                ("real_providers".into(), false),
+                ("mock".into(), self.provider.id() == BackendId::Mock),
+                (
+                    "real_providers".into(),
+                    self.provider.id() != BackendId::Mock,
+                ),
+                ("real_transfers".into(), false),
                 ("sync".into(), false),
                 ("mount".into(), false),
                 ("experimental_network".into(), false),
@@ -114,6 +130,9 @@ impl AppService {
             .select(Operation::Quota, self.provider.id(), context)
             .await?;
         context.run(provider.quota()).await
+    }
+    pub async fn auth_status(&self, context: &RequestContext) -> Result<AuthState, ClientError> {
+        context.run(self.provider.auth_status()).await
     }
     pub fn transfers_list(
         &self,
@@ -218,6 +237,9 @@ impl AppService {
     }
     /// Called by the host worker. Never holds the database mutex across provider work.
     pub async fn tick(&self) -> Result<(), ClientError> {
+        if self.provider.id() != BackendId::Mock {
+            return Ok(());
+        }
         for task in self.store()?.active()? {
             if !task.simulated || task.backend != BackendId::Mock {
                 continue;

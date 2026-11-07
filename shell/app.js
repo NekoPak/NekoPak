@@ -5,6 +5,7 @@ const $ = (id) => document.getElementById(id);
 let parent = 'root';
 let cursor;
 let renderRevision = 0;
+let mockMode = true;
 function fail(error) { $('error').textContent = `${error.code || 'INTERNAL'}: ${error.message || String(error)}`; }
 function action(text, handler, enabled = true) {
   const button = document.createElement('button'); button.textContent = text; button.disabled = !enabled;
@@ -17,7 +18,7 @@ async function files(append = false) {
     const row = document.createElement('li'); const label = document.createElement('span');
     label.textContent = `${entry.kind === 'folder' ? '📁' : '📄'} ${entry.name} · ${entry.size_bytes} bytes`; row.append(label);
     if (entry.kind === 'folder') row.append(action('打开', async () => { parent = entry.id; await files(); }));
-    else row.append(action('模拟下载', async () => { await invoke('transfer_start', { remote_id: entry.id, destination: `C:/NekoPak-Mock/${entry.id}.bin`, idempotency_key: crypto.randomUUID() }); await tasks(); }));
+    else row.append(action(mockMode ? '模拟下载' : '下载未启用', async () => { await invoke('transfer_start', { remote_id: entry.id, destination: `C:/NekoPak-Mock/${entry.id}.bin`, idempotency_key: crypto.randomUUID() }); await tasks(); }, mockMode));
     $('files').append(row);
   }
   cursor = page.next_cursor; $('more').disabled = !cursor; $('folder').textContent = parent;
@@ -42,8 +43,11 @@ async function tasks() {
 async function refresh() {
   $('error').textContent = '';
   const status = await invoke('app_status');
-  const [backends, quota] = await Promise.allSettled([invoke('backend_discover'), invoke('quota_get')]);
-  $('status').textContent = JSON.stringify({ status, backends, quota }, null, 2);
+  mockMode = status.mode === 'mock';
+  $('mode').textContent = mockMode ? '离线 Mock 模式。文件、配额和进度均为模拟数据，不连接 PikPak，也不写入下载文件。' : '官方 CLI 只读预览。读取外部 CLI 的授权状态与文件元数据；下载、云任务写入、同步和挂载尚未启用。';
+  $('cloud').hidden = !mockMode;
+  const [backends, quota, auth] = await Promise.allSettled([invoke('backend_discover'), invoke('quota_get'), invoke('auth_status')]);
+  $('status').textContent = JSON.stringify({ status, backends, quota, auth }, null, 2);
   if (status.storage.error) fail(status.storage.error);
   const results = await Promise.allSettled([files(), tasks()]);
   for (const result of results) if (result.status === 'rejected') fail(result.reason);

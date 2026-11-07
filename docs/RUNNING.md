@@ -2,6 +2,9 @@
 
 This is an offline simulation, not a logged-in PikPak client. It does not download,
 upload, delete or mount real files. All displayed quotas and progress are synthetic.
+This remains the default mode. An optional external official CLI read-only preview
+is documented in CLI_ADAPTER.md; it requires explicit executable/profile settings
+and an independently authorized account. No CLI is included in the package.
 
 ## Windows prerequisites
 
@@ -52,7 +55,7 @@ npm run tauri -- build --no-bundle
 python scripts/package_release.py
 ```
 
-The output is `dist/NekoPak-0.1.0-windows-x64-mock.zip`, containing the executable,
+The output is `dist/NekoPak-0.1.0-windows-x64-cli-preview.zip`, containing the executable,
 this guide, notices and dependency licenses. `dist/size-report.json` records bytes,
 toolchain, source hash, lockfile hash, compression and external runtime requirements.
 It is a portable unsigned development build, not an installer or production release.

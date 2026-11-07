@@ -321,6 +321,30 @@ pub struct StorageStatus {
     pub error: Option<ClientError>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AuthState {
+    pub backend: BackendId,
+    pub authenticated: bool,
+    /// NekoPak does not read, store or expose the external CLI's tokens.
+    pub credential_owner: String,
+    pub account_tier: AccountTier,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CliProbeReport {
+    pub backend: BackendId,
+    pub status: BackendStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub binary_sha256: Option<String>,
+    pub verified_commands: Vec<String>,
+    pub live_account_verified: bool,
+    pub limitations: Vec<String>,
+    pub checked_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TransferEvent {
     pub task_id: String,

@@ -151,6 +151,15 @@ impl ProviderPort for MockProvider {
     fn id(&self) -> BackendId {
         BackendId::Mock
     }
+    async fn auth_status(&self) -> Result<AuthState, ClientError> {
+        Ok(AuthState {
+            backend: BackendId::Mock,
+            authenticated: false,
+            credential_owner: "none".into(),
+            account_tier: AccountTier::Unknown,
+            message: "Mock mode uses no account or credentials.".into(),
+        })
+    }
     async fn discover(&self) -> Result<CapabilityReport, ClientError> {
         Ok(CapabilityReport {
             backend: BackendId::Mock,

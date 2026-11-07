@@ -6,6 +6,7 @@
       "mock": true,
       "mount": false,
       "real_providers": false,
+      "real_transfers": false,
       "sync": false,
       "telemetry": false
     },

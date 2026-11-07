@@ -59,6 +59,9 @@ pub trait ProviderPort: Send + Sync {
     ) -> Result<Page<RemoteEntry>, ClientError>;
     async fn stat(&self, id: &str) -> Result<RemoteEntry, ClientError>;
     async fn quota(&self) -> Result<QuotaReport, ClientError>;
+    async fn auth_status(&self) -> Result<AuthState, ClientError> {
+        Err(unsupported(self.id()))
+    }
     async fn create_cloud_task(&self, _request: &CloudTaskRequest) -> Result<String, ClientError> {
         Err(unsupported(self.id()))
     }
