@@ -58,7 +58,10 @@ fn decode(payload: String) -> Result<TransferTask, ClientError> {
     if task
         .total_bytes
         .is_some_and(|total| task.transferred_bytes > total)
-        || (task.state == TaskState::Completed && task.total_bytes != Some(task.transferred_bytes))
+        || (task.state == TaskState::Completed
+            && task.kind != TaskKind::CloudDownload
+            && task.total_bytes != Some(task.transferred_bytes))
+        || task.progress_percent.is_some_and(|p| p > 100)
         || task.id.is_empty()
         || task.revision.0 == 0
         || task
@@ -80,6 +83,24 @@ fn locked() -> ClientError {
 }
 
 impl Store {
+    /// Bind the auxiliary journal lifecycle to this already-validated task store.
+    pub fn actions_initialized(&self) -> Result<bool, ClientError> {
+        self.connection
+            .lock()
+            .map_err(|_| locked())?
+            .query_row(
+                "SELECT value FROM metadata WHERE key='actions_initialized'",
+                [],
+                |r| r.get::<_, i64>(0),
+            )
+            .optional()
+            .map(|v| v == Some(1))
+            .map_err(storage_error)
+    }
+    pub fn mark_actions_initialized(&self) -> Result<(), ClientError> {
+        self.connection.lock().map_err(|_|locked())?.execute("INSERT INTO metadata(key,value) VALUES('actions_initialized',1) ON CONFLICT(key) DO UPDATE SET value=1",[]).map_err(storage_error)?;
+        Ok(())
+    }
     pub fn open(path: &Path) -> Result<Self, ClientError> {
         let parent = path
             .parent()
@@ -366,9 +387,48 @@ impl Store {
         Ok(task)
     }
 
+    /// Remote cloud progress is authoritative and may have no byte total.
+    /// This never relaxes local-file completion checks.
+    pub fn update_cloud(
+        &self,
+        expected: &TransferTask,
+        snapshot: &CloudTaskSnapshot,
+    ) -> Result<TransferTask, ClientError> {
+        if expected.kind != TaskKind::CloudDownload
+            || snapshot.id != expected.remote_id
+            || snapshot.progress.is_some_and(|p| p > 100)
+        {
+            return Err(damaged());
+        }
+        let mut connection = self.connection.lock().map_err(|_| locked())?;
+        let tx = connection.transaction().map_err(storage_error)?;
+        let mut task = get(&tx, &expected.id)?;
+        if task.revision != expected.revision {
+            return Err(conflict());
+        }
+        task.state = snapshot.state;
+        task.name = Some(snapshot.name.clone());
+        task.error = snapshot.error.clone();
+        task.total_bytes = snapshot.total_bytes;
+        task.progress_percent = snapshot.progress;
+        task.transferred_bytes = DecimalU64(match (snapshot.total_bytes, snapshot.progress) {
+            (Some(total), _) if snapshot.state == TaskState::Completed => total.0,
+            (Some(total), Some(progress)) => {
+                (u128::from(total.0) * u128::from(progress) / 100) as u64
+            }
+            _ => 0,
+        });
+        task.updated_at = now();
+        task.revision = next_revision(&tx)?;
+        task.speed_bytes_per_sec = None;
+        save(&tx, &task)?;
+        tx.commit().map_err(storage_error)?;
+        Ok(task)
+    }
+
     pub fn active(&self) -> Result<Vec<TransferTask>, ClientError> {
         let connection = self.connection.lock().map_err(|_| locked())?;
-        let mut statement = connection.prepare("SELECT payload FROM tasks WHERE json_extract(payload,'$.state') IN ('queued','running','retrying','verifying') ORDER BY revision LIMIT 16").map_err(storage_error)?;
+        let mut statement = connection.prepare("SELECT payload FROM tasks WHERE json_extract(payload,'$.state') IN ('queued','running','retrying','verifying') ORDER BY revision").map_err(storage_error)?;
         let rows = statement
             .query_map([], |row| row.get::<_, String>(0))
             .map_err(storage_error)?;

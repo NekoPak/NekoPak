@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-08T15:32:27.043Z",
+  "scope": "Real Windows WebView2 + native Rust HTTP, SQLite and file IO; synthetic local server, no account/service traffic",
+  "results": [
+    {
+      "name": "native form signs in through Rust HTTP and DRIVE verification keeps the session",
+      "passed": true
+    },
+    {
+      "name": "native mkdir rename move star trash restore and recent are real service operations",
+      "passed": true
+    },
+    {
+      "name": "native tasks, shares, archives, MP4 export, loopback playback, mappings and settings complete through Rust",
+      "passed": true
+    }
+  ],
+  "fixture_requests": 58,
+  "external_requests": 0,
+  "download_bytes": 2097289,
+  "errors": []
+}

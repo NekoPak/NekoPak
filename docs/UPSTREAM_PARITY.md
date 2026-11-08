@@ -7,7 +7,7 @@
 ## 比较范围与证据
 
 主基线为 Piko v1.4.0，commit `d61c1580783911be557d4c39026c300517187bcb` 的已发布
-Windows x64 用户行为。pikpaktui、pikpak-kotlin、Rclone 和官方 CLI 是补充能力/协议参考，
+Windows x64 用户行为。pikpaktui、pikpak-kotlin、Rclone 是补充能力/协议参考，
 不是必须一并嵌入的运行时。Bern 是界面框架参考，不是云盘功能基线。
 详见 [上游研究](UPSTREAM_PARITY_RESEARCH.md) 和 `parity-manifest.json`。
 
@@ -16,7 +16,7 @@ Windows x64 用户行为。pikpaktui、pikpak-kotlin、Rclone 和官方 CLI 是�
 另有平台条目，当前 Windows x64 优先；不能宣称跨平台已对齐。
 
 第三方/社区接口允许研究与独立实现。每个适配器按真实能力协商，可用合适的兼容 API
-补足 CLI 不支持的媒体、分享、配额、随机读取；不把 CLI 功能当产品上限。来源许可证、
+实现媒体、分享、配额、随机读取；2026-11-08 起完全移除官方 CLI。来源许可证、
 账号授权、接口变动、错误语义和日志保护仍逐项核验，不复制他人凭据或绕过账号控制。
 
 ## 必须闭环的能力

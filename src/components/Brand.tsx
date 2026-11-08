@@ -5,12 +5,7 @@
 
 export function LogoMark({ size = 28 }: { size?: number }) {
   return (
-    <svg class="logo-mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="9" fill="var(--primary)" />
-      <path d="M7.5 13.2 10.2 7.6l3.5 4.1h4.6l3.5-4.1 2.7 5.6v9.3a2.2 2.2 0 0 1-2.2 2.2H9.7a2.2 2.2 0 0 1-2.2-2.2Z" fill="var(--on-primary)" />
-      <path d="M7.5 15h17" stroke="var(--primary)" stroke-width="1.3" opacity=".35" />
-      <path d="M11.6 19.3q1.2-1.2 2.4 0M18 19.3q1.2-1.2 2.4 0" fill="none" stroke="var(--primary)" stroke-width="1.6" stroke-linecap="round" />
-    </svg>
+    <img class="logo-mark" src="/brand/app-icon.svg" width={size} height={size} alt="" aria-hidden="true" draggable={false} />
   );
 }
 

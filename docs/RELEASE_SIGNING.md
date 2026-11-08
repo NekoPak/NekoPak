@@ -1,0 +1,40 @@
+# 发布仓库、签名与多平台顺序
+
+用户确认的仓库是 https://github.com/NekoPak/NikoPak 。2026-11-08 的顺序为：先稳定Windows
+桌面端，再适配Linux/macOS和Android。Android是后续明确目标，不因桌面预览而删掉。
+
+## 密钥保管
+
+`NEKOPAK_RELEASE_PRIVATE_KEY` 是Ed25519发布清单签名密钥，存GitHub Actions Secret。
+公钥为 `release/release-signing.pub`，可公开。私钥备份在用户的本机受保护发布目录，
+不在Git工作区，不输出到日志，不写入README。签名覆盖版本、文件名、大小与SHA-256，
+`scripts/release_signing.py verify` 同时验证签名和对应产物内容。
+
+这不是Windows Authenticode证书，不能据此声称EXE已获得微软信任或SmartScreen信誉。
+Authenticode需要单独的受信任代码签名证书/服务。Tauri updater自己的签名、公钥和更新
+manifest也属于独立协议，在实际接入更新器时单独生成并配置，不能拿本清单冒充可自动更新。
+
+Android适配时生成独立keystore，后续同一应用更新必须保留原签名身份。建议Secrets名称：
+`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、
+`ANDROID_KEY_PASSWORD`。现在尚未初始化手机项目，因此不生成无用keystore或假Android构建。
+
+## Actions
+
+- `windows.yml`：日常Windows检查与预览产物，不使用签名秘密。
+- `release.yml`：手动或v*/parity-*标签触发Windows构建、测试、许可清单、签名及验证，
+  上传Actions artifact。不会自动创建公开Release。parity-*仍受严格功能门禁约束。
+- `portable-core.yml`：Linux/macOS核心测试和native provider编译，不能替代相应桌面真实验收。
+
+未来Android需要Tauri mobile宿主、Android Keystore实现、目录选择/存储权限/后台下载/
+网络代理/播放器/触屏布局以及设备测试。Windows Credential Manager、CfAPI、WinFsp及
+EXE外部播放器不是Android可用功能，须按平台能力分别实现。
+
+生成签名仅运行一次，脚本拒绝覆盖已有密钥。使用GitHub CLI通过标准输入上传Secret，
+不得把私钥拼进命令行或提交git。Workflow校验Secret缺失时失败，不降级成“已签名”。
+
+## 本机与仓库已配置
+
+2026-11-08 已生成发布签名，公钥入库，`NEKOPAK_RELEASE_PRIVATE_KEY` 已通过标准输入
+写入NekoPak/NikoPak Actions Secret。本机备份位于用户主目录 `.nekopak-release/`，
+Windows ACL仅当前用户和SYSTEM可读；保留备份，不要删掉或公开。使用已有ZIP实际签名和验签
+通过，测试证明修改包字节或签名覆盖的版本会拒绝。没有创建Windows Authenticode证书。

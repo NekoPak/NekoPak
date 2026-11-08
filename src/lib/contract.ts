@@ -8,14 +8,14 @@
  * Cross-boundary JSON is snake_case. u64 values travel as decimal strings.
  */
 
-export const CONTRACT_VERSION = "0.1";
+export const CONTRACT_VERSION = "0.2";
 
 export type BackendId = "official_cli" | "rust_compat" | "webdav" | "rclone" | "mock";
 
 export type Operation =
   | "list" | "stat" | "search" | "mkdir" | "rename" | "move"
   | "copy" | "trash" | "upload" | "download" | "cloud_task"
-  | "stream_url" | "read_range" | "quota" | "segment_download";
+  | "stream_url" | "read_range" | "quota" | "segment_download" | "star" | "restore" | "delete_forever";
 
 export interface CapabilityReport {
   backend: BackendId;
@@ -35,7 +35,7 @@ export interface RemoteEntry {
   size_bytes: string; // decimal u64
   modified_at?: string;
   etag?: string;
-  hash?: { algorithm: "md5" | "sha1" | "sha256"; value: string };
+  hash?: { algorithm: "md5" | "sha1" | "sha256" | "gcid"; value: string };
   mime_type?: string;
 }
 
@@ -65,6 +65,7 @@ export interface TransferTask {
 
 export type ClientErrorCode =
   | "AUTH_EXPIRED" | "ACCOUNT_RESTRICTED" | "PERMISSION_DENIED"
+  | "VERIFICATION_REQUIRED"
   | "QUOTA_EXCEEDED" | "NOT_FOUND" | "UNSUPPORTED"
   | "TRANSIENT_NETWORK" | "DISK_FULL" | "INTEGRITY_FAILED"
   | "CONFLICT" | "CANCELLED" | "INTERNAL";

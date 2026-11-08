@@ -44,7 +44,7 @@ async function refresh() {
   $('error').textContent = '';
   const status = await invoke('app_status');
   mockMode = status.mode === 'mock';
-  $('mode').textContent = mockMode ? '离线 Mock 模式。文件、配额和进度均为模拟数据，不连接 PikPak，也不写入下载文件。' : '官方 CLI 只读预览。读取外部 CLI 的授权状态与文件元数据；下载、云任务写入、同步和挂载尚未启用。';
+  $('mode').textContent = mockMode ? '离线 Mock 模式。文件、配额和进度均为模拟数据，不连接 PikPak，也不写入下载文件。' : '原生 API 预览。会话与只读元数据路径已接入；真实下载、云任务写入、同步和挂载尚未启用。';
   $('cloud').hidden = !mockMode;
   for (const control of $('cloud').elements) control.disabled = !mockMode;
   const [backends, quota, auth] = await Promise.allSettled([invoke('backend_discover'), invoke('quota_get'), invoke('auth_status')]);

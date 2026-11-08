@@ -5,36 +5,303 @@
     "release": "v1.4.0",
     "commit": "d61c1580783911be557d4c39026c300517187bcb",
     "target": "windows-x64",
-    "reviewed_at": "2026-11-07",
+    "reviewed_at": "2026-11-08",
     "latest_stable_review_required_before_release": true
   },
   "features": [
-    {"id":"auth_accounts","title":"授权、登录退出、多账号隔离","status":"partial","mandatory_windows":true,"acceptance":"安全凭据、过期恢复、切换不串号；外部 CLI 只读状态不算完整登录","evidence":["docs/CLI_TEST_REPORT.md"]},
-    {"id":"file_browser_index","title":"目录树、分页、搜索、排序与路径定位","status":"partial","mandatory_windows":true,"acceptance":"真实 10K 文件、全分页、持久索引与全盘模糊搜索","evidence":["docs/CLI_TEST_REPORT.md"]},
-    {"id":"file_mutations","title":"目录、移动复制、重命名、星标、回收站恢复","status":"planned","mandatory_windows":true,"acceptance":"逐项真实操作、冲突/权限处理、危险操作确认","evidence":[]},
-    {"id":"batch_rename_undo","title":"批量重命名、规则预览、冲突和撤销","status":"planned","mandatory_windows":true,"acceptance":"命名/序号/正则预览，保留原名并可核对撤销结果","evidence":[]},
-    {"id":"duplicates","title":"跨目录内容重复检查","status":"planned","mandatory_windows":true,"acceptance":"基于内容身份和大小，不能把同名当重复；先预览后操作","evidence":[]},
-    {"id":"download_full","title":"整文件、文件夹和批量可靠下载","status":"planned","mandatory_windows":true,"acceptance":"真实字节、Range校验、暂停继续取消、断电恢复、冲突路径保护","evidence":[]},
-    {"id":"transfer_queue","title":"持久任务、限速、重试和事件","status":"partial","mandatory_windows":true,"acceptance":"真实传输可恢复、限速运行时生效，Mock状态机不算完成","evidence":["docs/TEST_REPORT.md"]},
-    {"id":"upload","title":"文件/目录分片上传与恢复","status":"planned","mandatory_windows":true,"acceptance":"完成状态和处理中状态区分、分片恢复、内容校验","evidence":[]},
-    {"id":"cloud_tasks","title":"磁力/种子/URL解析与云下载","status":"planned","mandatory_windows":true,"acceptance":"预览选择、创建/进度/取消重试，防重复副作用","evidence":[]},
-    {"id":"quota","title":"容量与分维度传输配额","status":"planned","mandatory_windows":true,"acceptance":"账户和Connected Apps配额分开，缺数据不伪造","evidence":[]},
-    {"id":"media_representations","title":"原画/转码画质选择与转封装","status":"planned","mandatory_windows":true,"acceptance":"表示身份/缓存隔离，不能静默换画质；转码TS输出可播放MP4","evidence":[]},
-    {"id":"segment_local","title":"本地指定时间片段导出","status":"partial","mandatory_windows":true,"acceptance":"MP4/MKV/TS、关键帧、音轨/语言/字幕提示、取消与安全提交","evidence":["docs/MEDIA_SEGMENTS.md"]},
-    {"id":"segment_remote","title":"云端指定片段下载","status":"planned","mandatory_windows":true,"acceptance":"授权随机读取+版本化共享缓存+媒体定位，验证非默认完整下载","evidence":[]},
-    {"id":"segment_ts","title":"TS/HEVC时间戳与前关键帧定位","status":"blocked","mandatory_windows":true,"acceptance":"5.0–8.5秒样本回到前关键帧、无花屏、音视频同步、hvc1兼容","evidence":["docs/MEDIA_SEGMENTS.md"]},
-    {"id":"segment_tasks","title":"片段进度、取消、暂停和重启恢复","status":"partial","mandatory_windows":true,"acceptance":"持久计划/表示/范围，缓存恢复与重新转封装明确，旧目标不破坏","evidence":["docs/MEDIA_SEGMENTS.md"]},
-    {"id":"player_subtitles","title":"播放、seek、轨道、字幕、外部播放器","status":"planned","mandatory_windows":true,"acceptance":"质量切换、外挂字幕、轨道语言、断链恢复、冷文件提示","evidence":[]},
-    {"id":"gallery_feed","title":"图库瀑布流、视频信息流","status":"planned","mandatory_windows":true,"acceptance":"图片查看/视频片段、切换、自动顺延/连播、位置恢复","evidence":[]},
-    {"id":"share_preview","title":"分享解析、先看后存、选择转存/下载","status":"planned","mandatory_windows":true,"acceptance":"大型子目录完整分页，未转存媒体/压缩包预览，关闭面板任务继续","evidence":[]},
-    {"id":"archive_references","title":"引用归档、取回与空间保护","status":"planned","mandatory_windows":true,"acceptance":"写清单后处置、取消/失败保留、星标搜索、可靠取回","evidence":[]},
-    {"id":"archive_browser","title":"压缩包浏览、密码与选择解压","status":"planned","mandatory_windows":true,"acceptance":"只读浏览、密码处理、选择解压、分卷边界与安全路径","evidence":[]},
-    {"id":"local_folder_mount","title":"本地文件夹只读映射","status":"planned","mandatory_windows":true,"acceptance":"统一浏览/媒体/字幕，取消映射不改本地文件；独立于WinFsp","evidence":[]},
-    {"id":"workspace_navigation","title":"多标签、历史、快速访问与视图","status":"planned","mandatory_windows":true,"acceptance":"键鼠导航、路径补全、焦点与选择状态保持","evidence":[]},
-    {"id":"preferences_i18n","title":"语言、主题、辅助功能、偏好同步","status":"planned","mandatory_windows":true,"acceptance":"简繁中/英/日/韩、缩放/键盘、排序/播放偏好和账户隔离","evidence":[]},
-    {"id":"desktop_distribution","title":"更新、托盘、便携版与依赖流程","status":"partial","mandatory_windows":true,"acceptance":"可验证发布/更新、明确外部媒体组件流程、完整资源和许可清单","evidence":["docs/CLI_TEST_REPORT.md"]},
-    {"id":"safe_file_sync","title":"NekoPak单向/双向安全同步","status":"planned","mandatory_windows":false,"acceptance":"自有要求：预览、冲突、基线、禁止故障推导删除","evidence":[]},
-    {"id":"cloud_files_winfsp","title":"NekoPak Cloud Files与真实盘符","status":"planned","mandatory_windows":false,"acceptance":"自有要求：分别测试占位文件与只读WinFsp随机读取","evidence":[]},
-    {"id":"other_platforms","title":"Android/Windows ARM64/macOS/Linux","status":"planned","mandatory_windows":false,"acceptance":"各平台单独矩阵，未测试不宣称支持，不从长期范围删除","evidence":[]}
-  ]
+    {
+      "id": "auth_accounts",
+      "title": "授权、登录退出、多账号隔离",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "原生登录、系统凭据库、过期恢复、多账号隔离的真实服务验收；离线协议测试不算完整登录",
+      "evidence": [
+        "docs/API_MIGRATION_REPORT.md",
+        "docs/DRIVE_FILES_FIX_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "file_browser_index",
+      "title": "目录树、分页、搜索、排序与路径定位",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "真实 10K 文件、全分页、持久索引与全盘模糊搜索",
+      "evidence": [
+        "docs/API_MIGRATION_REPORT.md",
+        "docs/DRIVE_FILES_FIX_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "file_mutations",
+      "title": "目录、移动复制、重命名、星标、回收站恢复",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "逐项真实操作、冲突/权限处理、危险操作确认",
+      "evidence": [
+        "docs/DRIVE_FILES_FIX_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "batch_rename_undo",
+      "title": "批量重命名、规则预览、冲突和撤销",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "命名/序号/正则预览，保留原名并可核对撤销结果",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "duplicates",
+      "title": "跨目录内容重复检查",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "基于内容身份和大小，不能把同名当重复；先预览后操作",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "download_full",
+      "title": "整文件、文件夹和批量可靠下载",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "真实字节、Range校验、暂停继续取消、断电恢复、冲突路径保护",
+      "evidence": [
+        "docs/DRIVE_FILES_FIX_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "transfer_queue",
+      "title": "持久任务、限速、重试和事件",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "真实传输可恢复、限速运行时生效，Mock状态机不算完成",
+      "evidence": [
+        "docs/TEST_REPORT.md",
+        "docs/DRIVE_FILES_FIX_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "upload",
+      "title": "文件/目录分片上传与恢复",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "完成状态和处理中状态区分、分片恢复、内容校验",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "cloud_tasks",
+      "title": "磁力/种子/URL解析与云下载",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "预览选择、创建/进度/取消重试，防重复副作用",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "quota",
+      "title": "容量与分维度传输配额",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "账户和Connected Apps配额分开，缺数据不伪造",
+      "evidence": [
+        "docs/DRIVE_FILES_FIX_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "media_representations",
+      "title": "原画/转码画质选择与转封装",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "表示身份/缓存隔离，不能静默换画质；转码TS输出可播放MP4",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "segment_local",
+      "title": "本地指定时间片段导出",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "MP4/MKV/TS、关键帧、音轨/语言/字幕提示、取消与安全提交",
+      "evidence": [
+        "docs/MEDIA_SEGMENTS.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "segment_remote",
+      "title": "云端指定片段下载",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "授权随机读取+版本化共享缓存+媒体定位，验证非默认完整下载",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "segment_ts",
+      "title": "TS/HEVC时间戳与前关键帧定位",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "5.0–8.5秒样本回到前关键帧、无花屏、音视频同步、hvc1兼容",
+      "evidence": [
+        "docs/MEDIA_SEGMENTS.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "segment_tasks",
+      "title": "片段进度、取消、暂停和重启恢复",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "持久计划/表示/范围，缓存恢复与重新转封装明确，旧目标不破坏",
+      "evidence": [
+        "docs/MEDIA_SEGMENTS.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "player_subtitles",
+      "title": "播放、seek、轨道、字幕、外部播放器",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "质量切换、外挂字幕、轨道语言、断链恢复、冷文件提示",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "gallery_feed",
+      "title": "图库瀑布流、视频信息流",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "图片查看/视频片段、切换、自动顺延/连播、位置恢复",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "share_preview",
+      "title": "分享解析、先看后存、选择转存/下载",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "大型子目录完整分页，未转存媒体/压缩包预览，关闭面板任务继续",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "archive_references",
+      "title": "引用归档、取回与空间保护",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "写清单后处置、取消/失败保留、星标搜索、可靠取回",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "archive_browser",
+      "title": "压缩包浏览、密码与选择解压",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "只读浏览、密码处理、选择解压、分卷边界与安全路径",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "local_folder_mount",
+      "title": "本地文件夹只读映射",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "统一浏览/媒体/字幕，取消映射不改本地文件；独立于WinFsp",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "workspace_navigation",
+      "title": "多标签、历史、快速访问与视图",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "键鼠导航、路径补全、焦点与选择状态保持",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "preferences_i18n",
+      "title": "语言、主题、辅助功能、偏好同步",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "简繁中/英/日/韩、缩放/键盘、排序/播放偏好和账户隔离",
+      "evidence": [
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "desktop_distribution",
+      "title": "更新、托盘、便携版与依赖流程",
+      "status": "partial",
+      "mandatory_windows": true,
+      "acceptance": "可验证发布/更新、明确外部媒体组件流程、完整资源和许可清单",
+      "evidence": [
+        "docs/API_MIGRATION_REPORT.md",
+        "docs/DESKTOP_UX_FIX_REPORT.md",
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "safe_file_sync",
+      "title": "NekoPak单向/双向安全同步",
+      "status": "partial",
+      "mandatory_windows": false,
+      "acceptance": "自有要求：预览、冲突、基线、禁止故障推导删除",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "cloud_files_winfsp",
+      "title": "NekoPak Cloud Files与真实盘符",
+      "status": "partial",
+      "mandatory_windows": false,
+      "acceptance": "自有要求：分别测试占位文件与只读WinFsp随机读取",
+      "evidence": [
+        "docs/DESKTOP_INTEGRATION_REPORT.md"
+      ]
+    },
+    {
+      "id": "other_platforms",
+      "title": "Android/Windows ARM64/macOS/Linux",
+      "status": "planned",
+      "mandatory_windows": false,
+      "acceptance": "各平台单独矩阵，未测试不宣称支持，不从长期范围删除",
+      "evidence": []
+    }
+  ],
+  "implementation_update": {
+    "date": "2026-11-08",
+    "direction": "official CLI removed; rust_compat direct API + native sign-in",
+    "scope": "Integrated Rust native cloud/share/upload/media/sync/local and Windows mounts, five-language UI. Broad offline and isolated native verification, full service/upstream/platform acceptance still separate. Android explicitly follows desktop stabilization."
+  }
 }

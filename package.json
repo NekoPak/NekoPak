@@ -13,7 +13,8 @@
     "e2e": "node tests/e2e/run.mjs",
     "size": "node scripts/ui-size-report.mjs",
     "tauri": "tauri",
-    "gen:icons": "node scripts/gen-icons.mjs"
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "gen:app-icons": "tauri icon public/brand/app-icon.svg --output src-tauri/icons"
   },
   "dependencies": {
     "@tauri-apps/api": "2.9.0",

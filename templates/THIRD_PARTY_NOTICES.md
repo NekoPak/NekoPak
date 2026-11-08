@@ -16,7 +16,7 @@ NekoPak is an independently developed community project and is not affiliated wi
 | WinFsp | https://github.com/winfsp/winfsp | GPLv3 + special FLOSS exception | EXTERNAL_TOOL_OPTIONAL | TODO |
 | Tauri | https://github.com/tauri-apps/tauri | Check component licenses | RUNTIME_DEPENDENCY | TODO |
 | Windows Cloud Files API | https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfregistersyncroot | Microsoft platform API | PLATFORM_API | N/A |
-| PikPak official CLI | https://mypikpak.com/en-US/cli | Not established as a redistributable OSS CLI | EXTERNAL_TOOL_OPTIONAL | TODO |
+| PikPak official CLI | https://mypikpak.com/en-US/cli | Not established as a redistributable OSS CLI | HISTORICAL_RESEARCH_REMOVED | TODO |
 
 ## Attribution details / 溯源记录
 

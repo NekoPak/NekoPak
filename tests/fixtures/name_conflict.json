@@ -1,15 +1,29 @@
 {
   "app_status": {
-    "contract_version": "0.1",
+    "contract_version": "0.2",
     "features": {
+      "accounts": false,
+      "auth_logout": false,
+      "auth_sign_in": false,
+      "autostart": true,
       "experimental_network": false,
+      "local_clip": true,
+      "local_media_probe": true,
+      "local_sources": true,
+      "media_session": true,
       "mock": true,
-      "mount": false,
+      "mount": true,
       "real_providers": false,
       "real_transfers": false,
+      "reference_archive": false,
       "segment_download": false,
+      "settings": false,
+      "share_preview": false,
       "sync": false,
-      "telemetry": false
+      "sync_bidirectional": false,
+      "telemetry": false,
+      "ui_prefs": true,
+      "upload_directory": false
     },
     "mode": "mock",
     "storage": {

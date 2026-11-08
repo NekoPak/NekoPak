@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-08",
+  "scope": "Windows integrated desktop; synthetic account fixtures, isolated filesystem and OS tests; live account belongs to user",
+  "tests": [
+    {
+      "command": "cargo test --workspace --locked --offline",
+      "result": "passed",
+      "details": "See full-client-rust-tests.json; ignored checks separately identified"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
+      "result": "passed"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "result": "passed"
+    },
+    {
+      "command": "cargo test -p nekopak-media --test native_integration --locked --offline -- --include-ignored",
+      "result": "8/8 passed, actual codec decode/frame hashes and sparse range budget"
+    },
+    {
+      "command": "cargo test -p nekopak-core --test media_tasks --locked --offline -- --ignored",
+      "result": "1/1 passed, persisted pause/restart/resume/decode"
+    },
+    {
+      "command": "cargo test -p nekopak-mount --locked --offline native_register_populate_hydrate_reconnect -- --ignored --nocapture",
+      "result": "real Windows Cloud Files test passed; isolated root cleanup asserted"
+    },
+    {
+      "command": "npm test",
+      "result": "114 Vitest + 6 wire passed"
+    },
+    {
+      "command": "npm run build",
+      "result": "TypeScript/Vite passed"
+    },
+    {
+      "command": "E2E_BROWSER_CHANNEL=msedge npm run e2e",
+      "result": "57/57, 0 external requests; 49 Mock + 8 explicit IPC fixtures"
+    },
+    {
+      "command": "node tests/e2e/native-functional.mjs",
+      "result": "3 extended native flows passed; byte-exact download, cloud/share/archive/media decode/stream/local mapping/settings/domain-block switch"
+    },
+    {
+      "command": "node tests/e2e/native-startup.mjs",
+      "result": "4/4 passed"
+    },
+    {
+      "command": "cargo run -p nekopak-core --example export_fixtures --locked --offline",
+      "result": "10 fixture scenarios exported"
+    },
+    {
+      "command": "cargo run -p nekopak-provider-native --example export_fixture --locked --offline",
+      "result": "native offline fixtures exported"
+    },
+    {
+      "command": "python -m unittest discover -s tests -p test_parity.py",
+      "result": "4/4 passed"
+    },
+    {
+      "command": "python -m unittest discover -s tests -p test_release_signing.py",
+      "result": "sign, verify and tampering rejection passed"
+    }
+  ],
+  "limitations": [
+    "No user passwords/tokens or live account service tests",
+    "WinFsp installed runtime missing: true drive mount not exercised",
+    "Non-Windows/Android device builds deferred per user desktop-first instruction",
+    "Full upstream parity gate not passed; format/service/platform boundaries remain recorded"
+  ],
+  "release_signing": {
+    "algorithm": "Ed25519 signed JSON artifact manifest",
+    "public_key_file": "release/release-signing.pub",
+    "github_repository": "NekoPak/NikoPak",
+    "secret_name": "NEKOPAK_RELEASE_PRIVATE_KEY",
+    "secret_configured": true,
+    "private_key_in_repository": false,
+    "authenticode": false
+  },
+  "release_build": "running",
+  "upstream_stable_review": {
+    "project": "NihilDigit/piko",
+    "tag": "v1.4.0",
+    "published_at": "2026-10-31T15:48:52Z",
+    "checked_on": "2026-11-08",
+    "source": "https://api.github.com/repos/NihilDigit/piko/releases/latest",
+    "note": "latest stable unchanged; earlier fixed behavior reference still baseline, not a parity completion declaration"
+  }
+}

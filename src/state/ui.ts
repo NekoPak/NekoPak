@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 import type { ClientError } from "../lib/contract";
 import { Store } from "../lib/store";
+import { onSessionReset } from "./session";
 
 export interface Toast {
   id: number;
@@ -14,6 +15,7 @@ export const toasts = new Store<{ items: Toast[] }>({ items: [] });
 let toastSeq = 0;
 
 export function toast(text: string, tone: Toast["tone"] = "info", extra: Partial<Toast> = {}): void {
+  if (toasts.get().items.some(item => item.text === text && item.tone === tone)) return;
   const id = ++toastSeq;
   toasts.set((s) => ({ items: [...s.items.slice(-3), { id, tone, text, ...extra }] }));
   const ttl = tone === "error" ? 9000 : 4200;
@@ -101,3 +103,9 @@ export function closeMenu(): void {
 
 /** Global "search box" focus request (Ctrl+F). */
 export const focusRequests = new Store<{ search: number }>({ search: 0 });
+
+onSessionReset(() => {
+  for (const dialog of [...dialogs.get().stack]) closeDialog(dialog.id);
+  menu.set({ open: false, items: [], returnFocus: null, label: undefined });
+  toasts.set({ items: [] });
+});

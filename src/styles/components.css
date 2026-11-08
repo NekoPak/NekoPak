@@ -239,34 +239,38 @@
   }
 }
 
-/* M3 linear progress: fill | 4px gap | track with a stop dot */
+/* Fill is the completed portion; the uncompleted track has no misleading end dot. */
 .lp {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 4px;
+  gap: 2px;
+  height: 6px;
   min-width: 48px;
+  overflow: hidden;
+  border-radius: 3px;
 }
 
 .lp-fill {
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: var(--primary);
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   transition: width 260ms linear;
 }
 
 .lp-track {
   position: relative;
-  height: 4px;
+  height: 6px;
+  min-width: 0;
   flex: 1;
   border-radius: 2px;
   background: var(--secondary-container);
 }
 
 .lp-track::after {
-  content: "";
+  content: none;
   position: absolute;
   right: 0;
   top: 0;
@@ -275,6 +279,8 @@
   border-radius: 50%;
   background: var(--primary);
 }
+
+.lp-fill[data-started="true"] { min-width: 3px; }
 
 .lp-ok .lp-fill,
 .lp-ok .lp-track::after {
@@ -679,6 +685,7 @@ textarea.input {
   background: var(--secondary-container);
   flex-wrap: wrap;
   flex: none;
+  border-radius: var(--r-md);
 }
 
 .inline-note.warn {

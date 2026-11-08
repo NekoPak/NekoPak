@@ -13,4 +13,10 @@
 *.sqlite3.lock
 *.log
 __pycache__/
+*.keystore
+*.jks
+*.p12
+*.pfx
+*-signing.key
+/.secrets/
 

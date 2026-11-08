@@ -33,7 +33,7 @@ def main():
         raise SystemExit('Source files are newer than the executable; rebuild before packaging.')
     output = ROOT / 'dist'
     output.mkdir(exist_ok=True)
-    archive = output / 'NekoPak-0.1.0-windows-x64-ui-preview.zip'
+    archive = output / 'NekoPak-0.1.0-windows-x64-integration.zip'
     license_entries = []
     supplemental_sources = json.loads((ROOT / 'licenses/sources.json').read_text(encoding='utf-8'))
     # Actual bundled UI runtime + generated glyph/color assets. Test/build-only packages are not shipped.
@@ -48,7 +48,7 @@ def main():
         ui_licenses.append({'name': name, 'version': package['version'], 'license': package.get('license'), 'files': [p.name for p in texts]})
     # Published crate archives may normalize mtimes to 1970; ZIP starts at 1980.
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=False) as bundle:
-        for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md', ROOT / 'docs' / 'CLI_ADAPTER.md', ROOT / 'docs' / 'UI_INTEGRATION.md']:
+        for path in [executable, ROOT / 'LICENSE', ROOT / 'THIRD_PARTY_NOTICES.md', ROOT / 'docs' / 'RUNNING.md', ROOT / 'docs' / 'DESKTOP_INTEGRATION_REPORT.md', ROOT / 'docs' / 'MOUNT_IMPLEMENTATION.md', ROOT / 'docs' / 'ACCOUNTS_IMPLEMENTATION.md', ROOT / 'docs' / 'REFERENCE_ARCHIVE_IMPLEMENTATION.md', ROOT / 'docs' / 'RELEASE_SIGNING.md']:
             bundle.write(path, path.name)
         for item in ui_licenses:
             for name in item['files']:
@@ -92,6 +92,7 @@ def main():
         'platform': platform.platform(), 'architecture': platform.machine(),
         'rustc': run('rustc', '-V'), 'cargo': run('cargo', '-V'),
         'commit': commit, 'source_sha256': source_hash.hexdigest(),
+        'git_worktree_dirty': bool(run('git', 'status', '--porcelain')),
         'cargo_lock_sha256': hashlib.sha256((ROOT / 'Cargo.lock').read_bytes()).hexdigest(),
         'npm_lock_sha256': hashlib.sha256((ROOT / 'package-lock.json').read_bytes()).hexdigest(),
         'frontend_license_inventory': ui_licenses,
@@ -103,7 +104,7 @@ def main():
         'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
         'external_requirements': ['Windows x64', 'Microsoft Edge WebView2 Evergreen runtime (not bundled)'],
         'not_bundled': ['PikPak CLI', 'Rclone', 'WinFsp', 'Chromium', 'JVM', 'FFmpeg', 'mpv'],
-        'scope': 'Integrated supplied UI v2, independent Tasks sidebar, Rust Mock by default and configured CLI read-only preview. No real transfers or bundled official CLI.',
+        'scope': 'Desktop integration: native accounts/files/upload/cloud/share/archive/MP4-MKV-TS clips and remux/sync/local media/CloudFiles plus optional WinFsp and five-language desktop UX. Tests use synthetic accounts and isolated OS fixtures. Live account, full upstream parity and other-platform acceptance remain separately tracked. No CLI or bundled media runtime/driver.',
         'runtime_measurement': 'Not measured by this script; no memory/startup claim.',
         'license_inventory_scope': 'Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.',
         'license_text_unresolved': unresolved,

@@ -11,6 +11,8 @@ tokio.workspace = true
 sha2.workspace = true
 time.workspace = true
 tempfile.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
 nekopak-provider.workspace = true
+serde_json.workspace = true

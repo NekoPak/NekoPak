@@ -1,43 +1,50 @@
+import { LANGUAGES, tr, tx } from "../lib/i18n";
+import type { Language } from "../lib/i18n";
 import { useEffect, useState } from "preact/hooks";
-import type { Operation } from "../lib/contract";
 import { CONTRACT_VERSION } from "../lib/contract";
-import type { QuotaItem, Settings } from "../lib/contract-proposals";
+import type { QualityCap, QuotaItem, Settings } from "../lib/contract-proposals";
 import { PROPOSED_COMMANDS } from "../lib/contract-proposals";
-import { errorOf } from "../lib/api";
+import { api, errorOf } from "../lib/api";
 import { formatBytes, formatDateTime, parseU64, percent } from "../lib/format";
 import { useStore } from "../lib/store";
-import { app, applyTheme, backendLabel, refreshCaps, refreshQuota, updateSettings } from "../state/app";
+import { app, applyTheme, refreshQuota, updateSettings } from "../state/app";
 import { navigate, type SettingsSection } from "../state/route";
 import { toast } from "../state/ui";
 import { Icon } from "../components/Icon";
-import { Badge, Btn, ErrorPanel, Field, Progress, Segmented, Spinner, Switch, openOfficial } from "../components/ui";
-import { confirmDialog, SHORTCUTS } from "../components/dialogs";
-import { AuthPanel, BACKEND_BLURB } from "./Auth";
-import { openMockPanel } from "./DevPanel";
+import { Badge, Btn, ErrorPanel, Field, Progress, Segmented, Spinner, Switch } from "../components/ui";
+import { SHORTCUTS } from "../components/dialogs";
+import { AuthPanel, SavedAccounts } from "./Auth";
+import { CAP_LABEL } from "./download";
+import { openMockPanel } from "./lazy";
 import { useDensity } from "./Files";
 import { AboutContent } from "./About";
 import { PageFrame, PageTitle } from "../components/Frame";
 import { prefs, setPref } from "../state/prefs";
+import { transfers } from "../state/transfers";
 import { ACCENTS } from "../styles/accents.generated";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: string }[] = [
-  { id: "account", label: "账号", icon: "user" },
-  { id: "general", label: "外观", icon: "palette" },
-  { id: "transfers", label: "下载与传输", icon: "download" },
-  { id: "network", label: "网络", icon: "network" },
-  { id: "backends", label: "连接", icon: "backend" },
-  { id: "quota", label: "配额", icon: "quota" },
-  { id: "shortcuts", label: "快捷键", icon: "keyboard" },
-  { id: "developer", label: "开发者", icon: "flask" },
-  { id: "about", label: "关于", icon: "info" },
+  { id: "account", get label() { return tr("账号"); }, icon: "user" },
+  { id: "general", get label() { return tr("外观"); }, icon: "palette" },
+  { id: "transfers", get label() { return tr("下载与传输"); }, icon: "download" },
+  { id: "network", get label() { return tr("网络"); }, icon: "network" },
+  { id: "quota", get label() { return tr("配额"); }, icon: "quota" },
+  { id: "shortcuts", get label() { return tr("快捷键"); }, icon: "keyboard" },
+  { id: "developer", get label() { return tr("开发者"); }, icon: "flask" },
+  { id: "about", get label() { return tr("关于"); }, icon: "info" },
 ];
+
+/** The developer section is for wiring the Rust core; hidden in release builds with a real core. */
+function showDev(): boolean {
+  return import.meta.env.DEV || app.get().runtime === "mock";
+}
 
 export function SettingsPage({ section }: { section: SettingsSection }) {
   return (
-    <PageFrame label="设置" class="settings-page" caption={<PageTitle>设置</PageTitle>}>
+    <PageFrame label={tr("设置")} class="settings-page" caption={<PageTitle>{tr("设置")}</PageTitle>}>
       <div class="settings-layout">
-        <nav class="settings-nav" aria-label="设置分类">
-          {SECTIONS.map((x) => (
+        <nav class="settings-nav" aria-label={tr("设置分类")}>
+          {SECTIONS.filter((x) => x.id !== "developer" || showDev()).map((x) => (
             <a href={`#/settings/${x.id}`} class={`settings-link${section === x.id ? " on" : ""}`} aria-current={section === x.id ? "page" : undefined}
               onClick={(e) => { e.preventDefault(); navigate({ page: "settings", section: x.id }); }}>
               <Icon name={x.icon} filled={section === x.id} />
@@ -47,8 +54,7 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
         </nav>
         <div class="settings-body">
           {section === "general" ? <General />
-            : section === "account" ? <Section title="账号与授权"><div class="set-card"><AuthPanel /></div></Section>
-              : section === "backends" ? <Backends />
+            : section === "account" || section === "backends" ? <Section title={tr("账号")}><div class="set-card"><AuthPanel /></div><SavedAccounts/></Section>
                 : section === "quota" ? <Quota />
                   : section === "transfers" ? <TransfersSettings />
                     : section === "network" ? <Network />
@@ -88,105 +94,99 @@ function General() {
   const settings = useStore(app, (s) => s.settings);
   const accent = useStore(prefs, (p) => p.accent);
   const reduce = useStore(prefs, (p) => p.reduceMotion);
+  const foldersFirst = useStore(prefs, (p) => p.foldersFirst);
+  const gridSize = useStore(prefs, (p) => p.gridSize);
+  const clipWatch = useStore(prefs, (p) => p.clipboardWatch);
   const [, density, setDensity] = useDensity();
   const theme = settings?.theme ?? "system";
   return (
-    <Section title="外观">
-      <Row icon="dark" label="主题" hint="跟随系统时随 Windows 的浅色/深色模式切换。">
-        <Segmented<Settings["theme"]> label="主题" value={theme}
+    <Section title={tr("外观")}>
+      <Row icon="dark" label={tr("主题")}>
+        <Segmented<Settings["theme"]> label={tr("主题")} value={theme}
           onChange={(t) => {
             applyTheme(t);
             updateSettings({ theme: t }).catch((e) => toast(errorOf(e).message, "error"));
           }}
           options={[
-            { value: "system", label: "跟随系统", icon: "monitor" },
-            { value: "light", label: "浅色", icon: "sun" },
-            { value: "dark", label: "深色", icon: "moon" },
+            { value: "system", label: tr("跟随系统"), icon: "monitor" },
+            { value: "light", label: tr("浅色"), icon: "sun" },
+            { value: "dark", label: tr("深色"), icon: "moon" },
           ]} />
       </Row>
-      <Row icon="palette" label="强调色" hint="整套配色由所选颜色按 Material 3 规则生成。" below>
-        <div class="swatches" role="radiogroup" aria-label="强调色">
+      <Row icon="palette" label={tr("强调色")} below>
+        <div class="swatches" role="radiogroup" aria-label={tr("强调色")}>
           {ACCENTS.map((a) => (
             <button type="button" role="radio" aria-checked={accent === a.id ? "true" : "false"} class={`swatch${accent === a.id ? " on" : ""}`}
-              style={{ "--sw": a.seed } as preact.JSX.CSSProperties} title={a.label} onClick={() => setPref("accent", a.id)}>
+              style={{ "--sw": a.seed } as preact.JSX.CSSProperties} title={tr(a.label)} onClick={() => setPref("accent", a.id)}>
               <span class="swatch-dot">{accent === a.id ? <Icon name="check" size={18} /> : null}</span>
-              <span class="swatch-label">{a.label}</span>
+              <span class="swatch-label">{tr(a.label)}</span>
             </button>
           ))}
         </div>
       </Row>
-      <Row icon="rows" label="列表行距" hint="紧凑行距一屏能显示更多文件。">
-        <Segmented label="列表行距" value={density} onChange={setDensity}
-          options={[{ value: "comfortable", label: "舒适" }, { value: "compact", label: "紧凑" }]} />
+      <Row icon="rows" label={tr("列表行距")}>
+        <Segmented label={tr("列表行距")} value={density} onChange={setDensity}
+          options={[{ value: "comfortable", label: tr("舒适") }, { value: "compact", label: tr("紧凑") }]} />
       </Row>
-      <Row icon="motion" label="减少动画" hint="与系统的“动画效果”设置同时生效，开启后切换与展开直接跳到结果。">
-        <Switch label="减少动画" checked={reduce} onChange={(v) => setPref("reduceMotion", v)} />
+      <Row icon="folder" label={tr("文件夹排在前面")}>
+        <Switch label={tr("文件夹始终排在前面")} checked={foldersFirst} onChange={(v) => setPref("foldersFirst", v)} />
       </Row>
-      <Row icon="label" label="界面语言" hint="其他语言在后续版本提供。">
-        <select class="select" aria-label="界面语言" value="zh-CN" disabled title="其他语言在后续版本提供">
-          <option value="zh-CN">简体中文</option>
+      <Row icon="grid" label={tr("网格卡片大小")} hint={tr("在文件列表里按住 Ctrl 滚动滚轮也能切换。")}>
+        <Segmented label={tr("网格卡片大小")} value={gridSize} onChange={(v) => setPref("gridSize", v)}
+          options={[{ value: "s", label: tr("小") }, { value: "m", label: tr("中") }, { value: "l", label: tr("大") }]} />
+      </Row>
+      <Row icon="link" label={tr("检测剪贴板中的链接")} hint={tr("切回 NekoPak 时，如果剪贴板里有磁力或 http(s) 链接，询问是否添加。")}>
+        <Switch label={tr("检测剪贴板中的链接")} checked={clipWatch} onChange={(v) => setPref("clipboardWatch", v)} />
+      </Row>
+      <Row icon="motion" label={tr("减少动画")}>
+        <Switch label={tr("减少动画")} checked={reduce} onChange={(v) => setPref("reduceMotion", v)} />
+      </Row>
+      <Row icon="label" label={tr("界面语言")}>
+        <select class="select" aria-label={tr("界面语言")} value={settings?.language??"system"} onChange={e=>void updateSettings({language:(e.target as HTMLSelectElement).value as Language}).catch(e=>toast(errorOf(e).message,"error"))}>
+          {LANGUAGES.map(item => <option value={item.value}>{item.value === "system" ? tr(item.label) : item.label}</option>)}
         </select>
       </Row>
-      <Row icon="shield" label="使用数据" hint="NekoPak 不收集遥测数据。错误报告只会在你主动复制或导出时生成，并已脱敏。">
-        <Badge tone="ok" icon="checkCircle">遥测已关闭</Badge>
+      <Row icon="monitor" label={tr("开机自动启动")}>
+        <AutostartSetting/>
+      </Row>
+      <Row icon="minimize" label={tr("关闭窗口时最小化到托盘")}>
+        <Switch label={tr("关闭窗口时最小化到托盘")} checked={settings?.close_to_tray??false} onChange={v=>void updateSettings({close_to_tray:v}).catch(e=>toast(errorOf(e).message,"error"))} />
       </Row>
     </Section>
   );
 }
 
-const OPS: { op: Operation; label: string }[] = [
-  { op: "list", label: "列目录" }, { op: "search", label: "搜索" }, { op: "mkdir", label: "新建" },
-  { op: "rename", label: "重命名" }, { op: "move", label: "移动" }, { op: "copy", label: "复制" },
-  { op: "trash", label: "回收站" }, { op: "download", label: "下载" }, { op: "upload", label: "上传" },
-  { op: "cloud_task", label: "云下载" }, { op: "quota", label: "配额" }, { op: "stream_url", label: "播放链接" },
-  { op: "read_range", label: "随机读取" }, { op: "segment_download", label: "指定视频片段" },
-];
-
-function Backends() {
-  const s = useStore(app, (x) => x);
-  const real = s.caps.filter(c => c.backend !== "mock");
-  const stateLabel = (c: typeof real[number]) => c.status === "not_installed" ? "未配置" : c.status === "needs_login" ? "待授权" : c.status === "ready" ? "只读已连接" : "尚未启用";
-  return (
-    <Section title="PikPak 连接" desc="官方 CLI 是 NekoPak 要支持的连接方式。完整云盘功能仍按上游清单实现，也可以由经验证的社区接口提供。">
-      <div class="row-gap pad-bottom">
-        <Btn icon="refresh" label="刷新连接状态" busy={s.capsLoading} onClick={() => void refreshCaps()} />
-      </div>
-      {s.capsError ? <ErrorPanel error={s.capsError} onRetry={() => void refreshCaps()} /> : null}
-      {s.app?.mode === "mock" || s.runtime === "mock" ? <p class="inline-note">当前尚未连接 PikPak，文件和任务是离线演示数据。测试能力详情仅在“开发者”页显示。</p> : null}
-      <div class="backend-list">
-        {real.map((c) => (
-          <article class="backend-card" aria-labelledby={`be-${c.backend}`}>
-            <header>
-              <h3 id={`be-${c.backend}`}>{backendLabel(c.backend)}</h3>
-              <Badge tone={c.status === "ready" ? "ok" : "neutral"}>{stateLabel(c)}</Badge>
-              {c.version ? <span class="muted">版本 {c.version}</span> : null}
-            </header>
-            <p class="muted">{BACKEND_BLURB[c.backend]}</p>
-            {c.status === "not_installed" ? <p>应用尚未配置可执行文件与授权资料目录，暂未检测安装状态。接入后会显示实际授权与可用功能。</p>
-              : c.status === "needs_login" ? <p>已识别连接程序，等待你完成官方授权。当前没有登录账号。</p>
-                : c.status === "unavailable" ? <p>这条连接方式尚未启用。不能从此状态判断服务支持哪些功能。</p>
-                  : <p>当前接入仅完成文件浏览和元数据读取。真实下载、上传、视频片段等功能仍待完成。</p>}
-            {c.status === "ready" ? (
-              <ul class="op-chips" aria-label="能力">
-                {OPS.filter(o => c.operations[o.op]).map((o) => {
-                  const v = c.operations[o.op];
-                  return <li class="yes"><Icon name="check" size={12} />{o.label}<span class="sr-only">{v ? "当前可用" : "未启用"}</span></li>;
-                })}
-              </ul>
-            ) : null}
-          </article>
-        ))}
-      </div>
-      <p class="muted">所有连接方式遵守同一账号的实际权限和配额。</p>
-    </Section>
-  );
+function AutostartSetting() {
+  const enabled = useStore(app, s => s.runtime === "tauri" && !!s.app?.feature_flags.autostart);
+  const [status, setStatus] = useState<{ enabled: boolean; available: boolean }>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<ReturnType<typeof errorOf>>();
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true; setError(undefined);
+    void api.autostartGet().then(value => { if (alive) setStatus(value); }, e => { if (alive) setError(errorOf(e)); });
+    return () => { alive = false; };
+  }, [enabled, revision]);
+  const set = async (value: boolean) => {
+    if (busy || !status?.available) return;
+    setBusy(true); setError(undefined);
+    try { setStatus(await api.autostartSet(value)); }
+    catch (e) { setError(errorOf(e)); }
+    finally { setBusy(false); }
+  };
+  return <div class="autostart-setting"><Switch label={tr("开机自动启动")} checked={status?.enabled ?? false} disabled={!enabled || !status?.available || busy} reason={busy ? tr("正在保存") : !enabled ? tr("当前平台尚未支持自动启动") : !status ? tr("正在读取自动启动设置") : tr("当前用户自动启动不可用")} onChange={value => void set(value)}/>
+    <p class="set-hint">{tr("仅为当前 Windows 用户设置登录后启动 NekoPak。")}</p>
+    {error ? <ErrorPanel error={error} compact onRetry={() => setRevision(value => value + 1)}/> : null}
+  </div>;
 }
 
 const DIM_LABEL: Record<QuotaItem["dimension"], string> = {
-  downstream_daily: "每日下行",
-  downstream_monthly: "每月下行",
-  upload_monthly: "每月上传",
-  cloud_download_monthly: "每月云下载",
+  get storage() { return tr("存储容量"); },
+  get downstream_daily() { return tr("每日下行"); },
+  get downstream_monthly() { return tr("每月下行"); },
+  get upload_monthly() { return tr("每月上传"); },
+  get cloud_download_monthly() { return tr("每月云下载"); },
 };
 
 function QuotaRow({ q }: { q: QuotaItem }) {
@@ -195,26 +195,24 @@ function QuotaRow({ q }: { q: QuotaItem }) {
     const l = parseU64(q.limit ?? null);
     return u !== null && l !== null && l > 0n ? Number((u * 1000n) / l) / 10 : null;
   })();
-  const fmt = (v?: string) => (v === undefined ? "?" : q.unit === "bytes" ? formatBytes(v) : `${v} 次`);
+  const fmt = (v?: string) => (v === undefined ? "?" : q.unit === "bytes" ? formatBytes(v) : tx("{0} 次", v));
   return (
     <li class={`quota-row q-${q.state}`}>
       <div class="quota-top">
         <strong>{DIM_LABEL[q.dimension]}</strong>
-        <span class="muted">{q.scope === "connected_apps" ? "Connected Apps" : "账号"}</span>
-        {q.state === "exhausted" ? <Badge tone="error" icon="alert">已用尽</Badge>
-          : q.state === "near_limit" ? <Badge tone="warn" icon="alert">接近上限</Badge>
-            : q.exactness === "estimated" ? <Badge tone="warn">估计值</Badge>
-              : q.exactness === "unavailable" ? <Badge>不可获取</Badge> : <Badge tone="ok">正常</Badge>}
+        {q.state === "exhausted" ? <Badge tone="error" icon="alert">{tr("已用尽")}</Badge>
+          : q.state === "near_limit" ? <Badge tone="warn" icon="alert">{tr("接近上限")}</Badge>
+            : q.exactness === "estimated" ? <Badge tone="warn">{tr("估计值")}</Badge>
+              : q.exactness === "unavailable" ? <Badge>{tr("不可获取")}</Badge> : <Badge tone="ok">{tr("正常")}</Badge>}
       </div>
       {q.exactness === "unavailable" ? (
-        <p class="muted">{q.note ?? "后端未提供"}</p>
+        <p class="muted">{q.note ?? tr("暂时无法获取")}</p>
       ) : (
         <>
-          {q.limit ? <Progress value={pct} tone={q.state === "exhausted" ? "error" : q.state === "near_limit" ? "warn" : undefined} label={`${DIM_LABEL[q.dimension]} 已用`} /> : null}
-          <p class="tabular">
-            已用 {fmt(q.used)}{q.limit ? ` / ${fmt(q.limit)}` : "（上限未提供）"}{q.remaining ? `，剩余 ${fmt(q.remaining)}` : ""}
+          {q.limit ? <Progress value={pct} tone={q.state === "exhausted" ? "error" : q.state === "near_limit" ? "warn" : undefined} label={tx("{0} 已用", DIM_LABEL[q.dimension])} /> : null}
+          <p class="tabular">{tr("已用")} {fmt(q.used)}{q.limit ? ` / ${fmt(q.limit)}` : tr("（上限未提供）")}{q.remaining ? tx("，剩余 {0}", fmt(q.remaining)) : ""}
           </p>
-          {q.resets_at ? <p class="muted">重置时间 {formatDateTime(q.resets_at)}</p> : null}
+          {q.resets_at ? <p class="muted">{tr("重置时间")} {formatDateTime(q.resets_at)}</p> : null}
           {q.note ? <p class="muted">{q.note}</p> : null}
         </>
       )}
@@ -226,27 +224,15 @@ function Quota() {
   const s = useStore(app, (x) => x);
   useEffect(() => void refreshQuota(), []);
   return (
-    <Section title="配额" desc={<>
-      数值来自后端。后端没有提供可靠余额时显示“不可获取”，不会根据本机下载量推算后冒充真实余额。
-      {s.runtime === "mock" ? <strong> 当前为 Mock 数据。</strong> : null}
-    </>}>
+    <Section title={tr("配额")} desc={s.runtime === "mock" ? tr("当前为演示数据。") : undefined}>
       <div class="row-gap pad-bottom">
-        <Btn icon="refresh" label="刷新" busy={s.quotaLoading} onClick={() => void refreshQuota()} />
-        {s.quota ? <span class="muted">查询于 {formatDateTime(s.quota.checked_at)}，{backendLabel(s.quota.backend)}</span> : null}
+        <Btn icon="refresh" label={tr("刷新")} busy={s.quotaLoading} onClick={() => void refreshQuota()} />
+        {s.quota ? <span class="muted">{tr("更新于")} {formatDateTime(s.quota.checked_at)}</span> : null}
       </div>
       {s.quotaError ? <ErrorPanel error={s.quotaError} onRetry={() => void refreshQuota()} />
-        : s.auth?.state !== "signed_in" && s.auth?.state !== "demo" ? <p class="muted">登录后可查询配额。</p>
+        : s.auth?.state !== "signed_in" && s.auth?.state !== "demo" ? <p class="muted">{tr("登录后可查询配额。")}</p>
           : !s.quota ? <Spinner />
             : <ul class="quota-list">{s.quota.items.map((q) => <QuotaRow q={q} />)}</ul>}
-      <div class="explain">
-        <h3>Connected Apps 规则摘要</h3>
-        <ul>
-          <li>官方 CLI、WebDAV、Rclone 等都属于 Connected Apps。云下载、下行、上传三项分别计算，Connected Apps 合计最多使用该项月度额度的 25%。</li>
-          <li>Free 账号的 Connected Apps 每日下行最多 5 GB，新加坡时间 00:00 重置；每日与每月限制中先达到的那个先生效。</li>
-          <li>配额用尽后，文件列表与任务历史仍可查看。NekoPak 不提供“切换后端恢复额度”之类的操作。</li>
-        </ul>
-        <Btn tone="ghost" icon="external" label="查看官方说明" onClick={() => void openOfficial("https://mypikpak.com/en-US/connect-apps-faq")} />
-      </div>
     </Section>
   );
 }
@@ -256,8 +242,45 @@ const GiB = 1024n ** 3n;
 
 function TransfersSettings() {
   const desktop = useStore(app, s => s.runtime === "tauri");
-  if (desktop) return <Section title="下载与传输" desc="后端设置服务尚未实现，当前页面不会保存无效配置。"><div class="inline-note">Rust Mock 仅模拟任务、不写入下载文件；CLI 预览不开放真实下载。并发、缓存、限速和目录设置将在后端实现后启用。</div><Btn label="保存" disabled reason="后端设置服务尚未实现" /></Section>;
+  if (desktop) return <NativeTransfersSettings />;
   return <BrowserTransferSettings />;
+}
+
+function NativeTransfersSettings() {
+  const settings = useStore(app, s => s.settings);
+  const [dir, setDir] = useState(settings?.download_dir ?? "");
+  const [bandwidth, setBandwidth] = useState(String(settings?.bandwidth_limit_kib_s ?? 0));
+  const [busy, setBusy] = useState(false);
+  const [picking,setPicking]=useState(false);
+  const [ask,setAsk]=useState(settings?.ask_download_directory??false);
+  const [quality,setQuality]=useState<QualityCap>(settings?.download?.default_quality??"original");
+  const [player,setPlayer]=useState(settings?.media?.player_path??"");
+  const pick=async()=>{setPicking(true);try{const chosen=await api.downloadDirectoryPick();if(chosen!==null)setDir(chosen);}catch(e){toast(errorOf(e).message,"error");}finally{setPicking(false);}};
+  const save = async () => {
+    setBusy(true);
+    try { await updateSettings({ download_dir: dir, bandwidth_limit_kib_s: Number(bandwidth), ask_download_directory:ask,download:{default_quality:quality},media:{player_path:player} }); toast(tr("下载设置已保存"), "success"); }
+    catch (e) { toast(errorOf(e).message, "error", { error: errorOf(e) }); }
+    finally { setBusy(false); }
+  };
+  return <Section title={tr("下载与传输")}>
+    <form class="form-grid" onSubmit={e => { e.preventDefault(); if (!busy) void save(); }}>
+      <Field label={tr("下载目录")} htmlFor="native-download-dir" hint={tr("点击路径或“选择文件夹”浏览目录。同名文件不会被覆盖。")}>
+        <div class="directory-picker"><input id="native-download-dir" class="input mono" value={dir} readOnly onClick={()=>void pick()} aria-label={tr("下载目录")} />
+        <Btn icon="folderOpen" label={tr("选择文件夹")} busy={picking} onClick={()=>void pick()} /></div>
+      </Field>
+      <Field label={tr("带宽上限（KiB/s）")} htmlFor="native-bandwidth" hint={tr("0 表示不限速，修改后对后续下载块生效。")}>
+        <input id="native-bandwidth" class="input" type="number" min={0} max={1048576} value={bandwidth} onInput={e => setBandwidth((e.target as HTMLInputElement).value)} />
+      </Field>
+      <Row label={tr("下载时询问保存位置")}><Switch label={tr("每次下载选择文件夹")} checked={ask} onChange={setAsk} /></Row>
+      <Field label={tr("默认下载画质")} htmlFor="native-quality"><select id="native-quality" class="select" value={quality} onChange={e=>setQuality((e.target as HTMLSelectElement).value as QualityCap)}>{(["original","2160p","1080p","720p","480p"] as QualityCap[]).map(value=><option value={value}>{CAP_LABEL[value]}</option>)}</select></Field>
+      <Field label={tr("外部播放器")} htmlFor="native-player" hint={tr("选择已安装的播放器。媒体地址由 Rust 交给播放器，不经过命令行脚本。") }>
+        <div class="directory-picker"><input id="native-player" class="input mono" value={player} readOnly/><Btn label={tr("选择播放器")} icon="folderOpen" onClick={()=>void api.playerConfigPick().then(value=>{if(value!==null)setPlayer(value);},e=>toast(errorOf(e).message,"error"))}/></div>
+        {player?<Btn label={tr("清除播放器配置")} size="sm" tone="quiet" onClick={()=>setPlayer("")}/>:null}
+      </Field>
+      <p class="download-help">{tr("下载原始文件，支持暂停、继续及重启后恢复。")}</p>
+      <div class="form-actions"><Btn type="submit" tone="primary" label={tr("保存")} busy={busy} /></div>
+    </form>
+  </Section>;
 }
 
 function BrowserTransferSettings() {
@@ -268,19 +291,22 @@ function BrowserTransferSettings() {
     bw: String(settings.bandwidth_limit_kib_s),
     cache_dir: settings.cache.dir,
     cache_gib: String(Number((parseU64(settings.cache.max_bytes) ?? 0n) / GiB)),
+    quality: settings.download?.default_quality ?? "original",
+    conns: String(settings.download?.connections_per_task ?? 4),
   });
   const [busy, setBusy] = useState(false);
-  if (!settings || !form) return <Section title="传输与缓存"><Spinner /></Section>;
+  if (!settings || !form) return <Section title={tr("下载与传输")}><Spinner /></Section>;
 
   const max = Number(form.max);
   const bw = Number(form.bw);
   const cg = Number(form.cache_gib);
   const errs = {
-    download_dir: ABS.test(form.download_dir) ? undefined : "需要绝对路径",
-    max: Number.isInteger(max) && max >= 1 && max <= 8 ? undefined : "请输入 1–8 之间的整数",
-    bw: Number.isInteger(bw) && bw >= 0 ? undefined : "请输入不小于 0 的整数",
-    cache_dir: ABS.test(form.cache_dir) ? undefined : "需要绝对路径",
-    cache_gib: Number.isInteger(cg) && cg >= 1 && cg <= 4096 ? undefined : "请输入 1–4096 之间的整数",
+    download_dir: ABS.test(form.download_dir) ? undefined : tr("需要绝对路径"),
+    max: Number.isInteger(max) && max >= 1 && max <= 8 ? undefined : tr("请输入 1–8 之间的整数"),
+    bw: Number.isInteger(bw) && bw >= 0 ? undefined : tr("请输入不小于 0 的整数"),
+    cache_dir: ABS.test(form.cache_dir) ? undefined : tr("需要绝对路径"),
+    cache_gib: Number.isInteger(cg) && cg >= 1 && cg <= 4096 ? undefined : tr("请输入 1–4096 之间的整数"),
+    conns: Number.isInteger(Number(form.conns)) && Number(form.conns) >= 1 && Number(form.conns) <= 16 ? undefined : tr("请输入 1–16 之间的整数"),
   };
   const invalid = Object.values(errs).some(Boolean);
 
@@ -292,8 +318,9 @@ function BrowserTransferSettings() {
         max_concurrent_transfers: max,
         bandwidth_limit_kib_s: bw,
         cache: { dir: form.cache_dir, max_bytes: (BigInt(cg) * GiB).toString() },
+        download: { default_quality: form.quality as QualityCap, connections_per_task: Number(form.conns) },
       });
-      toast("传输与缓存设置已保存", "success");
+      toast(tr("下载与传输设置已保存"), "success");
     } catch (e) {
       toast(errorOf(e).message, "error", { error: errorOf(e) });
     } finally {
@@ -302,26 +329,34 @@ function BrowserTransferSettings() {
   };
 
   return (
-    <Section title="传输与缓存">
+    <Section title={tr("下载与传输")}>
       <form class="form-grid" onSubmit={(e) => { e.preventDefault(); if (!invalid) void save(); }}>
-        <Field label="下载目录" htmlFor="dl-dir" error={errs.download_dir} hint="文件名中的 Windows 非法字符由后端安全转义。">
+        <Field label={tr("下载目录")} htmlFor="dl-dir" error={errs.download_dir}>
           <input id="dl-dir" class="input mono" value={form.download_dir} onInput={(e) => setForm({ ...form, download_dir: (e.target as HTMLInputElement).value })} />
         </Field>
-        <Field label="同时传输数" htmlFor="dl-max" error={errs.max} hint="默认保守。遇到限流时后端不会自动加大并发。">
+        <Field label={tr("默认下载画质")} htmlFor="dl-q" hint={tr("下载视频时使用不高于此档的最高画质。右键“下载指定画质…”可临时改变。")}>
+          <select id="dl-q" class="select" value={form.quality} onChange={(e) => setForm({ ...form, quality: (e.target as HTMLSelectElement).value as QualityCap })}>
+            {(["original", "2160p", "1080p", "720p", "480p"] as QualityCap[]).map((c) => <option value={c}>{c === "original" ? tr("原画（原始文件）") : tx("不高于 {0}", CAP_LABEL[c])}</option>)}
+          </select>
+        </Field>
+        <Field label={tr("同时传输数")} htmlFor="dl-max" error={errs.max} hint={tr("同时进行的任务数，1–8。")}>
           <input id="dl-max" class="input narrow" type="number" min={1} max={8} value={form.max} onInput={(e) => setForm({ ...form, max: (e.target as HTMLInputElement).value })} />
         </Field>
-        <Field label="带宽上限（KiB/s）" htmlFor="dl-bw" error={errs.bw} hint="0 表示不限制。作用于 NekoPak 自身的传输。">
+        <Field label={tr("每个任务的连接数")} htmlFor="dl-conn" error={errs.conns} hint={tr("多个连接分段下载同一个文件，1–16。")}>
+          <input id="dl-conn" class="input narrow" type="number" min={1} max={16} value={form.conns} onInput={(e) => setForm({ ...form, conns: (e.target as HTMLInputElement).value })} />
+        </Field>
+        <Field label={tr("带宽上限（KiB/s）")} htmlFor="dl-bw" error={errs.bw} hint={tr("0 表示不限制。")}>
           <input id="dl-bw" class="input narrow" type="number" min={0} value={form.bw} onInput={(e) => setForm({ ...form, bw: (e.target as HTMLInputElement).value })} />
         </Field>
-        <Field label="缓存目录" htmlFor="cache-dir" error={errs.cache_dir}>
+        <Field label={tr("缓存目录")} htmlFor="cache-dir" error={errs.cache_dir}>
           <input id="cache-dir" class="input mono" value={form.cache_dir} onInput={(e) => setForm({ ...form, cache_dir: (e.target as HTMLInputElement).value })} />
         </Field>
-        <Field label="缓存上限（GiB）" htmlFor="cache-max" error={errs.cache_gib} hint="按需文件与预览缓存共用此上限，超出后按最近最少使用淘汰。">
+        <Field label={tr("缓存上限（GiB）")} htmlFor="cache-max" error={errs.cache_gib} hint={tr("超出后先清理最久没用的缓存。")}>
           <input id="cache-max" class="input narrow" type="number" min={1} value={form.cache_gib} onInput={(e) => setForm({ ...form, cache_gib: (e.target as HTMLInputElement).value })} />
         </Field>
         <div class="form-actions">
-          <Btn label="清理缓存" icon="trash" disabled reason="契约中尚无清理缓存命令（提案 UI-001 §P9）" />
-          <Btn type="submit" tone="primary" label="保存" busy={busy} disabled={invalid} reason="请先修正标红的字段" />
+          <Btn label={tr("清理缓存")} icon="trash" disabled reason={tr("暂不支持")} />
+          <Btn type="submit" tone="primary" label={tr("保存")} busy={busy} disabled={invalid} reason={tr("请先修正标红的字段")} />
         </div>
       </form>
     </Section>
@@ -329,69 +364,79 @@ function BrowserTransferSettings() {
 }
 
 function Network() {
-  const desktop = useStore(app, s => s.runtime === "tauri");
-  if (desktop) return <Section title="高级网络诊断" desc="实验网络设置默认关闭。"><div class="inline-note">当前 Rust 后端没有网络设置服务，不能通过此页修改代理、DNS或日志。外部 CLI 的网络配置由其自身管理。</div><Switch label="启用高级网络设置" checked={false} disabled reason="后端尚未实现" onChange={() => undefined} /></Section>;
+  const desktop=useStore(app,s=>s.runtime==="tauri");
+  if(desktop)return <NativeNetwork />;
   return <BrowserNetwork />;
+}
+
+function NativeNetwork(){
+  const settings=useStore(app,s=>s.settings);
+  const n=settings?.experimental_network;
+  const [enabled,setEnabled]=useState(n?.enabled??false);
+  const [mode,setMode]=useState(n?.proxy_mode??"system");
+  const [url,setUrl]=useState(n?.proxy_url??"");
+  const [compatibility,setCompatibility]=useState(n?.compatibility_mode??false);
+  const [blockAccessDomains,setBlockAccessDomains]=useState(n?.block_access_domains??false);
+  const [busy,setBusy]=useState(false);
+  const save=async()=>{setBusy(true);try{await updateSettings({experimental_network:{enabled,proxy_mode:mode,proxy_url:url.trim(),compatibility_mode:compatibility,block_access_domains:blockAccessDomains}});toast(tr("网络设置已保存"),"success");}catch(e){toast(errorOf(e).message,"error",{error:errorOf(e)});}finally{setBusy(false);}};
+  return <Section title={tr("网络")}>
+    <Row icon="network" label={tr("网络增强")} hint={tr("默认关闭。按你的网络环境选择应用内代理或兼容连接。")}><Switch label={tr("启用网络增强")} checked={enabled} onChange={setEnabled}/></Row>
+    <Row label={tr("代理")}><Segmented label={tr("代理")} value={mode} onChange={setMode} options={[{value:"system",label:tr("跟随系统")},{value:"none",label:tr("不使用")},{value:"user_provided",label:tr("自定义")}]}/></Row>
+    {mode==="user_provided"?<Field label={tr("代理地址")} htmlFor="proxy-url" hint={tr("支持 HTTP、HTTPS、SOCKS5；当前不保存代理账号密码。")}><input id="proxy-url" class="input mono" value={url} placeholder="http://127.0.0.1:7890" spellcheck={false} onInput={e=>setUrl((e.target as HTMLInputElement).value)}/></Field>:null}
+    <Row label={tr("兼容连接")} hint={tr("限制认证接口使用 TLS 1.2，用于排查部分网络中的握手重置。保持证书校验；不保证解决所有地区的连接问题。")}><Switch label={tr("兼容连接")} checked={compatibility} onChange={setCompatibility}/></Row>
+    <p class="download-help">{tr("设置只影响 NekoPak 后续连接。关闭网络增强后恢复系统代理，不修改 Hosts、DNS 或系统代理。")}</p>
+    <AccessDomainBlocking checked={blockAccessDomains} onChange={setBlockAccessDomains}/>
+    <div class="form-actions"><Btn label={tr("保存")} tone="primary" busy={busy} onClick={()=>void save()}/></div>
+  </Section>;
+}
+
+function AccessDomainBlocking({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return <>
+    <Row icon="shield" label={tr("屏蔽 access 域名")} hint={tr("默认关闭，独立于网络增强开关。只阻止 NekoPak 访问以下域名，不修改系统 Hosts。") }>
+      <Switch label={tr("屏蔽 access 域名")} checked={checked} onChange={onChange}/>
+    </Row>
+    <ul class="access-domains" aria-label={tr("屏蔽域名列表")}>
+      {["access.mypikpak.com", "access.mypikpak.net", "access.pikpak.me", "access.pikpakdrive.com"].map(domain => <li key={domain}><code>{domain}</code></li>)}
+    </ul>
+    <p class="download-help">{tr("当前直连路径不调用这些域名；此开关仅在出现相关请求时阻止连接。")}</p>
+  </>;
 }
 
 function BrowserNetwork() {
   const settings = useStore(app, (s) => s.settings);
-  if (!settings) return <Section title="高级网络诊断"><Spinner /></Section>;
+  const desktop = useStore(app, s => s.runtime === "tauri");
+  if (!settings) return <Section title={tr("网络")}><Spinner /></Section>;
   const n = settings.experimental_network;
+  // Choosing anything other than the system proxy turns the override on; going back to "系统" turns it off.
   const set = (patch: Partial<Settings["experimental_network"]>) =>
     updateSettings({ experimental_network: patch }).catch((e) => toast(errorOf(e).message, "error", { error: errorOf(e) }));
-
+  const mode = n.enabled ? n.proxy_mode : "system";
   return (
-    <Section title="高级网络诊断" desc="默认关闭。这里的设置只影响 NekoPak 自己发出的请求，不能影响独立运行的官方 CLI，也不会改动系统设置。">
-      <Row icon="network" label="启用高级网络设置" hint="开启后才能修改下面的选项。关闭时 NekoPak 使用系统网络设置。">
-        <Switch label="启用高级网络设置" checked={n.enabled} onChange={async (v) => {
-          if (v) {
-            const ok = await confirmDialog({
-              title: "启用高级网络设置？",
-              body: <>
-                <p>这些选项只作用于 NekoPak 进程内的请求，可以随时关闭恢复默认。</p>
-                <ul class="plain-list">
-                  <li>不会修改系统 Hosts、DNS、注册表、防火墙或证书。</li>
-                  <li>不会绕过验证码、地区限制或账号风控。</li>
-                  <li>对独立运行的官方 CLI 无效。</li>
-                </ul>
-              </>,
-              confirmLabel: "启用",
-            });
-            if (!ok) return;
-          }
-          void set({ enabled: v });
-        }} />
+    <Section title={tr("网络")}>
+      <Row icon="network" label={tr("代理")}>
+        <Segmented<Settings["experimental_network"]["proxy_mode"]> label={tr("代理")} value={mode}
+          onChange={(v) => void set(v === "system" ? { enabled: false, proxy_mode: "system" } : { enabled: true, proxy_mode: v })}
+          options={[
+            { value: "system", label: tr("跟随系统") },
+            { value: "none", label: tr("不使用") },
+            { value: "user_provided", label: tr("自定义"), disabled: true, reason: tr("暂不支持") },
+          ]} />
       </Row>
-      <fieldset class="set-subgroup" aria-disabled={n.enabled ? undefined : "true"}>
-        <Row icon="network" label="代理" hint={n.proxy_mode === "user_provided" ? "代理地址保存在系统安全存储中，不写入配置文件。" : "“系统”使用 Windows 代理设置。"}>
-          <Segmented<Settings["experimental_network"]["proxy_mode"]> label="代理模式" value={n.proxy_mode} onChange={(v) => n.enabled && void set({ proxy_mode: v })}
-            options={[
-              { value: "system", label: "系统", disabled: !n.enabled, reason: "请先启用高级网络设置" },
-              { value: "none", label: "不使用", disabled: !n.enabled, reason: "请先启用高级网络设置" },
-              { value: "user_provided", label: "自定义", disabled: true, reason: "代理地址需要安全存储命令（提案 UI-001 §P9），M0 暂不开放" },
-            ]} />
-        </Row>
-        <Row icon="backend" label="自定义 DNS" hint="尚未经过审计，暂不能开启。不会修改系统 DNS。">
-          <Switch label="自定义 DNS" checked={false} disabled reason="自定义 DNS 尚未审计" onChange={() => undefined} />
-        </Row>
-        <Row icon="doc" label="连接诊断日志" hint="记录 NekoPak 请求的连通性与耗时（已脱敏），便于排查。">
-          <Switch label="连接诊断日志" checked={n.connection_diagnostics} disabled={!n.enabled} reason="请先启用高级网络设置" onChange={(v) => void set({ connection_diagnostics: v })} />
-        </Row>
-        <Row icon="shield" label="连通性检查" hint="检查 DNS、TLS 与后端可达性。">
-          <Btn icon="shield" label="运行检查" disabled reason="契约中尚无诊断命令（提案 UI-001 §P9）" />
-        </Row>
-      </fieldset>
+      {desktop ? <p class="inline-note">{tr("只影响 NekoPak 后续请求，不修改系统代理、DNS 或 Hosts。已有请求按原设置结束；错误面板可复制诊断信息。")}</p> : <Row icon="doc" label={tr("连接诊断日志")} hint={tr("记录请求耗时与失败原因，便于排查网络问题。")}>
+        <Switch label={tr("连接诊断日志")} checked={n.enabled && n.connection_diagnostics}
+          onChange={(v) => void set(v ? { enabled: true, connection_diagnostics: true } : { connection_diagnostics: false })} />
+      </Row>}
+      <AccessDomainBlocking checked={n.block_access_domains ?? false} onChange={v => void set({ block_access_domains: v })}/>
     </Section>
   );
 }
 
 function Shortcuts() {
   return (
-    <Section title="快捷键">
+    <Section title={tr("快捷键")}>
       <table class="kbd-table">
         <tbody>
-          {SHORTCUTS.map(([k, v]) => <tr><th scope="row"><kbd class="kbd">{k}</kbd></th><td>{v}</td></tr>)}
+          {SHORTCUTS().map(([k, v]) => <tr><th scope="row"><kbd class="kbd">{k}</kbd></th><td>{v}</td></tr>)}
         </tbody>
       </table>
     </Section>
@@ -400,24 +445,28 @@ function Shortcuts() {
 
 function Developer() {
   const s = useStore(app, (x) => x);
+  const dropped = useStore(transfers, (t) => t.dropped_events ?? 0);
   return (
-    <Section title="开发者" desc="运行时与接口信息，用于和 Rust 核心对齐契约。">
+    <Section title={tr("开发者")} desc={tr("运行时与接口信息，用于和 Rust 核心对齐契约。")}>
       <dl class="kv">
-        <dt>运行时</dt><dd>{s.runtime === "mock" ? "Mock（前端内置样本，未调用任何真实服务）" : "Tauri IPC"}</dd>
-        <dt>应用版本</dt><dd>{s.app?.version ?? "—"}</dd>
-        <dt>契约版本</dt><dd>前端 {CONTRACT_VERSION}，后端 {s.app?.contract_version ?? "—"}{s.app && s.app.contract_version !== CONTRACT_VERSION ? <Badge tone="warn">不一致</Badge> : null}</dd>
-        <dt>存储</dt><dd>{s.app?.storage.status === "ok" ? "正常" : s.app?.storage.status ?? "—"}{s.app?.storage.message ? `：${s.app.storage.message}` : ""}</dd>
-        <dt>提案中的命令</dt><dd><code class="wrap">{[...PROPOSED_COMMANDS].join(", ")}</code></dd>
+        <dt>{tr("运行时")}</dt><dd>{s.runtime === "mock" ? tr("Mock 传输层（演示模式：前端内置样本，未调用任何真实服务）") : "Tauri IPC"}</dd>
+        <dt>{tr("应用版本")}</dt><dd>{s.app?.version ?? "—"}</dd>
+        <dt>{tr("契约版本")}</dt><dd>{tr("前端")}{CONTRACT_VERSION}{tr("，Rust 核心")}{s.app?.contract_version ?? "—"}{s.app && s.app.contract_version !== CONTRACT_VERSION ? <Badge tone="warn">{tr("不一致")}</Badge> : null}</dd>
+        <dt>{tr("存储")}</dt><dd>{s.app?.storage.status === "ok" ? tr("正常") : s.app?.storage.status ?? "—"}{s.app?.storage.message ? `：${s.app.storage.message}` : ""}</dd>
+        <dt>{tr("已丢弃的过期事件")}</dt><dd class="tabular" data-dropped>{dropped}</dd>
+        <dt>{tr("提案中的命令")}</dt><dd><code class="wrap">{[...PROPOSED_COMMANDS].join(", ")}</code></dd>
       </dl>
       <div class="row-gap pad-top">
-        {s.runtime === "mock" ? <Btn icon="flask" label="Mock 场景与故障注入" onClick={() => void openMockPanel()} /> : null}
-        <Btn icon="download" label="导出脱敏诊断" disabled reason="需要后端提供日志导出命令（提案 UI-001 §P9）" />
+        {s.runtime === "mock" ? <Btn icon="flask" label={tr("Mock 场景与故障注入")} onClick={() => void openMockPanel()} /> : null}
+        <Btn icon="download" label={tr("导出诊断信息")} disabled reason={tr("暂不支持")} />
       </div>
-      <details class="pad-top"><summary>开发测试与连接诊断</summary>
-        {s.caps.map(c => <article class="backend-card"><h3>{c.backend === "mock" ? "Mock · 仅离线模拟，不是实际账号或服务能力" : backendLabel(c.backend)}</h3>
-          <p class="muted">{c.backend === "mock" ? "以下项目仅描述测试样本支持的模拟动作，不表示真实功能已实现。" : `诊断状态：${c.status}`}</p>
-          <ul class="op-chips">{OPS.map(o => <li class="no">{o.label}：{c.operations[o.op] ? c.backend === "mock" ? "可模拟" : "当前可用" : "未启用"}</li>)}</ul>
-          <ul class="bo-limits">{c.limitations.map(l => <li>{l}</li>)}</ul></article>)}
+      <details class="pad-top"><summary>{tr("开发测试与连接诊断")}</summary>
+        {s.caps.filter(c => c.backend !== "official_cli").map(c => <article class="backend-card" key={c.backend}>
+          <h3>{c.backend === "mock" ? tr("Mock · 仅离线模拟，不是实际账号或服务能力") : "PikPak"}</h3>
+          <p class="muted">{tr("诊断状态：")}{c.status}</p>
+          <ul class="op-chips">{Object.entries(c.operations).map(([op, enabled]) => <li key={op}>{op}：{enabled ? c.backend === "mock" ? tr("可模拟") : tr("当前可用") : tr("未启用")}</li>)}</ul>
+          <ul class="bo-limits">{c.limitations.map(l => <li key={l}>{l}</li>)}</ul>
+        </article>)}
       </details>
     </Section>
   );

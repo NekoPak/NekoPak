@@ -1,8 +1,8 @@
-// NekoPak IPC contract 0.1. Manually maintained alongside nekopak-domain and docs/03_CONTRACTS.md.
+// NekoPak IPC contract 0.2. Manually maintained alongside nekopak-domain and docs/03_CONTRACTS.md.
 export type DecimalU64 = string;
 export type BackendId = 'official_cli' | 'rust_compat' | 'webdav' | 'rclone' | 'mock';
-export type Operation = 'list' | 'stat' | 'search' | 'mkdir' | 'rename' | 'move' | 'copy' | 'trash' | 'upload' | 'download' | 'cloud_task' | 'stream_url' | 'read_range' | 'quota' | 'segment_download';
-export type ErrorCode = 'AUTH_EXPIRED' | 'ACCOUNT_RESTRICTED' | 'PERMISSION_DENIED' | 'QUOTA_EXCEEDED' | 'NOT_FOUND' | 'UNSUPPORTED' | 'TRANSIENT_NETWORK' | 'DISK_FULL' | 'INTEGRITY_FAILED' | 'CONFLICT' | 'CANCELLED' | 'INTERNAL';
+export type Operation = 'list' | 'stat' | 'search' | 'mkdir' | 'rename' | 'move' | 'copy' | 'trash' | 'upload' | 'download' | 'cloud_task' | 'stream_url' | 'read_range' | 'quota' | 'segment_download' | 'star' | 'restore' | 'delete_forever' | 'folder_download' | 'duplicates' | 'space_summary' | 'media_probe' | 'clip_download' | 'quality_download' | 'external_player' | 'share' | 'archive' | 'link_preview';
+export type ErrorCode = 'AUTH_EXPIRED' | 'ACCOUNT_RESTRICTED' | 'PERMISSION_DENIED' | 'VERIFICATION_REQUIRED' | 'QUOTA_EXCEEDED' | 'NOT_FOUND' | 'UNSUPPORTED' | 'TRANSIENT_NETWORK' | 'DISK_FULL' | 'INTEGRITY_FAILED' | 'CONFLICT' | 'CANCELLED' | 'INTERNAL';
 export interface ClientError { code: ErrorCode; message: string; retryable: boolean; backend?: BackendId; request_id?: string; details?: Record<string, unknown> }
 export interface CapabilityReport {
   backend: BackendId;
@@ -15,7 +15,8 @@ export interface CapabilityReport {
 }
 export interface RemoteEntry {
   id: string; parent_id?: string; name: string; kind: 'file' | 'folder'; size_bytes: DecimalU64;
-  modified_at?: string; etag?: string; hash?: { algorithm: 'md5' | 'sha1' | 'sha256'; value: string }; mime_type?: string;
+  modified_at?: string; etag?: string; hash?: { algorithm: 'md5' | 'sha1' | 'sha256' | 'gcid'; value: string }; mime_type?: string;
+  starred?: boolean;
 }
 export interface Page<T> { items: T[]; next_cursor?: string }
 export type TaskState = 'queued' | 'running' | 'paused' | 'retrying' | 'verifying' | 'completed' | 'failed' | 'cancelled';
@@ -25,6 +26,8 @@ export interface TransferTask {
   transferred_bytes: DecimalU64; total_bytes?: DecimalU64; speed_bytes_per_sec?: number;
   backend: BackendId; error?: ClientError; created_at: string; updated_at: string;
   revision: DecimalU64; simulated: boolean;
+  name?: string; destination?: string;
+  quality_label?: string; clip?: {start_ms:number;end_ms:number}; progress_percent?: number;
 }
 export interface TransferEvent {
   task_id: string; state: TaskState; transferred_bytes: DecimalU64; total_bytes?: DecimalU64;
@@ -42,15 +45,13 @@ export interface SegmentDownloadPlan {
   aligned_start_ms?: DecimalU64; subtitle_warning: string; requires_random_read: boolean;
 }
 export interface StorageStatus { status: 'ready' | 'recovery_required'; schema_version: number; error?: ClientError }
-export interface AppStatus { version: string; contract_version: string; mode: 'mock' | 'official_cli_preview'; storage: StorageStatus; features: Record<string, boolean> }
-export interface AuthState { backend: BackendId; authenticated: boolean; credential_owner: 'none' | 'external_cli'; account_tier: 'free' | 'premium' | 'unknown'; message: string }
-export interface CliProbeReport {
-  backend: BackendId; status: CapabilityReport['status']; version?: string; binary_sha256?: string;
-  verified_commands: string[]; live_account_verified: boolean; limitations: string[]; checked_at: string;
-}
+export interface AppStatus { version: string; contract_version: string; mode: 'mock' | 'rust_compat_preview'; storage: StorageStatus; features: Record<string, boolean> }
+export interface AuthState { backend: BackendId; authenticated: boolean; credential_owner: 'none' | 'os_vault'; account_tier: 'free' | 'premium' | 'unknown'; message: string; state: 'signed_out' | 'pending' | 'signed_in' | 'expired'; display_name?: string; account_id?: string }
+export interface SignInChallenge { challenge_id: string; kind: 'captcha'; url: string; expires_at: string; requires_password: boolean }
+export type SignInResult = { state: 'signed_in' } | { state: 'challenge'; challenge: SignInChallenge };
 export interface QuotaReport {
-  backend: BackendId; account_tier: 'free' | 'premium' | 'unknown'; source: 'mock'; checked_at: string; limitations: string[];
-  dimensions: { dimension: string; period: string; limit_bytes?: DecimalU64; remaining_bytes?: DecimalU64; resets_at?: string }[];
+  backend: BackendId; account_tier: 'free' | 'premium' | 'unknown'; source: 'mock' | 'account'; checked_at: string; limitations: string[];
+  dimensions: { dimension: string; period: string; used_bytes?: DecimalU64; limit_bytes?: DecimalU64; remaining_bytes?: DecimalU64; resets_at?: string }[];
 }
 export interface SyncAction { id: string; op: 'upload' | 'download' | 'mkdir' | 'keep_both' | 'delete' | 'skip'; path: string; reason: string; destructive: boolean }
 export interface SyncPlan {
@@ -59,6 +60,20 @@ export interface SyncPlan {
   warnings: string[]; has_unresolved_conflicts: boolean; has_deletes: boolean;
 }
 export interface CommandMap {
+  download_directory_pick: {args: Record<string,never>;result:string|null};
+  transfer_open_directory: {args:{task_id:string};result:void};
+  verification_status: { args: { verification_id?: string; request_id?: string }; result: {verification_id: string; state: 'pending' | 'verified' | 'expired'; expires_at: string} | null };
+  verification_open: { args: {verification_id: string; request_id?: string}; result: void };
+  verification_complete: { args: {verification_id: string; request_id?: string}; result: void };
+  verification_cancel: { args: {verification_id: string; request_id?: string}; result: void };
+  files_starred: { args: {cursor?: string; limit?: number; request_id?: string}; result: Page<RemoteEntry> };
+  files_recent: { args: {cursor?: string; limit?: number; request_id?: string}; result: Page<RemoteEntry> };
+  trash_list: { args: {cursor?: string; limit?: number; request_id?: string}; result: Page<RemoteEntry> };
+  files_search: { args: {query: string; cursor?: string; limit?: number; request_id?: string}; result: Page<RemoteEntry> };
+  files_mutate: {args: {op: import('./contract-proposals').MutateOp; ids: string[]; target?: import('./contract-proposals').MutateTarget; idempotency_key: string; request_id?: string}; result: import('./contract-proposals').OperationResult};
+  shares_list: {args: {cursor?: string; limit?: number; request_id?: string}; result: Page<import('./contract-proposals').ShareInfo>};
+  settings_get: {args: Record<string, never>; result: import('./contract-proposals').Settings};
+  settings_update: {args: {patch: import('./contract-proposals').SettingsPatch}; result: import('./contract-proposals').Settings};
   app_status: { args: Record<string, never>; result: AppStatus };
   backend_discover: { args: { request_id?: string }; result: CapabilityReport[] };
   files_list: { args: { parent_id: string; cursor?: string; limit?: number; request_id?: string }; result: Page<RemoteEntry> };
@@ -71,6 +86,8 @@ export interface CommandMap {
   quota_get: { args: { request_id?: string }; result: QuotaReport };
   request_cancel: { args: { request_id: string }; result: void };
   auth_status: { args: { request_id?: string }; result: AuthState };
-  official_cli_probe: { args: { request_id?: string }; result: CliProbeReport };
+  auth_sign_in: { args: { username: string; password: string; request_id?: string }; result: SignInResult };
+  auth_verify: { args: { challenge_id: string; code: string; password?: string; request_id?: string }; result: SignInResult };
+  auth_logout: { args: { backend: BackendId; request_id?: string }; result: void };
 }
 

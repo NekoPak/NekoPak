@@ -1,6 +1,7 @@
 //! Independently implemented local media clip engine. No provider-specific API or network input.
 //! A remote clip path must later connect a verified random-access source and shared cache.
 mod mp4;
+pub mod native;
 use nekopak_domain::{ClientError, ErrorCode};
 use sha2::{Digest, Sha256};
 use std::{

@@ -1,8 +1,20 @@
 //! Transport-independent contract v0.1. All byte counts and revisions are decimal strings.
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{collections::BTreeMap, fmt};
+mod accounts;
+pub use accounts::*;
+mod references;
+pub use references::*;
+mod operations;
+pub use operations::*;
+mod catalog;
+pub use catalog::*;
+mod cloud;
+pub use cloud::*;
+mod sync;
+pub use sync::*;
 
-pub const CONTRACT_VERSION: &str = "0.1";
+pub const CONTRACT_VERSION: &str = "0.2";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DecimalU64(pub u64);
@@ -57,7 +69,20 @@ wire_enum!(
         StreamUrl,
         ReadRange,
         Quota,
-        SegmentDownload
+        SegmentDownload,
+        Star,
+        Restore,
+        FolderDownload,
+        Duplicates,
+        SpaceSummary,
+        MediaProbe,
+        ClipDownload,
+        QualityDownload,
+        ExternalPlayer,
+        Share,
+        Archive,
+        LinkPreview,
+        DeleteForever
     ]
 );
 wire_enum!(
@@ -67,7 +92,7 @@ wire_enum!(
 );
 wire_enum!(AccountTier, "snake_case", [Free, Premium, Unknown]);
 wire_enum!(EntryKind, "snake_case", [File, Folder]);
-wire_enum!(HashAlgorithm, "lowercase", [Md5, Sha1, Sha256]);
+wire_enum!(HashAlgorithm, "lowercase", [Md5, Sha1, Sha256, Gcid]);
 wire_enum!(
     TaskKind,
     "snake_case",
@@ -86,6 +111,7 @@ wire_enum!(
         AuthExpired,
         AccountRestricted,
         PermissionDenied,
+        VerificationRequired,
         QuotaExceeded,
         NotFound,
         Unsupported,
@@ -211,6 +237,8 @@ pub struct RemoteEntry {
     pub hash: Option<ContentHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub starred: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -239,6 +267,21 @@ pub struct TransferTask {
     /// Monotonic, global persistence revision for snapshot/event reconciliation.
     pub revision: DecimalU64,
     pub simulated: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress_percent: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality_label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clip: Option<MediaTimeRange>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MediaTimeRange {
+    pub start_ms: u64,
+    pub end_ms: u64,
 }
 
 impl TaskState {
@@ -334,6 +377,8 @@ pub struct SyncAction {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct QuotaDimension {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub used_bytes: Option<DecimalU64>,
     pub dimension: String,
     pub period: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -373,24 +418,53 @@ pub struct StorageStatus {
 pub struct AuthState {
     pub backend: BackendId,
     pub authenticated: bool,
-    /// NekoPak does not read, store or expose the external CLI's tokens.
+    /// Opaque local account identifier, not a username, remote subject or token.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account_id: Option<String>,
+    /// Public ownership label only. Credentials never cross this boundary.
     pub credential_owner: String,
     pub account_tier: AccountTier,
     pub message: String,
+    pub state: AuthStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+}
+
+wire_enum!(
+    AuthStatus,
+    "snake_case",
+    [SignedOut, Pending, SignedIn, Expired]
+);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SignInChallenge {
+    pub challenge_id: String,
+    pub kind: String,
+    /// Validated HTTPS human-verification link; never a download or token URL.
+    pub url: String,
+    pub expires_at: String,
+    pub requires_password: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CliProbeReport {
-    pub backend: BackendId,
-    pub status: BackendStatus,
+pub struct VerificationState {
+    pub verification_id: String,
+    pub state: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum SignInResult {
+    SignedIn,
+    Challenge { challenge: SignInChallenge },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AuthChangedEvent {
+    pub state: AuthStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub binary_sha256: Option<String>,
-    pub verified_commands: Vec<String>,
-    pub live_account_verified: bool,
-    pub limitations: Vec<String>,
-    pub checked_at: String,
+    pub error: Option<ClientError>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -49,13 +49,14 @@ test('Rust fault fixtures include observable task errors, collisions and reorder
   assert.ok(entries.length > new Set(entries.map((entry) => entry.name)).size);
 });
 
-test('official CLI observed fixture never exposes an unauthorized live capability', async () => {
-  const fixture = JSON.parse(readFileSync(new URL('fixtures/official_cli_unauthorized.json', import.meta.url), 'utf8'));
+test('unconfigured native adapter never exposes an unauthorized live capability', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('fixtures/native_unconfigured.json', import.meta.url), 'utf8'));
   assert.equal(fixture.auth.authenticated, false);
-  assert.equal(fixture.auth.credential_owner, 'external_cli');
-  assert.equal(fixture.capabilities.status, 'needs_login');
-  assert.ok(Object.values(fixture.capabilities.operations).every((value) => value === false));
-  assert.equal(fixture.probe.live_account_verified, false);
+  assert.equal(fixture.auth.credential_owner, 'none');
+  assert.equal(fixture.backend_discover.length, 1);
+  assert.equal(fixture.backend_discover[0].backend, 'rust_compat');
+  assert.equal(fixture.backend_discover[0].status, 'unavailable');
+  assert.ok(Object.values(fixture.backend_discover[0].operations).every((value) => value === false));
   const calls = [];
   const api = createApi(async (command, args) => { calls.push({ command, args }); return fixture.auth; });
   await api('auth_status', { request_id: 'status-1' });

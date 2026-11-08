@@ -1,3 +1,4 @@
+import { tr, resolvedLanguage, tx } from "../lib/i18n";
 /**
  * Window frame: an integrated caption row (drag region + window controls),
  * an optional command row, the rounded content island ("canvas"), an
@@ -12,7 +13,7 @@ import { app } from "../state/app";
 import { navigate } from "../state/route";
 import { closeSide, side } from "../state/prefs";
 import { Icon } from "./Icon";
-import { Btn, openOfficial } from "./ui";
+import { Btn } from "./ui";
 import { toast } from "../state/ui";
 
 type WinApi = { minimize(): Promise<void>; toggleMaximize(): Promise<void>; close(): Promise<void>; isMaximized(): Promise<boolean> };
@@ -31,18 +32,18 @@ export function WindowControls() {
     if (!desktop) return;
     void currentWindow().then((w) => w?.isMaximized().then(setMax).catch(() => undefined));
   }, [desktop]);
-  const reason = "浏览器预览中不可用，桌面应用中可用";
-  const act = (fn: (w: WinApi) => Promise<unknown>) => () => void currentWindow().then((w) => w && fn(w)).catch(() => toast("窗口操作失败，请重试。", "error"));
+  const reason = tr("浏览器预览中不可用，桌面应用中可用");
+  const act = (fn: (w: WinApi) => Promise<unknown>) => () => void currentWindow().then((w) => w && fn(w)).catch(() => toast(tr("窗口操作失败，请重试。"), "error"));
   return (
-    <div class="win-controls" role="group" aria-label="窗口">
-      <button type="button" class="win-btn" aria-label="最小化" title={desktop ? "最小化" : reason} aria-disabled={desktop ? undefined : "true"} onClick={desktop ? act((w) => w.minimize()) : undefined}>
+    <div class="win-controls" role="group" aria-label={tr("窗口")}>
+      <button type="button" class="win-btn" aria-label={tr("最小化")} title={desktop ? tr("最小化") : reason} aria-disabled={desktop ? undefined : "true"} onClick={desktop ? act((w) => w.minimize()) : undefined}>
         <Icon name="minimize" size={18} />
       </button>
-      <button type="button" class="win-btn" aria-label={max ? "还原" : "最大化"} title={desktop ? (max ? "还原" : "最大化") : reason} aria-disabled={desktop ? undefined : "true"}
+      <button type="button" class="win-btn" aria-label={max ? tr("还原") : tr("最大化")} title={desktop ? (max ? tr("还原") : tr("最大化")) : reason} aria-disabled={desktop ? undefined : "true"}
         onClick={desktop ? act(async (w) => { await w.toggleMaximize(); setMax(await w.isMaximized()); }) : undefined}>
         <Icon name="maximize" size={16} />
       </button>
-      <button type="button" class="win-btn win-close" aria-label="关闭" title={desktop ? "关闭" : reason} aria-disabled={desktop ? undefined : "true"} onClick={desktop ? act((w) => w.close()) : undefined}>
+      <button type="button" class="win-btn win-close" aria-label={tr("关闭")} title={desktop ? tr("关闭") : reason} aria-disabled={desktop ? undefined : "true"} onClick={desktop ? act((w) => w.close()) : undefined}>
         <Icon name="x" size={18} />
       </button>
     </div>
@@ -52,13 +53,13 @@ export function WindowControls() {
 function Banners() {
   const s = useStore(app, (x) => x);
   const out: preact.JSX.Element[] = [];
-  out.push(<div class="banner" role="status"><Icon name="info" /><span>{s.runtime === "mock" ? "浏览器界面演示：文件、账号和任务均为测试样本，未连接 PikPak。" : s.app?.mode === "mock" ? "离线界面预览：尚未连接 PikPak。文件与任务均为演示数据，不会下载文件。" : "官方 CLI 只读预览：仅文件浏览和元数据可用；下载、片段、同步与挂载尚未启用。"}</span></div>);
+  if (s.runtime === "mock" || s.app?.mode === "mock") out.push(<div class="banner" role="status"><Icon name="info" /><span>{tr("离线界面预览：文件、账号和任务均为测试样本，未连接 PikPak。")}</span></div>);
   if (s.auth?.state === "expired") {
     out.push(
       <div class="banner banner-warn" role="alert">
         <Icon name="user" />
-        <span>登录已过期。文件列表与任务历史已保留，重新授权后继续。</span>
-        <Btn size="sm" tone="primary" label="重新授权" onClick={() => navigate({ page: "settings", section: "account" })} />
+        <span>{tr("登录已过期，请重新登录。")}</span>
+        <Btn size="sm" tone="primary" label={tr("重新登录")} onClick={() => navigate({ page: "settings", section: "account" })} />
       </div>,
     );
   }
@@ -68,11 +69,9 @@ function Banners() {
       <div class="banner banner-error" role="alert">
         <Icon name="quota" />
         <span>
-          Connected Apps 配额已用尽：{exhausted.map((q) => (q.dimension === "downstream_daily" ? "每日下行" : q.dimension === "cloud_download_monthly" ? "每月云下载" : q.dimension === "upload_monthly" ? "每月上传" : "每月下行")).join("、")}。
-          新的下载会被拒绝，文件列表与任务历史仍可查看。切换后端不会恢复配额。
+          {resolvedLanguage()==="en" ? "Transfer quota exhausted. New downloads must wait until it resets." : <>{exhausted.map((q) => (q.dimension === "downstream_daily" ? tr("今日下载") : q.dimension === "cloud_download_monthly" ? tr("本月云下载") : q.dimension === "upload_monthly" ? tr("本月上传") : tr("本月下载"))).join("、")}{tr("额度已用完，重置前不能开始新的下载。")}</>}
         </span>
-        <Btn size="sm" tone="tonal" label="查看配额" onClick={() => navigate({ page: "settings", section: "quota" })} />
-        <Btn size="sm" tone="ghost" icon="external" label="官方应用" onClick={() => void openOfficial()} />
+        <Btn size="sm" tone="tonal" label={tr("查看配额")} onClick={() => navigate({ page: "settings", section: "quota" })} />
       </div>,
     );
   }
@@ -80,7 +79,7 @@ function Banners() {
     out.push(
       <div class="banner banner-warn" role="status">
         <Icon name="cloud" />
-        <span>无法连接远端服务：{s.quotaError.message}。进行中的传输会按退避策略重试。</span>
+        <span>{tr("无法连接远端服务：")}{s.quotaError.message}{tr("。进行中的传输会按退避策略重试。")}</span>
       </div>,
     );
   }
@@ -88,7 +87,7 @@ function Banners() {
     out.push(
       <div class="banner banner-error" role="alert">
         <Icon name="alertCircle" />
-        <span>任务数据库{s.app.storage.status === "corrupt_readonly" ? "已损坏，已切换为只读，未覆盖任何记录" : "状态异常"}。{s.app.storage.message ?? ""}</span>
+        <span>{tr("任务数据库")}{s.app.storage.status === "corrupt_readonly" ? tr("已损坏，已切换为只读，未覆盖任何记录") : tr("状态异常")}。{s.app.storage.message ?? ""}</span>
       </div>,
     );
   }
@@ -100,7 +99,7 @@ function SideIsland() {
   useEffect(() => {
     if (!panel) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && document.activeElement?.closest(".side-island")) closeSide();
+      if (e.key === "Escape" && document.activeElement?.closest(".side-island")) void closeSide();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -110,9 +109,9 @@ function SideIsland() {
     <aside class="side-island" aria-labelledby="side-title" key={panel.key}>
       <header class="side-head">
         <h2 id="side-title">{panel.title}</h2>
-        <Btn tone="quiet" iconOnly icon="x" label="关闭面板（Esc）" onClick={closeSide} />
+        <Btn tone="quiet" iconOnly icon="x" label={tr("关闭面板（Esc）")} onClick={() => void closeSide()} />
       </header>
-      <div class="side-body">{panel.render(closeSide)}</div>
+      <div class="side-body">{panel.render(() => void closeSide())}</div>
     </aside>
   );
 }
@@ -141,7 +140,7 @@ export function PageFrame(p: PageFrameProps) {
         {p.captionEnd ? <div class="pf-caption-end">{p.captionEnd}</div> : null}
         <WindowControls />
       </header>
-      {p.commands ? <div class="pf-commands" role="toolbar" aria-label={`${p.label}操作`}>{p.commands}</div> : null}
+      {p.commands ? <div class="pf-commands" role="toolbar" aria-label={tx("{0}操作", p.label)}>{p.commands}</div> : null}
       <div class="pf-body">
         <div class="canvas">
           <Banners />

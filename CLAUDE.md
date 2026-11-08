@@ -10,7 +10,7 @@
 - At startup load state snapshot, then subscribe to progress events; never assume events alone are persistent truth.
 - Keep sources/credits accurate. Piko is AGPL-3.0-or-later; do not copy Piko components into an Apache/MIT codebase. See `docs/04_SOURCES_LICENSES.md`.
 - Network compatibility controls default off, are transparent to users, and never edit system Hosts.
-- Do not pretend CLI exposes public REST API or mount random-read support.
+- Use native sign-in and Rust `rust_compat` only for ordinary PikPak operations; no CLI discovery, installation or fallback. Match docs/03_CONTRACTS.md §10 and docs/API_ADAPTER.md. Do not portray client protocols as an official public API.
 - Every response should identify files changed, build commands run, test results, bundle size, known limitations and whether contract changed.
 
 ## Immediate task

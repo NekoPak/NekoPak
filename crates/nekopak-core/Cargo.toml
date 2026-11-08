@@ -9,14 +9,23 @@ license.workspace = true
 nekopak-domain.workspace = true
 nekopak-provider.workspace = true
 nekopak-provider-mock.workspace = true
+nekopak-media.workspace = true
+nekopak-mount.workspace = true
 serde_json.workspace = true
-tokio.workspace = true
+serde.workspace = true
+tokio = { workspace = true, features = ["net"] }
 rusqlite.workspace = true
 time.workspace = true
 uuid.workspace = true
 sha2.workspace = true
+sha1 = "0.10"
 url.workspace = true
+base64 = "0.22"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_Foundation"] }
 
 [dev-dependencies]
 tempfile.workspace = true
+async-trait.workspace = true
 

@@ -1,0 +1,41 @@
+{
+  "scope": "Initial HEAD-only comparison plus subsequent anonymous connection probes; no account credentials; standard certificate validation enabled",
+  "date": "2026-11-08",
+  "conclusion": "Initial TLS 1.2 successes did not reproduce consistently. Connection resets remain intermittent; ALPN is not established as the root cause or a stable fix. No live account login was attempted.",
+  "endpoint": "https://user.mypikpak.com/v1/shield/captcha/init",
+  "results": [
+    {
+      "trial": 1,
+      "tls": "default",
+      "transport_error": "URLError",
+      "connection_reset": true
+    },
+    {
+      "trial": 1,
+      "tls": "TLS1.2",
+      "http_status": 501
+    },
+    {
+      "trial": 2,
+      "tls": "default",
+      "transport_error": "URLError",
+      "connection_reset": true
+    },
+    {
+      "trial": 2,
+      "tls": "TLS1.2",
+      "http_status": 501
+    }
+  ],
+  "later_observations": {
+    "anonymous_captcha_init": "HTTP 200 with a captcha_token field and no url field was observed in an isolated reqwest native-TLS probe; the token was not printed or saved.",
+    "same_binary_repeat": "Both default and preconfigured native-TLS requests later failed with Connect/WinError 10054 without configuration changes.",
+    "python_tls12_no_alpn_repeat": {
+      "attempts": 4,
+      "connection_reset_count": 4,
+      "elapsed_ms": [94, 63, 78, 63]
+    },
+    "runtime_workaround_status": "The application uses the compatible native-TLS configuration and at most four connection-only attempts. This does not establish successful or reliable live login.",
+    "source": "docs/NATIVE_LOGIN_RESEARCH.md; target/login-audit/tls-repeat-observations.json"
+  }
+}

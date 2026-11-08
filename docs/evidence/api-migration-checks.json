@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-08",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "architecture": "AMD64",
+  "baseline_commit": "b2f2923e0fb22cf82a60d74574d6e8e8d0c1467b",
+  "working_tree_modified": true,
+  "source_sha256": "dbfeff997f982573bc0fd5913cc1c446f6687f40dc509ba94a3354f6fb3928c9",
+  "archive_sha256": "aa785c620ec6a154957dda095fc8b9746eca4fab4afe70795cb1d3a88e3b14d5",
+  "rust_default": {
+    "passed": 49,
+    "failed": 0,
+    "ignored": 7,
+    "note": "Six external FFmpeg experiments not rerun; Windows vault is separately verified."
+  },
+  "windows_vault": {
+    "passed": 1,
+    "failed": 0,
+    "scope": "Unique synthetic credential roundtrip and deletion only"
+  },
+  "frontend_unit": {
+    "passed": 78,
+    "failed": 0
+  },
+  "wire_tests": {
+    "passed": 6,
+    "failed": 0
+  },
+  "browser_e2e": {
+    "passed": 47,
+    "failed": 0,
+    "browser": "Installed Microsoft Edge (headless)",
+    "external_requests": 0,
+    "evidence": "docs/evidence/ui-v3-e2e.json"
+  },
+  "format": "passed",
+  "clippy": "passed",
+  "typescript": "passed",
+  "vite_build": "passed",
+  "windows_release_build": "cargo build -p nekopak-app --release --locked --offline: passed",
+  "package": {
+    "entries": 806,
+    "bytes": 5361778,
+    "crc": "passed",
+    "embedded_executable_sha256": "passed",
+    "bundled_executables": [
+      "nekopak.exe"
+    ],
+    "windows_license_gaps": []
+  },
+  "live_account_tested": false,
+  "webview2_click_e2e_tested": false,
+  "independent_review": {
+    "standards_original_findings": 3,
+    "spec_original_findings": 2,
+    "overlap": "Pagination and auth gate/recovery",
+    "unresolved_original_findings": 0,
+    "type": "Static read-only rechecks, separate from test execution"
+  }
+}

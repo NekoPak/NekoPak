@@ -1,11 +1,17 @@
+import { tr, tx } from "../lib/i18n";
 import { Fragment } from "preact";
 import type { JSX } from "preact";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { RemoteEntry } from "../lib/contract";
+import { isStarred } from "../lib/contract-proposals";
 import { formatBytes, formatBytesExact, formatDateTime } from "../lib/format";
 import { fileKind, KIND_LABEL, splitName, windowsIssues, type FileKind } from "../lib/names";
+import { useStore } from "../lib/store";
 import { useVirtualRows } from "../lib/virtual";
+import { clip } from "../state/clipboard";
+import type { GridSize } from "../state/prefs";
 import { Icon } from "./Icon";
+import { onSessionReset } from "../state/session";
 
 export type ColumnId = "name" | "size" | "modified" | "kind" | "location";
 export type SortKey = "name" | "size" | "modified" | "kind";
@@ -15,8 +21,46 @@ export interface SortSpec {
 }
 
 const HEADER_H = 40;
-const GRID_MIN = 168;
-const GRID_ROW = 212;
+/** Card geometry per grid size: min column width, row pitch, icon size. */
+export const GRID: Record<GridSize, { min: number; row: number; icon: number }> = {
+  s: { min: 132, row: 176, icon: 36 },
+  m: { min: 168, row: 212, icon: 48 },
+  l: { min: 224, row: 272, icon: 64 },
+};
+const GRID_PAD_X = 16; // .ft-grid scroller padding (12) + row padding (4)
+const GRID_PAD_TOP = 8;
+const GRID_GAP = 12;
+
+/* ------------------------------------------------------------------ */
+/* Drag and drop between the list, breadcrumbs and the sidebar         */
+/* ------------------------------------------------------------------ */
+
+export const DRAG_MIME = "application/x-nekopak-entries";
+
+/** What is being dragged right now (dataTransfer is unreadable during dragover). */
+export const dragState: { entries: RemoteEntry[] } = { entries: [] };
+
+/** Props for any element that accepts a drop of cloud items into `folderId`. */
+export function dropTarget(folderId: string, onDrop: (op: "move" | "copy", entries: RemoteEntry[], dest: string) => void) {
+  const accepts = (e: DragEvent) => e.dataTransfer?.types.includes(DRAG_MIME) && !dragState.entries.some((x) => x.id === folderId);
+  return {
+    onDragOver: (e: DragEvent) => {
+      if (!accepts(e)) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = e.ctrlKey ? "copy" : "move";
+      (e.currentTarget as HTMLElement).classList.add("drop-on");
+    },
+    onDragLeave: (e: DragEvent) => (e.currentTarget as HTMLElement).classList.remove("drop-on"),
+    onDrop: (e: DragEvent) => {
+      (e.currentTarget as HTMLElement).classList.remove("drop-on");
+      if (!accepts(e)) return;
+      e.preventDefault();
+      const entries = dragState.entries;
+      dragState.entries = [];
+      if (entries.length) onDrop(e.ctrlKey ? "copy" : "move", entries, folderId);
+    },
+  };
+}
 
 const KIND_ICON: Record<FileKind, string> = {
   folder: "folder", video: "video", audio: "audio", image: "image",
@@ -24,11 +68,11 @@ const KIND_ICON: Record<FileKind, string> = {
 };
 
 const COLUMN_META: Record<ColumnId, { label: string; width: string; sortKey?: SortKey; minWidth: number }> = {
-  name: { label: "名称", width: "minmax(180px, 1fr)", sortKey: "name", minWidth: 0 },
-  location: { label: "位置", width: "minmax(120px, 0.5fr)", minWidth: 640 },
-  kind: { label: "类型", width: "104px", sortKey: "kind", minWidth: 900 },
-  size: { label: "大小", width: "104px", sortKey: "size", minWidth: 440 },
-  modified: { label: "修改时间", width: "150px", sortKey: "modified", minWidth: 600 },
+  name: { get label() { return tr("名称"); }, width: "minmax(180px, 1fr)", sortKey: "name", minWidth: 0 },
+  location: { get label() { return tr("位置"); }, width: "minmax(120px, 0.5fr)", minWidth: 640 },
+  kind: { get label() { return tr("类型"); }, width: "104px", sortKey: "kind", minWidth: 900 },
+  size: { get label() { return tr("大小"); }, width: "104px", sortKey: "size", minWidth: 440 },
+  modified: { get label() { return tr("修改时间"); }, width: "150px", sortKey: "modified", minWidth: 600 },
 };
 
 /* ------------------------------------------------------------------ */
@@ -41,12 +85,22 @@ export interface Selection {
   focus: number;
 }
 
-export function useSelection(items: readonly RemoteEntry[], resetKey: unknown) {
-  const [sel, setSel] = useState<Selection>({ ids: new Set(), anchor: 0, focus: 0 });
-  useEffect(() => setSel({ ids: new Set(), anchor: 0, focus: 0 }), [resetKey]);
+const viewSelections = new Map<string, Selection>();
+const viewScroll = new Map<string, number>();
+onSessionReset(() => { viewSelections.clear(); viewScroll.clear(); });
+export function useSelection(items: readonly RemoteEntry[], resetKey: unknown, memoryKey?: string, ready = true) {
+  const restore = () => memoryKey && viewSelections.get(memoryKey) || { ids: new Set<string>(), anchor: 0, focus: 0 };
+  const [sel, setSel] = useState<Selection>(restore);
+  useEffect(() => setSel(restore()), [resetKey, memoryKey]);
+  useEffect(() => {
+    if (!memoryKey || !ready) return;
+    if (viewSelections.size >= 512 && !viewSelections.has(memoryKey)) viewSelections.delete(viewSelections.keys().next().value!);
+    viewSelections.set(memoryKey, sel);
+  }, [sel, memoryKey, ready]);
 
   // Drop ids that disappeared after a reload; keep focus in range.
   useEffect(() => {
+    if (!ready) return;
     setSel((s) => {
       const present = new Set(items.map((i) => i.id));
       let changed = false;
@@ -58,7 +112,7 @@ export function useSelection(items: readonly RemoteEntry[], resetKey: unknown) {
       const focus = Math.min(s.focus, Math.max(0, items.length - 1));
       return changed || focus !== s.focus ? { ids, anchor: Math.min(s.anchor, focus), focus } : s;
     });
-  }, [items]);
+  }, [items, ready]);
 
   const selected = useMemo(() => items.filter((i) => sel.ids.has(i.id)), [items, sel.ids]);
   return { sel, setSel, selected };
@@ -88,6 +142,10 @@ export function KindTile({ entry, size = "sm" }: { entry: RemoteEntry; size?: "s
   );
 }
 
+export function StarMark({ entry }: { entry: RemoteEntry }) {
+  return isStarred(entry) ? <span class="star-mark" title={tr("已加星标")} aria-label={tr("已加星标")}><Icon name="star" size={16} filled /></span> : null;
+}
+
 export function EntryName({ entry, showWarn = true, withIcon = true }: { entry: RemoteEntry; showWarn?: boolean; withIcon?: boolean }) {
   const { base, ext } = entry.kind === "folder" ? { base: entry.name, ext: "" } : splitName(entry.name);
   const issues = showWarn ? windowsIssues(entry.name) : [];
@@ -98,8 +156,9 @@ export function EntryName({ entry, showWarn = true, withIcon = true }: { entry: 
         <span class="name-base">{base}</span>
         {ext ? <span class="name-ext">{ext}</span> : null}
       </span>
+      <StarMark entry={entry} />
       {issues.length ? (
-        <span class="name-warn" title={`下载到 Windows 时需转义：${issues.join("；")}`} aria-label={`注意：${issues.join("；")}`}>
+        <span class="name-warn" title={tx("下载到 Windows 时需转义：{0}", issues.join("；"))} aria-label={tx("注意：{0}", issues.join("；"))}>
           <Icon name="alert" size={16} filled />
         </span>
       ) : null}
@@ -131,6 +190,7 @@ function Lead({ entry, selected, onToggle }: { entry: RemoteEntry; selected: boo
 /* ------------------------------------------------------------------ */
 
 export interface FileTableProps {
+  scrollKey?: string;
   id: string;
   label: string;
   items: readonly RemoteEntry[];
@@ -143,7 +203,13 @@ export interface FileTableProps {
   rowHeight: number;
   onOpen: (entry: RemoteEntry) => void;
   onMenu: (entries: RemoteEntry[], x: number, y: number) => void;
-  onKeyAction?: (action: "rename" | "trash" | "copy" | "parent" | "properties", entries: RemoteEntry[]) => void;
+  onKeyAction?: (action: KeyAction, entries: RemoteEntry[]) => void;
+  /** Card size in grid mode. */
+  gridSize?: GridSize;
+  /** Ctrl + wheel over the list: +1 bigger, −1 smaller. */
+  onZoom?: (dir: 1 | -1) => void;
+  /** Enables dragging items; dropping on a folder row/card calls this. */
+  onDropInto?: (op: "move" | "copy", entries: RemoteEntry[], dest: string) => void;
   locationOf?: (e: RemoteEntry) => string;
   dateLabel?: string;
   hasMore?: boolean;
@@ -152,14 +218,37 @@ export interface FileTableProps {
   footer?: JSX.Element | null;
 }
 
+export type KeyAction = "rename" | "trash" | "copy-path" | "copy" | "cut" | "paste" | "parent" | "properties" | "star" | "undo";
+
+interface Marquee {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  base: ReadonlySet<string>;
+}
+
 export function FileTable(p: FileTableProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1000);
   const grid = p.mode === "grid";
-  const perRow = grid ? Math.max(1, Math.floor((width - 24) / GRID_MIN)) : 1;
+  const g = GRID[p.gridSize ?? "m"];
+  const perRow = grid ? Math.max(1, Math.floor((width - 24) / g.min)) : 1;
   const rowsCount = grid ? Math.ceil(p.items.length / perRow) : p.items.length;
-  const rowH = grid ? GRID_ROW : p.rowHeight;
+  const rowH = grid ? g.row : p.rowHeight;
+  const cut = useStore(clip, (c) => (c.mode === "cut" ? c.entries.map((e) => e.id).join("|") : ""));
+  const cutIds = useMemo(() => new Set(cut ? cut.split("|") : []), [cut]);
+  const [marquee, setMarquee] = useState<Marquee | null>(null);
   const { range, ensureVisible } = useVirtualRows(scroller, rowsCount, rowH, grid ? 3 : 10);
+
+  useLayoutEffect(() => {
+    const el = scroller.current, key = p.scrollKey;
+    if (!el || !key) return;
+    el.scrollTop = viewScroll.get(key) ?? 0;
+    const save = () => viewScroll.set(key, el.scrollTop);
+    el.addEventListener("scroll", save, { passive: true });
+    return () => { save(); el.removeEventListener("scroll", save); };
+  }, [p.scrollKey]);
 
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -266,7 +355,19 @@ export function FileTable(p: FileTableProps) {
           break;
         }
         if (ctrl && (e.key === "c" || e.key === "C")) {
-          p.onKeyAction?.("copy", selectedEntries());
+          p.onKeyAction?.(e.shiftKey ? "copy-path" : "copy", selectedEntries());
+          break;
+        }
+        if (ctrl && (e.key === "x" || e.key === "X")) {
+          p.onKeyAction?.("cut", selectedEntries());
+          break;
+        }
+        if (ctrl && (e.key === "v" || e.key === "V")) {
+          p.onKeyAction?.("paste", []);
+          break;
+        }
+        if (ctrl && (e.key === "d" || e.key === "D")) {
+          p.onKeyAction?.("star", selectedEntries());
           break;
         }
         return;
@@ -275,7 +376,11 @@ export function FileTable(p: FileTableProps) {
     e.stopPropagation();
   };
 
+  // A plain press on an item that is part of a multi-selection keeps the
+  // selection (so the group can be dragged) and collapses it on click.
+  const pendingSingle = useRef<number | null>(null);
   const onItemMouseDown = (e: MouseEvent, i: number) => {
+    pendingSingle.current = null;
     if (e.button === 2) {
       if (!sel.ids.has(items[i].id)) setSelection({ ids: new Set([items[i].id]), anchor: i, focus: i });
       return;
@@ -286,17 +391,48 @@ export function FileTable(p: FileTableProps) {
       e.preventDefault();
     } else if (e.ctrlKey || e.metaKey) {
       toggle(i);
+    } else if (p.onDropInto && sel.ids.has(items[i].id) && sel.ids.size > 1) {
+      pendingSingle.current = i;
+      setSelection((s) => ({ ...s, focus: i }));
     } else {
       setSelection({ ids: new Set([items[i].id]), anchor: i, focus: i });
     }
   };
+  const onItemClick = (i: number) => {
+    if (pendingSingle.current === i) setSelection({ ids: new Set([items[i].id]), anchor: i, focus: i });
+    pendingSingle.current = null;
+  };
 
+  const drop = p.onDropInto;
   const itemProps = (e: RemoteEntry, i: number, selected: boolean) => ({
     id: `${p.id}-row-${i}`,
     "aria-selected": selected ? "true" : "false",
     "data-index": i,
     "data-id": e.id,
+    ...(drop ? {
+      draggable: true,
+      onDragStart: (ev: DragEvent) => {
+        const chosen = sel.ids.has(e.id) ? items.filter((x) => sel.ids.has(x.id)) : [e];
+        if (!sel.ids.has(e.id)) setSelection({ ids: new Set([e.id]), anchor: i, focus: i });
+        dragState.entries = chosen;
+        ev.dataTransfer!.effectAllowed = "copyMove";
+        ev.dataTransfer!.setData(DRAG_MIME, chosen.map((x) => x.id).join(","));
+        ev.dataTransfer!.setData("text/plain", chosen.map((x) => x.name).join("\n"));
+        const ghost = document.createElement("div");
+        ghost.className = "drag-ghost";
+        ghost.textContent = chosen.length > 1 ? tx("{0} 个项目", chosen.length) : chosen[0].name;
+        document.body.appendChild(ghost);
+        ev.dataTransfer!.setDragImage(ghost, 16, 16);
+        setTimeout(() => ghost.remove(), 0);
+      },
+      onDragEnd: () => {
+        dragState.entries = [];
+        pendingSingle.current = null;
+      },
+      ...(e.kind === "folder" ? dropTarget(e.id, drop) : {}),
+    } : {}),
     onMouseDown: (ev: MouseEvent) => onItemMouseDown(ev, i),
+    onClick: () => onItemClick(i),
     onDblClick: () => p.onOpen(e),
     onContextMenu: (ev: MouseEvent) => {
       ev.preventDefault();
@@ -319,9 +455,11 @@ export function FileTable(p: FileTableProps) {
         if (!e) break;
         const selected = sel.ids.has(e.id);
         cells.push(
-          <div key={e.id} role="gridcell" class={`card${selected ? " selected" : ""}${i === sel.focus ? " focused" : ""}`} {...(itemProps(e, i, selected) as object)}>
+          <div key={e.id} role="gridcell" class={`card${selected ? " selected" : ""}${i === sel.focus ? " focused" : ""}${cutIds.has(e.id) ? " is-cut" : ""}`}
+            style={{ height: `${g.row - GRID_GAP}px`, "--card-icon": `${g.icon}px` } as JSX.CSSProperties} {...(itemProps(e, i, selected) as object)}>
             <div class="card-art">
               <KindTile entry={e} size="lg" />
+              {isStarred(e) ? <span class="card-star" aria-label={tr("已加星标")}><Icon name="star" size={18} filled /></span> : null}
               <span class={`card-check${selected ? " on" : ""}`} aria-hidden="true" onMouseDown={(ev) => { ev.stopPropagation(); toggle(i); }}>
                 <Icon name={selected ? "checkbox" : "checkboxOff"} filled={selected} size={22} />
               </span>
@@ -331,14 +469,14 @@ export function FileTable(p: FileTableProps) {
           </div>,
         );
       }
-      rows.push(<div key={`r${r}`} role="row" aria-rowindex={r + 1} class="grid-row" style={{ gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`, height: `${GRID_ROW}px` }}>{cells}</div>);
+      rows.push(<div key={`r${r}`} role="row" aria-rowindex={r + 1} class="grid-row" style={{ gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`, height: `${g.row}px` }}>{cells}</div>);
     }
   } else {
     for (let i = range.start; i < range.end; i++) {
       const e = items[i];
       const selected = sel.ids.has(e.id);
       rows.push(
-        <div key={e.id} role="row" aria-rowindex={i + 2} class={`ft-row${selected ? " selected" : ""}${i === sel.focus ? " focused" : ""}`}
+        <div key={e.id} role="row" aria-rowindex={i + 2} class={`ft-row${selected ? " selected" : ""}${i === sel.focus ? " focused" : ""}${cutIds.has(e.id) ? " is-cut" : ""}`}
           style={{ gridTemplateColumns: template, height: `${p.rowHeight}px` }} {...(itemProps(e, i, selected) as object)}>
           <div role="gridcell" class="ft-lead"><Lead entry={e} selected={selected} onToggle={() => toggle(i)} /></div>
           {cols.map((c) => (
@@ -355,11 +493,95 @@ export function FileTable(p: FileTableProps) {
     }
   }
 
+  /* Marquee (rubber-band) selection from empty space. Coordinates are in
+     scroll-content space so the band survives scrolling. */
+  const contentPoint = (ev: MouseEvent) => {
+    const el = scroller.current!;
+    const r = el.getBoundingClientRect();
+    return { x: ev.clientX - r.left + el.scrollLeft, y: ev.clientY - r.top + el.scrollTop };
+  };
+
+  const hitIds = (m: Marquee): Set<string> => {
+    const top = Math.min(m.y0, m.y1);
+    const bottom = Math.max(m.y0, m.y1);
+    const left = Math.min(m.x0, m.x1);
+    const right = Math.max(m.x0, m.x1);
+    const out = new Set(m.base);
+    if (grid) {
+      const colW = (width - 24 - 8 - GRID_GAP * (perRow - 1)) / perRow;
+      const r0 = Math.max(0, Math.floor((top - GRID_PAD_TOP) / g.row));
+      const r1 = Math.min(rowsCount - 1, Math.floor((bottom - GRID_PAD_TOP) / g.row));
+      for (let r = r0; r <= r1; r++) {
+        const y = GRID_PAD_TOP + r * g.row;
+        if (y > bottom || y + g.row - GRID_GAP < top) continue;
+        for (let c = 0; c < perRow; c++) {
+          const x = GRID_PAD_X + c * (colW + GRID_GAP);
+          if (x > right || x + colW < left) continue;
+          const e = items[r * perRow + c];
+          if (e) out.add(e.id);
+        }
+      }
+    } else {
+      const r0 = Math.max(0, Math.floor((top - HEADER_H) / rowH));
+      const r1 = Math.min(items.length - 1, Math.floor((bottom - HEADER_H) / rowH));
+      for (let i = r0; i <= r1; i++) out.add(items[i].id);
+    }
+    return out;
+  };
+
+  const onBlankMouseDown = (ev: MouseEvent) => {
+    if (ev.button !== 0) return;
+    const t = ev.target as HTMLElement;
+    if (t.closest(".ft-row, .card, .ft-head, .ft-foot, button, a, input")) return;
+    const el = scroller.current!;
+    if (ev.offsetX > el.clientWidth || ev.offsetY > el.clientHeight) return; // scrollbar
+    const pt = contentPoint(ev);
+    const additive = ev.ctrlKey || ev.metaKey || ev.shiftKey;
+    const base = additive ? new Set(sel.ids) : new Set<string>();
+    let m: Marquee = { x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y, base };
+    let moved = false;
+    el.focus({ preventScroll: true });
+    ev.preventDefault();
+    const onMove = (e2: MouseEvent) => {
+      const q = contentPoint(e2);
+      if (!moved && Math.abs(q.x - m.x0) + Math.abs(q.y - m.y0) < 4) return;
+      moved = true;
+      m = { ...m, x1: q.x, y1: q.y };
+      setMarquee(m);
+      setSelection((s0) => ({ ...s0, ids: hitIds(m) }));
+      // auto-scroll near the edges
+      const r = el.getBoundingClientRect();
+      if (e2.clientY > r.bottom - 24) el.scrollTop += 24;
+      else if (e2.clientY < r.top + 24 + (grid ? 0 : HEADER_H)) el.scrollTop -= 24;
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      setMarquee(null);
+      if (!moved && !additive) setSelection((s0) => ({ ...s0, ids: new Set() }));
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const onWheel = (ev: WheelEvent) => {
+    if (!(ev.ctrlKey || ev.metaKey) || !p.onZoom) return;
+    ev.preventDefault();
+    p.onZoom(ev.deltaY < 0 ? 1 : -1);
+  };
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || !p.onZoom) return;
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  });
+
   return (
     <div class={`ft${grid ? " ft-grid" : ""}`}>
       <div
         ref={scroller}
         class="ft-scroll"
+        onMouseDown={(e) => onBlankMouseDown(e as unknown as MouseEvent)}
         role="grid"
         id={p.id}
         aria-label={p.label}
@@ -381,7 +603,7 @@ export function FileTable(p: FileTableProps) {
               <button
                 type="button"
                 class={`head-check${allSelected || someSelected ? " on" : ""}`}
-                aria-label={allSelected ? "取消全选" : "全选（Ctrl+A）"}
+                aria-label={allSelected ? tr("取消全选") : tr("全选（Ctrl+A）")}
                 tabIndex={-1}
                 onClick={() => setSelection((s) => ({ ...s, ids: allSelected ? new Set() : new Set(items.map((i) => i.id)) }))}
               >
@@ -411,6 +633,12 @@ export function FileTable(p: FileTableProps) {
             <Fragment>{rows}</Fragment>
           </div>
         </div>
+        {marquee ? (
+          <div class="marquee" aria-hidden="true" style={{
+            left: `${Math.min(marquee.x0, marquee.x1)}px`, top: `${Math.min(marquee.y0, marquee.y1)}px`,
+            width: `${Math.abs(marquee.x1 - marquee.x0)}px`, height: `${Math.abs(marquee.y1 - marquee.y0)}px`,
+          }} />
+        ) : null}
         {p.footer ?? null}
       </div>
     </div>

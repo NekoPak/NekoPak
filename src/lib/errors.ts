@@ -1,7 +1,9 @@
+import { tr, tx } from "./i18n";
 import type { BackendId, ClientError, ClientErrorCode } from "./contract";
 
 const CODES: ReadonlySet<ClientErrorCode> = new Set<ClientErrorCode>([
   "AUTH_EXPIRED", "ACCOUNT_RESTRICTED", "PERMISSION_DENIED",
+  "VERIFICATION_REQUIRED",
   "QUOTA_EXCEEDED", "NOT_FOUND", "UNSUPPORTED",
   "TRANSIENT_NETWORK", "DISK_FULL", "INTEGRITY_FAILED",
   "CONFLICT", "CANCELLED", "INTERNAL",
@@ -28,7 +30,7 @@ function redactDetails(details: unknown, depth = 0): Record<string, unknown> | u
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(details as Record<string, unknown>)) {
     if (/token|secret|password|cookie|auth|sig/i.test(k)) {
-      out[k] = "<已隐藏>";
+      out[k] = tr("<已隐藏>");
     } else if (typeof v === "string") {
       out[k] = redact(v);
     } else if (typeof v === "number" || typeof v === "boolean" || v === null) {
@@ -61,13 +63,13 @@ export function toClientError(e: unknown, backend?: BackendId): ClientError {
       details: redactDetails(e.details),
     };
   }
-  const raw = typeof e === "string" ? e : e instanceof Error ? e.message : "未知错误";
+  const raw = typeof e === "string" ? e : e instanceof Error ? e.message : tr("未知错误");
   // Tauri rejects unknown commands with a string such as "command foo not found".
   const missing = /command\s+([\w:]+)\s+not\s+found/i.exec(raw);
   if (missing) {
     return {
       code: "UNSUPPORTED",
-      message: `后端尚未提供命令 ${missing[1]}`,
+      message: tx("暂不支持（缺少命令 {0}）", missing[1]),
       retryable: false,
       backend,
       details: { command: missing[1] },
@@ -83,53 +85,57 @@ export interface ErrorCopy {
 
 /** User-facing explanation per code. Quota/permission texts are explicit on purpose. */
 export const ERROR_COPY: Record<ClientErrorCode, ErrorCopy> = {
+  VERIFICATION_REQUIRED: {
+    get title() { return tr("需要安全验证"); },
+    get hint() { return tr("完成 PikPak 的安全验证后可继续读取，当前登录会话会保留。"); },
+  },
   AUTH_EXPIRED: {
-    title: "登录已过期",
-    hint: "重新授权后即可继续。文件列表和任务历史会保留。",
+    get title() { return tr("登录已过期"); },
+    get hint() { return tr("重新登录后即可继续。"); },
   },
   ACCOUNT_RESTRICTED: {
-    title: "账号受限",
-    hint: "服务方限制了此账号的操作。请在 PikPak 官方应用或官网查看账号状态。",
+    get title() { return tr("账号受限"); },
+    get hint() { return tr("PikPak 限制了此账号的操作，请在 PikPak 官网查看账号状态。"); },
   },
   PERMISSION_DENIED: {
-    title: "没有权限",
-    hint: "当前账号或后端不允许此操作，例如只读的共享文件夹，或需要 Premium 的功能。",
+    get title() { return tr("没有权限"); },
+    get hint() { return tr("例如只读的共享文件夹，或需要 Premium 的功能。"); },
   },
   QUOTA_EXCEEDED: {
-    title: "配额已用尽",
-    hint: "Connected Apps 的配额与官方应用分开计算。切换后端不会恢复配额，请等待重置时间或在官方应用中查看。",
+    get title() { return tr("额度已用完"); },
+    get hint() { return tr("等额度重置后再试，可在“设置 › 配额”查看重置时间。"); },
   },
   NOT_FOUND: {
-    title: "找不到项目",
-    hint: "它可能已在其他设备上被移动或删除。刷新后再试。",
+    get title() { return tr("找不到项目"); },
+    get hint() { return tr("它可能已在其他设备上被移动或删除。刷新后再试。"); },
   },
   UNSUPPORTED: {
-    title: "当前后端不支持",
-    hint: "所用后端没有声明这项能力。可在“设置 › 后端”查看各后端的能力。",
+    get title() { return tr("暂不支持"); },
+    get hint() { return tr("这项功能暂时不能使用。"); },
   },
   TRANSIENT_NETWORK: {
-    title: "网络连接失败",
-    hint: "检查网络后重试。可在“设置 › 高级网络诊断”运行连通性检查。",
+    get title() { return tr("网络连接失败"); },
+    get hint() { return tr("检查网络后重试。"); },
   },
   DISK_FULL: {
-    title: "磁盘空间不足",
-    hint: "释放目标磁盘空间，或在设置中更换下载目录后重试。",
+    get title() { return tr("磁盘空间不足"); },
+    get hint() { return tr("释放目标磁盘空间，或在设置中更换下载目录后重试。"); },
   },
   INTEGRITY_FAILED: {
-    title: "完整性校验失败",
-    hint: "下载内容与远端信息不一致。已保留 .part 现场供排查，可重新下载。",
+    get title() { return tr("完整性校验失败"); },
+    get hint() { return tr("下载内容与远端信息不一致。已保留 .part 现场供排查，可重新下载。"); },
   },
   CONFLICT: {
-    title: "存在冲突",
-    hint: "目标位置已有同名项，或数据在此期间已被修改。刷新后重新确认。",
+    get title() { return tr("存在冲突"); },
+    get hint() { return tr("目标位置已有同名项，或数据在此期间已被修改。刷新后重新确认。"); },
   },
   CANCELLED: {
-    title: "已取消",
-    hint: "操作已被取消。",
+    get title() { return tr("已取消"); },
+    get hint() { return tr("操作已被取消。"); },
   },
   INTERNAL: {
-    title: "内部错误",
-    hint: "复制诊断信息并反馈问题，诊断信息不含令牌和下载链接。",
+    get title() { return tr("内部错误"); },
+    get hint() { return tr("复制诊断信息并反馈问题，诊断信息不含令牌和下载链接。"); },
   },
 };
 

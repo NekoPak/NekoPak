@@ -1,0 +1,55 @@
+{
+  "auth": {
+    "account_tier": "unknown",
+    "authenticated": false,
+    "backend": "rust_compat",
+    "credential_owner": "none",
+    "message": "当前版本尚未配置可用的账号登录。",
+    "state": "signed_out"
+  },
+  "backend_discover": [
+    {
+      "account_tier": "unknown",
+      "backend": "rust_compat",
+      "checked_at": "2026-11-08T00:00:00Z",
+      "limitations": [
+        "Direct client-protocol preview; live Free/Premium acceptance has not been completed.",
+        "Native metadata, verification, file operations and quota paths are implemented; live account acceptance remains separate. Range and media are not enabled.",
+        "Windows Credential Manager and a valid protocol profile are required; the normal Windows build includes the public Web login profile."
+      ],
+      "operations": {
+        "archive": false,
+        "clip_download": false,
+        "cloud_task": false,
+        "copy": false,
+        "delete_forever": false,
+        "download": false,
+        "duplicates": false,
+        "external_player": false,
+        "folder_download": false,
+        "link_preview": false,
+        "list": false,
+        "media_probe": false,
+        "mkdir": false,
+        "move": false,
+        "quality_download": false,
+        "quota": false,
+        "read_range": false,
+        "rename": false,
+        "restore": false,
+        "search": false,
+        "segment_download": false,
+        "share": false,
+        "space_summary": false,
+        "star": false,
+        "stat": false,
+        "stream_url": false,
+        "trash": false,
+        "upload": false
+      },
+      "status": "unavailable",
+      "version": "native-http-preview-0.2"
+    }
+  ],
+  "scope": "Offline unconfigured native adapter; not a live account observation."
+}

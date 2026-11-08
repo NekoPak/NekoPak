@@ -5,6 +5,7 @@ import { api, collectAll, errorOf, on } from "../lib/api";
 import type { ClientError } from "../lib/contract";
 import { Store } from "../lib/store";
 import { applyChanged, applyProgress, mergeSnapshot } from "./reconcile";
+import { onSessionReset, sessionGeneration } from "./session";
 
 export interface TransfersState {
   tasks: ReadonlyMap<string, TransferTaskExt>;
@@ -32,6 +33,10 @@ let buffer: Pending[] = [];
 let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 let loading: Promise<void> | null = null;
 let reloadAgain = false;
+onSessionReset(() => {
+  buffer = [];
+  transfers.replace({ tasks: new Map(), order: [], phase: "idle", dropped_events: 0 });
+});
 
 function apply(p: Pending): void {
   const s = transfers.get();
@@ -77,6 +82,8 @@ export async function startTransfers(): Promise<void> {
   await on("nekopak://transfer/resync-required", () => scheduleReload(0));
   await on("nekopak://storage/error", error => transfers.set({ error }));
   await loadSnapshot();
+  // Rates are volatile within a persisted revision; refresh while receiving chunks.
+  setInterval(()=>{if([...transfers.get().tasks.values()].some(t=>t.backend==="rust_compat"&&t.state==="running"))scheduleReload(0);},500);
 }
 
 export async function loadSnapshot(): Promise<void> {
@@ -89,11 +96,13 @@ export async function loadSnapshot(): Promise<void> {
 }
 
 async function readSnapshot(): Promise<void> {
+  const generation = sessionGeneration();
   buffering = true;
   const prev = transfers.get();
   transfers.set({ phase: prev.phase === "ready" ? "ready" : "loading" });
   try {
     const items = await collectAll(() => api.transfersList(), (c) => api.transfersList(c), 20);
+    if (generation !== sessionGeneration()) return;
     const tasks = new Map<string, TransferTaskExt>();
     for (const t of items) tasks.set(t.id, mergeSnapshot(prev.tasks.get(t.id), t));
     transfers.set({
@@ -104,6 +113,7 @@ async function readSnapshot(): Promise<void> {
       snapshot_at: new Date().toISOString(),
     });
   } catch (e) {
+    if (generation !== sessionGeneration()) return;
     transfers.set({ phase: prev.tasks.size ? "ready" : "error", error: errorOf(e) });
   } finally {
     const queued = buffer;

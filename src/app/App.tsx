@@ -1,23 +1,49 @@
+import { language, tr, tx } from "../lib/i18n";
 import { useEffect, useState } from "preact/hooks";
 import { useStore } from "../lib/store";
 import { app, boot } from "../state/app";
-import { initRouter, navigate, route } from "../state/route";
+import { closeTab, cycleTab, initRouter, navigate, navigateHistory, openTab, route, workspaceTabs } from "../state/route";
+import { WorkspaceTabs } from "../components/WorkspaceTabs";
 import { loadSnapshot } from "../state/transfers";
-import { dialogs, focusRequests, menu } from "../state/ui";
+import { dialogs, focusRequests, menu, toast } from "../state/ui";
 import { applyPrefs, prefs, setPref } from "../state/prefs";
+import { clip } from "../state/clipboard";
+import { runPageCommand } from "../state/bus";
+import { startJobs, watchJobs } from "../state/jobs";
+import { undo } from "../state/undo";
 import { DialogHost, MenuHost, ToastHost } from "../components/hosts";
+import { openPalette, palette } from "../state/palette";
+import { lazyPage } from "./lazyPage";
+import { newCloudTask } from "../components/dialogs";
 import { LogoMark } from "../components/Brand";
 import { ErrorPanel } from "../components/ui";
 import { showShortcuts } from "../components/dialogs";
 import { NAV_KEYS, Sidebar } from "./Shell";
 import { FilesPage } from "../pages/Files";
-import { RecentPage, SearchPage, TrashPage } from "../pages/Lists";
+import { RecentPage, SearchPage, StarredPage, TrashPage } from "../pages/Lists";
+
 import { TransfersPage } from "../pages/Transfers";
-import { SyncPage } from "../pages/Sync";
-import { MountPage } from "../pages/Mount";
+
 import { SettingsPage } from "../pages/Settings";
 import { Onboarding } from "../pages/Onboarding";
 import { requestRefresh } from "../pages/common";
+import { on } from "../lib/api";
+
+const SharesPage = lazyPage(() => import("../pages/Shares").then((m) => m.SharesPage));
+const ReferencesPage = lazyPage<{ manifest?: string }>(() => import("../pages/References").then(m => m.ReferencesPage));
+const DuplicatesPage = lazyPage<{ folder: string }>(() => import("../pages/Duplicates").then((m) => m.DuplicatesPage));
+const SpacePage = lazyPage<{ folder: string }>(() => import("../pages/Space").then((m) => m.SpacePage));
+const ArchivePage = lazyPage<{ file: string; path: string }>(() => import("../pages/Archive").then((m) => m.ArchivePage));
+const SyncPage = lazyPage<{ config?: string }>(() => import("../pages/Sync").then((m) => m.SyncPage));
+const MountPage = lazyPage(() => import("../pages/Mount").then((m) => m.MountPage));
+const LocalSourcesPage = lazyPage(() => import("../pages/LocalSources").then(m => m.LocalSourcesPage));
+const GalleryPage = lazyPage<{folder:string;mode:"images"|"videos"}>(() => import("../pages/Gallery").then(m => m.GalleryPage));
+const PaletteHost = lazyPage(() => import("../components/Palette").then((m) => m.PaletteHost));
+
+function PaletteSlot() {
+  const open = useStore(palette, (p) => p.open);
+  return open ? <PaletteHost /> : null;
+}
 
 function isTyping(el: Element | null): boolean {
   if (!el) return false;
@@ -28,8 +54,26 @@ function isTyping(el: Element | null): boolean {
 function useGlobalShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialogs.get().stack.length || menu.get().open) return;
+      if (dialogs.get().stack.length || menu.get().open || palette.get().open) return;
       const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key.toLowerCase() === "t") { e.preventDefault(); openTab(); return; }
+      if (ctrl && e.key.toLowerCase() === "w") { e.preventDefault(); closeTab(); return; }
+      if (ctrl && e.key === "Tab") { e.preventDefault(); cycleTab(e.shiftKey ? -1 : 1); return; }
+      if (ctrl && ((!e.shiftKey && (e.key === "k" || e.key === "K")) || (e.shiftKey && (e.key === "p" || e.key === "P")))) {
+        e.preventDefault();
+        openPalette();
+        return;
+      }
+      if (ctrl && !e.shiftKey && (e.key === "z" || e.key === "Z") && !isTyping(document.activeElement)) {
+        e.preventDefault();
+        void undo().then((ok) => { if (!ok) toast(tr("没有可以撤销的操作"), "info"); });
+        return;
+      }
+      if (ctrl && !e.shiftKey && (e.key === "v" || e.key === "V") && !isTyping(document.activeElement) && clip.get().mode) {
+        e.preventDefault();
+        runPageCommand("paste");
+        return;
+      }
       if (ctrl && !e.shiftKey && (e.key === "f" || e.key === "F")) {
         e.preventDefault();
         const pg = route.get().current.page;
@@ -38,7 +82,7 @@ function useGlobalShortcuts() {
         setTimeout(() => focusRequests.set((s) => ({ search: s.search + 1 })), pg === "files" || pg === "search" ? 0 : 60);
         return;
       }
-      if (ctrl && !e.shiftKey && /^[1-6]$/.test(e.key)) {
+      if (ctrl && !e.shiftKey && /^[1-8]$/.test(e.key)) {
         e.preventDefault();
         const n = NAV_KEYS.find((x) => x.key === e.key);
         if (n) navigate(n.to);
@@ -56,12 +100,12 @@ function useGlobalShortcuts() {
       }
       if (e.altKey && e.key === "ArrowLeft") {
         e.preventDefault();
-        history.back();
+        navigateHistory(-1);
         return;
       }
       if (e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
-        history.forward();
+        navigateHistory(1);
         return;
       }
       if (e.key === "F5" || (ctrl && (e.key === "r" || e.key === "R"))) {
@@ -76,8 +120,8 @@ function useGlobalShortcuts() {
       }
     };
     const onMouse = (e: MouseEvent) => {
-      if (e.button === 3) history.back();
-      if (e.button === 4) history.forward();
+      if (e.button === 3) navigateHistory(-1);
+      if (e.button === 4) navigateHistory(1);
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("mouseup", onMouse);
@@ -99,13 +143,24 @@ function Page() {
     case "sync": return <SyncPage config={r.config} />;
     case "mount": return <MountPage />;
     case "trash": return <TrashPage />;
+    case "starred": return <StarredPage />;
+    case "shares": return <SharesPage />;
+    case "references": return <ReferencesPage manifest={r.manifest}/>;
+    case "local": return <LocalSourcesPage />;
+    case "gallery": return <GalleryPage folder={r.folder} mode={r.mode}/>;
+    case "duplicates": return <DuplicatesPage folder={r.folder} />;
+    case "space": return <SpacePage folder={r.folder} />;
+    case "archive": return <ArchivePage file={r.file} path={r.path} />;
     case "settings": return <SettingsPage section={r.section} />;
     case "about": return <SettingsPage section="about" />;
   }
 }
 
 export function App() {
-  const s = useStore(app, (x) => ({ boot: x.boot, err: x.bootError, accepted: x.disclaimerAccepted, auth: x.auth?.state }));
+  // Rerender translated labels without remounting the tree or losing forms.
+  useStore(language, state => state.preference);
+  const tabId = useStore(workspaceTabs, state => state.activeId);
+  const s = useStore(app, (x) => ({ boot: x.boot, err: x.bootError, accepted: x.disclaimerAccepted, auth: x.auth?.state, sessionEpoch: x.sessionEpoch }));
   const collapsedPref = useStore(prefs, (p) => p.sidebarCollapsed);
   const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.innerWidth < 1000);
   // Decided once when boot completes: first run, or signed out at launch.
@@ -121,16 +176,47 @@ export function App() {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+  useEffect(()=>{
+    let stop:(()=>void)|undefined;let disposed=false;
+    void on("nekopak://desktop/navigate",()=>navigate({page:"transfers",tab:"active"})).then(unlisten=>{if(disposed)unlisten();else stop=unlisten;});
+    return ()=>{disposed=true;stop?.();};
+  },[]);
 
   useEffect(() => {
     if (s.boot === "ready" && obActive === null) setObActive(!s.accepted || s.auth === "signed_out");
+    if (s.boot === "ready") void startJobs();
   }, [s.boot, s.auth]);
+
+  // Server-side jobs (cloud extraction) announce when they finish.
+  useEffect(() => watchJobs((job, prev) => {
+    if (prev?.state === job.state) return;
+    if (job.state === "completed") toast(tx("{0}已完成", job.title), "success", job.target_parent_id ? { action: { label: tr("打开"), run: () => navigate({ page: "files", folder: job.target_parent_id! }) } } : {});
+    if (job.state === "failed") toast(tx("{0}失败：{1}", job.title, job.error?.message ?? "未知原因"), "error", job.error ? { error: job.error } : {});
+  }), []);
+
+  // Optional: offer a link found on the clipboard when the window regains focus.
+  useEffect(() => {
+    let last = "";
+    const onFocus = async () => {
+      if (!prefs.get().clipboardWatch || !navigator.clipboard?.readText) return;
+      try {
+        const text = (await navigator.clipboard.readText()).trim();
+        if (!text || text === last || !/^(magnet:\?xt=urn:btih:|https?:\/\/)\S+$/i.test(text)) return;
+        last = text;
+        toast(tr("剪贴板中有一个链接"), "info", { action: { label: tr("添加"), run: () => void newCloudTask(route.get().current.page === "files" ? (route.get().current as { folder: string }).folder : "root", "/", text) } });
+      } catch {
+        /* clipboard permission denied: stay quiet */
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   if (s.boot === "loading") {
     return (
       <div class="boot" role="status">
         <LogoMark size={40} />
-        <span>正在启动 NekoPak…</span>
+        <span>{tr("正在启动 NekoPak…")}</span>
       </div>
     );
   }
@@ -149,13 +235,17 @@ export function App() {
 
   return (
     <div class={`app${collapsed ? " rail" : ""}`}>
-      <a class="skip-link" href="#main">跳到主要内容</a>
+      <a class="skip-link" href="#main">{tr("跳到主要内容")}</a>
       <Sidebar collapsed={collapsed} />
       <main id="main" class="workspace" tabIndex={-1}>
-        <Page />
+        <WorkspaceTabs />
+        <div class="workspace-panel" id="workspace-panel" role="tabpanel" aria-labelledby={`workspace-tab-${tabId}`}>
+          <Page key={`${s.sessionEpoch}:${tabId}`} />
+        </div>
       </main>
       {showOnboarding ? <Onboarding onClose={() => setObActive(false)} /> : null}
       <DialogHost />
+      <PaletteSlot />
       <MenuHost />
       <ToastHost />
     </div>

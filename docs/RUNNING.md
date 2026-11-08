@@ -1,72 +1,146 @@
-# Run the M0 backend
+# Run NekoPak desktop integration
 
-This is an offline simulation, not a logged-in PikPak client. It does not download,
-upload, delete or mount real files. All displayed quotas and progress are synthetic.
-This remains the default mode. An optional external official CLI read-only preview
-is documented in CLI_ADAPTER.md; it requires explicit executable/profile settings
-and an independently authorized account. No CLI is included in the package.
+Current integrated capabilities and actual tests: [DESKTOP_INTEGRATION_REPORT.md](DESKTOP_INTEGRATION_REPORT.md).
+Windows first; Android/Linux/macOS follow desktop stabilization. Current connections may require
+the user's proxy; absence of Hosts blocking is not evidence of proxy-free connectivity.
 
-## Windows prerequisites
+2026-11-08: the official PikPak CLI adapter has been removed. Desktop uses the
+supplied v3 UI and the Rust `rust_compat` connection. This is an unsigned pre-alpha:
+real Free/Premium service acceptance is incomplete. DRIVE verification, native file
+operations, read-only share listing, account quota and original-file downloads are
+implemented and tested against an isolated HTTP service. Upload, cloud tasks, shares, archives, native media, safe sync and optional mounts are now wired;
+see the integration report for source/format/runtime limitations.
 
-- Windows x64; Microsoft Edge WebView2 Evergreen installed separately.
-- Rust 1.98+ MSVC (tested with 1.98.0), Visual Studio C++ desktop tools and Windows SDK.
-- Node.js 22+ and npm for the contract checks and Tauri CLI; Python 3.12+ for packaging.
+## Run the provided Windows application
 
-From the repository root:
+Extract `NekoPak-0.1.0-windows-x64-integration.zip` and double-click `nekopak.exe`.
+The required runtime is Windows x64 with Microsoft Edge WebView2 Evergreen.
+No compiler, terminal command, CLI installation, client registration or environment
+variable is needed to run the provided application. Enter the account email and
+password in NekoPak; the login button is enabled on normal startup.
+
+If the drive requests human verification, click **完成安全验证**, finish the browser
+page, return and click **继续**. The signed-in session stays available; DRIVE verification
+does not need the password again. Set an existing local download folder under
+**设置 → 下载与传输**. Original-file downloads support pause, resume and restart recovery;
+cancelled/failed partial files are retained. Existing destination files are never replaced.
+Click the download path or **选择文件夹** to open the Windows directory picker. Cancelling
+keeps the previous folder. **下载时询问保存位置** enables a per-download picker. The task
+menu opens the containing folder recorded for that task, including after changing the default.
+Task rows, the footer and sidebar show measured download throughput.
+
+**设置 → 外观** offers system/Simplified Chinese/English, and **关闭窗口时最小化到托盘**.
+Language changes apply without reloading; translated coverage is still incomplete outside the
+main supported flows. Tray actions show/hide the window, open Downloads, or quit. Closing to
+tray is off by default; when enabled the downloader keeps running after the window closes.
+
+**设置 → 网络 → 网络增强** is off by default. It supports the system proxy, direct
+connections, or a user-provided HTTP(S)/SOCKS5(H) proxy without embedded credentials. Optional
+TLS 1.2 compatibility affects authentication/drive API connections. Certificate checks remain
+enabled. Settings apply only to NekoPak and load before initial authentication requests.
+
+The website/browser development preview uses simulated data. Real account testing
+must use the Windows executable, which sends requests through the Rust backend.
+
+## Build from source (development only)
+
+- Windows x64, separately installed Microsoft Edge WebView2 Evergreen.
+- Rust 1.98+ MSVC, Visual Studio C++ desktop tools and Windows SDK.
+- Node 22+, npm; Python 3.12+ for packaging. The Tauri build CLI is a development
+  tool and is unrelated to the removed PikPak CLI backend.
 
 ```powershell
 npm ci
-cargo test --workspace --locked
-npm run check
-npm test
-cargo run -p nekopak-core --example mock_smoke --locked
+npm run build
 cargo run -p nekopak-app --locked
 ```
 
-The last command opens the minimal acceptance shell. Refresh files, enter a folder,
-create a simulated download or URL/magnet task, pause/resume/cancel it, close and
-reopen to inspect retained state. Product UI development can replace shell/ by
-changing frontendDist; Rust Core and src/lib contracts remain reusable.
+Default startup discovers exactly one native connection and offers email/password
+sign-in immediately. The verified public Web client identifier is bundled; no
+developer registration or environment variable is required. No client secret or
+account credential is bundled. Real account sign-in and human verification belong
+to the user; do not paste passwords or tokens into chat.
+Protocol/client configuration is the developer's responsibility. The user performs
+real sign-in and human verification in NekoPak once a testable build is delivered;
+the user is not expected to discover client parameters or provide credentials in chat.
+Details and live verification gaps: API_ADAPTER.md. API origins are fixed HTTPS,
+not environment-configurable. This remains a login test preview, not a feature-complete release.
+
+For the offline persistent Rust Mock instead:
 
 ```powershell
-$env:NEKOPAK_MOCK_SCENARIO = 'disconnect_at37'
+$env:NEKOPAK_BACKEND = 'mock'
+$env:NEKOPAK_MOCK_SCENARIO = 'free'
 cargo run -p nekopak-app --locked
+Remove-Item Env:NEKOPAK_BACKEND
 Remove-Item Env:NEKOPAK_MOCK_SCENARIO
 ```
 
-Valid scenarios: `free`, `premium`, `unauthorized`, `quota_exhausted`, `offline`,
-`large_directory`, `name_conflict`, `disconnect_at37`, `integrity_failure`, `disk_full`.
-An unknown scenario prevents launch; it is never silently replaced by a default.
-The scenario is an application-wide development fixture, including on restart.
-The one-time 37% fault resets on process restart.
+Scenarios: free, premium, unauthorized, quota_exhausted, offline, large_directory,
+name_conflict, disconnect_at37, integrity_failure, disk_full. Invalid modes/scenarios
+fail startup. Browser `npm run dev` uses independent UI-only demonstration fixtures;
+Tauri always uses Rust IPC and never falls back to the browser mock.
 
-Storage lives in Tauri's per-user local app data directory for `io.nekopak.desktop`,
-in `tasks.sqlite3` plus SQLite WAL/SHM files and an OS-locked `.lock` sidecar. Only one
-process may own the store. A damaged database (including an existing empty file or
-missing schema table) is left in place and
-commands return `INTEGRITY_FAILED`; there is no automatic deletion, reset or repair.
-Settings are not implemented and cannot overwrite the task store. Do not delete a
-task database to address a configuration problem.
+## Storage and credentials
 
-## Build and package
+Per-user app data for `io.nekopak.desktop`: `api-preview.sqlite3` for native mode,
+`tasks.sqlite3` for explicit Mock, WAL/SHM and OS-locked sidecars. The former CLI
+preview DB is left untouched and is never reused as a simulated queue. Only one
+process owns each store; corrupt, empty or malformed existing databases fail closed
+and are preserved. Do not delete databases to fix configuration problems.
+
+Tokens are held in Windows Credential Manager, scoped by app-data directory and
+client ID. Passwords never persist. CAPTCHA continuation requires password re-entry
+because the initial password has been discarded. Logout deletes the credential item;
+no remote revoke endpoint is claimed. Other OS secret stores are not implemented.
+
+## Checks and packaging
 
 ```powershell
+cargo fmt --all --check
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo run -p nekopak-core --example export_fixtures --locked
+cargo run -p nekopak-provider-native --example export_fixture --locked
+npm run check
+npm test
+npm run build
+npm run e2e
+python scripts/check_parity.py
 npm run tauri -- build --no-bundle
 python scripts/package_release.py
 ```
 
-The output is `dist/NekoPak-0.1.0-windows-x64-cli-preview.zip`, containing the executable,
-this guide, notices and dependency licenses. `dist/size-report.json` records bytes,
-toolchain, source hash, lockfile hash, compression and external runtime requirements.
-It is a portable unsigned development build, not an installer or production release.
+The browser E2E suite uses no real account. It supports Playwright Chromium or the
+installed Microsoft Edge with `E2E_BROWSER_CHANNEL=msedge`. The isolated real
+WebView2 login-entry check is `node tests/e2e/native-startup.mjs` after a debug
+desktop build; it submits only an empty form and never account credentials. The
+Windows vault integration test is opt-in and writes/deletes a unique synthetic
+credential only; it never enumerates or reads user credentials:
 
 ```powershell
-cargo fmt --all --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo run -p nekopak-core --example export_fixtures --locked
+cargo test -p nekopak-provider-native windows_vault_roundtrip_and_delete -- --ignored
 ```
 
-The fixture exporter deterministically regenerates tests/fixtures/*.json. The
-GitHub Windows workflow repeats tests, type checks, the smoke run and packaging.
-Other operating systems have not been built or tested for this milestone.
+Package: `dist/NekoPak-0.1.0-windows-x64-integration.zip`. It includes the binary,
+notices, full dependency license inventory and current usage notes, not historical
+CLI installation instructions. `dist/size-report.json` records build/source hashes,
+bytes, runtime requirements and license gaps. No driver, media runtime, browser,
+PikPak CLI or Rclone is bundled. Formal parity release remains blocked until all
+mandatory upstream capabilities pass actual acceptance.
 
+Current functional evidence: DESKTOP_INTEGRATION_REPORT.md and evidence/native-functional-e2e.json.
+Prior native file implementation: DRIVE_FILES_FIX_REPORT.md.
+Earlier login/migration evidence: LOGIN_FIX_REPORT.md, API_MIGRATION_REPORT.md. Linux/macOS, clean Windows VM,
+signing, installer, live throughput and production readiness are not verified.
+
+The auxiliary `.actions.sqlite3` file stores remote operation intents, download receipts
+and settings. Keep it alongside the main DB. A missing initialized journal stops writes
+instead of silently rebuilding an empty deduplication history. Transfer history is
+filtered by account; native events request a fresh filtered snapshot without including
+another account's task metadata. Download throughput is volatile Rust state and can change
+without advancing the persisted task revision; resumed bytes do not count as new traffic.
+
+To replace the application icon later, edit `public/brand/app-icon.svg`, run
+`npm run gen:app-icons`, then rebuild the frontend and Windows executable. The same asset
+supplies the UI mark, EXE/window icon and tray icon. No external icon download is needed.

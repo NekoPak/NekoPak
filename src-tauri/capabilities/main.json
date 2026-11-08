@@ -1,8 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Local UI events and custom frame window controls only. No shell, arbitrary filesystem, remote URLs or credentials.",
+  "description": "Local UI events, frame controls and user-initiated HTTPS links in the default browser. No filesystem or shell command access.",
   "windows": ["main"],
-  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "core:window:allow-minimize", "core:window:allow-toggle-maximize", "core:window:allow-close", "core:window:allow-is-maximized", "core:window:allow-start-dragging"]
+  "permissions": [
+    "core:event:allow-listen", "core:event:allow-unlisten", "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize", "core:window:allow-close", "core:window:allow-is-maximized",
+    "core:window:allow-start-dragging",
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }] }
+  ]
 }
 

@@ -1,66 +1,45 @@
-# UI M0 v2 integration
+# v3 UI integration with the native API direction
 
-The supplied `NekoPak_UI_M0_v2.zip` was integrated into the workspace on
-2026-11-07. It is a Preact + Vite frontend with its own browser Mock transport,
-unit tests, and visual/E2E fixtures. No UI source code from Piko was copied;
-its own source/asset note is preserved in `docs/UI_SOURCES_AND_DEPENDENCIES.md`.
+2026-11-08. Source: user-supplied `nekopak-ui-v3-src.zip`, SHA-256
+`86be86d3e7ab594ec73e2f10fac841b14966eb84121659e771c894df70b03e27`.
+The supplied Preact UI, pure helpers and Mock tests were integrated; Rust wire types,
+transport gating, precise revisions and durable snapshot reconciliation were retained.
+The old v2 frontend report is historical; current checks are in API_MIGRATION_REPORT.md.
 
-The integrated desktop path uses `src/lib/transport/tauri.ts` and a small
-`src/lib/transport/rust-adapter.ts` mapping the Rust v0.1 wire response into
-display-only proposal types. Rust remains the source of truth. Browser preview
-uses the supplied Mock implementation. The frontend cannot silently fall back
-to browser Mock inside Tauri.
+The desktop always uses Tauri IPC. Its native sign-in form calls auth_sign_in,
+auth_verify and auth_logout. Configuration availability comes from the Rust feature
+flags; an unconfigured build disables credential entry. All response paths clear the
+password field; CAPTCHA continuation requests a new password. Browser Mock still
+supports deterministic sign-in/challenge demos and labels them as demonstration data.
 
-The original Rust IPC contract remains authoritative. Implemented desktop
-commands are limited to the actual handlers: status, backend discovery, auth
-status, file list/stat/path, transfers, transfer control, cloud task create and
-quota. The supplied UI commands for mutations, settings, sync, mount, search,
-recent, trash, auth flows, upload, playback and segment download are disabled or
-shown as unavailable in Tauri mode. Their browser Mock behavior is for UI
-development only. This avoids a decorative control that appears to change the
-cloud when Rust has no handler.
+Native backend discovery returns rust_compat only; explicit Rust Mock returns mock
+only. No connection selector, CLI status, installation flow or subprocess exists.
+Legacy BackendId strings remain readable, not usable. Display-level backend names and
+Connected Apps explanations are removed from ordinary product flows; technical notes
+remain in developer documentation and notices.
 
-The desktop UI now:
+The v3 import adds clip/quality selection, batch rename, duplicates, space analysis,
+archives, shares, command palette, drag/drop, clipboard and undo interactions. These
+are UI/Mock coverage, not claims of desktop backend support. The actual Rust handler
+allowlist and capabilities disable unimplemented operations. Native metadata paths
+are a read-only preview, with no live account success yet. Unsupported optional clip,
+quality or selected-file arguments are explicitly rejected rather than ignored.
 
-- uses a dedicated left-sidebar `任务` navigation item instead of placing tasks
-  beside `文件` as a workspace toggle;
-- labels the unauthenticated Rust Mock state as “未连接 PikPak / 离线界面预览”;
-- keeps Mock capability diagnostics under `设置 → 开发者`, while `设置 → 连接`
-  shows only real connection candidates and never calls Mock “installed”;
-- displays the official CLI as a supported connection path whose binary/profile
-  is externally configured, rather than treating it as optional product scope;
-- uses BigInt-compatible string revisions and preserves structured progress errors;
-- shows separate disabled reasons for sync, mount, settings, segment download and
-  other unimplemented Rust commands.
+Existing task revisions use lossless decimal strings and BigInt comparisons, including
+the new server-job reconciliation. Transfer snapshots subscribe/buffer/reload and
+handle storage/resync events. Mock tasks remain labeled simulation; a real connection
+cannot execute them as real transfers. Settings/sync/mount backends remain disabled.
 
-Build the UI with `npm run build`; output is `ui-dist/`, which Tauri consumes.
-The old `shell/` acceptance page remains in the repository as a tiny reference
-fixture but is no longer the Tauri frontend. The CI workflow builds the frontend
-before the Rust desktop build. Packaging checks frontend assets and license texts
-for Preact, Tauri API, Material Symbols and color utilities.
+Session transitions clear cloud pins/paths, clipboard, undo, dialogs, side panels and
+old read results while keeping appearance preferences. Native startup clears legacy
+unscoped pins; persistent account-scoped pins await an opaque account-identity contract.
+Saved-session refresh failures have explicit retry and local-signout recovery controls.
 
-## Validation
+The supplied FEATURE_PARITY.md proposed dropping several upstream features. Those
+rows are now pending, not removed. UPSTREAM_PARITY.md and parity-manifest.json retain
+the mandatory final product scope, including video segments, player/feed, archive
+references, local-folder mapping, workspaces and languages.
 
-Local checks after integration:
-
-- `npm run check`: passed.
-- `npm test`: 43 Vitest tests plus 6 wire contract tests passed.
-- `npm run build`: passed; generated `ui-dist/` assets.
-- `cargo test --workspace --locked --offline`: passed; existing Tauri IPC tests,
-  core recovery tests, 13 CLI adapter tests and media-core tests remain green.
-- `cargo fmt --all --check`: passed.
-- A real Windows WebView2 development process was started in an isolated data
-  directory with a loopback CDP endpoint. It loaded the integrated Rust Mock
-  directory and returned eight Rust entries, including the exact u64::MAX file;
-  a screenshot is retained as `docs/screenshots/desktop-rust-files-light.png`.
-  No new window or process is launched by this integration after that check.
-- `tests/e2e/desktop.mjs` is an opt-in loopback test for an explicitly launched
-  isolated development app. It never launches a process, never logs in, and never
-  sends data. `tests/e2e/run.mjs` remains the browser Mock suite; one earlier run
-  had 31/32 passes because an auth-failure assertion timed out after the UI copy
-  changed. The desktop app was not launched to hide or bypass that failure.
-
-The supplied screenshot/report files are reference evidence from the UI package,
-not claims that its proposed backend commands are implemented. Current product
-parity status remains governed by `docs/parity-manifest.json`; the final release
-gate still fails until upstream capabilities are genuinely implemented.
+Build output remains `ui-dist/`, separately from packaged files in `dist/`.
+Browser E2E screenshots are written to `docs/screenshots/ui-v3/` to retain older
+Windows evidence. No package-local historical test report substitutes for current tests.

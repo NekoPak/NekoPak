@@ -1,0 +1,139 @@
+{
+  "unit": "bytes",
+  "compression": "gzip level 9 / brotli quality 11",
+  "total": {
+    "raw": 522339,
+    "gzip": 162120,
+    "brotli": 135068
+  },
+  "startup_gzip_bytes": 112533,
+  "desktop_all_gzip_bytes": 142311,
+  "rows": [
+    {
+      "file": "assets/index-CDemXr_F.js",
+      "raw": 293190,
+      "gzip": 90969,
+      "brotli": 74437,
+      "loaded": "startup"
+    },
+    {
+      "file": "assets/style-BPqYzixW.css",
+      "raw": 86797,
+      "gzip": 15691,
+      "brotli": 13560,
+      "loaded": "startup"
+    },
+    {
+      "file": "assets/backend-BYKs2Ppe.js",
+      "raw": 53262,
+      "gzip": 18266,
+      "brotli": 15543,
+      "loaded": "mock only (dynamic import)"
+    },
+    {
+      "file": "assets/window-BMyBQEXS.js",
+      "raw": 13841,
+      "gzip": 3440,
+      "brotli": 3052,
+      "loaded": "tauri startup (dynamic import)"
+    },
+    {
+      "file": "assets/Sync-t7Sdob69.js",
+      "raw": 13216,
+      "gzip": 5343,
+      "brotli": 4480,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Media-BpBu-GCH.js",
+      "raw": 11430,
+      "gzip": 4879,
+      "brotli": 4178,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/BatchRename-DPELz2ic.js",
+      "raw": 8703,
+      "gzip": 3658,
+      "brotli": 3145,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Palette-C8mh7Cyw.js",
+      "raw": 7458,
+      "gzip": 3393,
+      "brotli": 2869,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Duplicates-BAngie5w.js",
+      "raw": 7094,
+      "gzip": 3272,
+      "brotli": 2805,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Space-Bfjrt4CY.js",
+      "raw": 6111,
+      "gzip": 2868,
+      "brotli": 2491,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Shares-DjKSOqO1.js",
+      "raw": 5416,
+      "gzip": 2421,
+      "brotli": 2007,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Archive-Bnjz_NoV.js",
+      "raw": 5243,
+      "gzip": 2412,
+      "brotli": 2037,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/Mount-B9IXNefn.js",
+      "raw": 2882,
+      "gzip": 1532,
+      "brotli": 1228,
+      "loaded": "on page/action (dynamic import)"
+    },
+    {
+      "file": "assets/DevPanel-Wz_2VBfZ.js",
+      "raw": 2687,
+      "gzip": 1543,
+      "brotli": 1237,
+      "loaded": "mock only (dynamic import)"
+    },
+    {
+      "file": "assets/core-CKq3Z5BB.js",
+      "raw": 2449,
+      "gzip": 977,
+      "brotli": 844,
+      "loaded": "tauri startup (dynamic import)"
+    },
+    {
+      "file": "assets/event-iqD-r1Mo.js",
+      "raw": 1333,
+      "gzip": 661,
+      "brotli": 556,
+      "loaded": "tauri startup (dynamic import)"
+    },
+    {
+      "file": "index.html",
+      "raw": 835,
+      "gzip": 545,
+      "brotli": 380,
+      "loaded": "startup"
+    },
+    {
+      "file": "theme-init.js",
+      "raw": 392,
+      "gzip": 250,
+      "brotli": 219,
+      "loaded": "startup"
+    }
+  ]
+}

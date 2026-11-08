@@ -1,6 +1,6 @@
 # UI 来源、素材与依赖许可证
 
-核对日期：2026-11-07　范围：`src/`、`public/`、`index.html`、`tests/`、`scripts/`（Opus 5.5 负责的前端部分）
+核对日期：2026-11-07，2026-11-08 复核　范围：`src/`、`public/`、`index.html`、`tests/`、`scripts/`（Opus 5.5 负责的前端部分）
 
 ## 1. 运行时依赖（进入发布包）
 
@@ -15,7 +15,7 @@
 
 | 来源 | 版本 | 许可证 | 用法 |
 |---|---|---|---|
-| Material Symbols Rounded（`@material-symbols/svg-400`） | 0.48.1 | Apache-2.0（Google） | `scripts/gen-icons.mjs` 只提取用到的 86 个图标的 SVG 路径到 `src/components/icons.generated.ts`，文件头保留版权与许可证说明；不打包整套图标或字体 |
+| Material Symbols Rounded（`@material-symbols/svg-400`） | 0.48.1 | Apache-2.0（Google） | `scripts/gen-icons.mjs` 只提取用到的 120 个图标的 SVG 路径到 `src/components/icons.generated.ts`，文件头保留版权与许可证说明；不打包整套图标或字体 |
 | material-color-utilities（`@material/material-color-utilities`） | 0.4.0 | Apache-2.0（Google） | 仅构建期运行：`scripts/gen-theme.ts` 用 TonalSpot 算法从 NekoPak 自选的 6 个种子色生成 `src/styles/schemes.css`；运行时不包含该库 |
 
 ## 2. 开发依赖（不进入发布包）
@@ -33,7 +33,7 @@
 
 | 素材 | 来源 | 说明 |
 |---|---|---|
-| 线性图标（`src/components/Icon.tsx`） | NekoPak 原创绘制 | 20×20 网格、1.5 描边的 SVG 路径，未参考或复制第三方图标集 |
+| 图标（`src/components/Icon.tsx`） | Material Symbols Rounded 路径数据 | 见 1.1；`Icon.tsx` 只负责渲染，v1 的自绘线性图标已全部替换 |
 | 猫箱标志与空状态插图（`src/components/Brand.tsx`） | NekoPak 原创绘制 | 刻意与 PikPak 官方标志无关 |
 | 字体 | 系统字体栈 | Segoe UI Variable / Segoe UI / 微软雅黑等，未嵌入任何字体文件 |
 | 截图（`docs/screenshots/`） | 本仓库 Mock 构建的真实运行截图 | Linux 容器中的无头 Chromium，字体与 Windows 不同 |
@@ -44,7 +44,13 @@
 |---|---|---|
 | Piko | AGPL-3.0-or-later | **界面设计参考（v2 视觉）**。参考了仓库 `d0bd8fe93573e8484c7db7616a41cbfcd29aa395` 中公开的截图（`docs/screenshots/*.jpg`）、界面规范文档（`ui/AGENTS.md`、`ui/.../screens/drive/AGENTS.md`）与外框几何常量（`ui/.../theme/Frame.kt`、`Shape.kt` 中的圆角与间距数值）：圆角岛外框、“浅色面以圆角压在深色面之上”、侧栏“文件 / 任务”连体切换、命令栏最右端主操作、任务页分组与定宽进度条、设置页卡片行密度、右键菜单快捷图标行。**没有复制任何 Kotlin/Compose 代码、图标、图片、字体或配色表**：前端是 Preact + CSS 的独立实现，配色由 material-color-utilities 从 NekoPak 自选种子色重新生成。 |
 | PikPak Enhancement Master | AGPL-3.0 | 未参考代码。批量操作、复制路径等便利功能是常见的文件管理器交互。 |
-| pikpaktui / pikpakcli / pikpak-kotlin / MediaMP / Rclone / WinFsp | 见 `docs/04_SOURCES_LICENSES.md` | 前端未使用其任何代码；仅在“关于与致谢”页列出。 |
+| Piko（v3 功能对照） | AGPL-3.0-or-later | 只参考 README 与公开截图中的**功能清单**（片段截取、批量重命名、查找重复、链接预览等），交互与实现都是独立编写；对照表见 `docs/FEATURE_PARITY.md`。 |
+| pikpaktui（`Bengerthelorf/pikpaktui@68b7a6b`） | Apache-2.0 | 前端未使用。`docs/BACKEND_API_ADAPTER.md` 以它为首选参考，整理 PikPak 接口路径与参数，供 Astra 实现 `rust_compat`。 |
+| rclone `backend/pikpak`（`rclone/rclone@82cb84b`） | MIT | 同上，只用于核对接口行为（文件、分享、云下载、解压）。 |
+| pikpakcli（`52funny/pikpakcli@560f263`） | MIT | 同上。 |
+| PikPakAPI（`Quan666/PikPakAPI@c233bd3`） | GPL-3.0-only | 只读核对接口名称，**不得复制代码**；适配说明中没有摘录它的源码。 |
+| 官方 PikPak CLI | — | 2026-11-08 起不再作为后端，界面不再出现。 |
+| pikpak-kotlin / MediaMP / Rclone / WinFsp | 见 `docs/04_SOURCES_LICENSES.md` | 前端未使用其任何代码；仅在“关于与致谢”页列出。 |
 
 因此前端目录目前**不含任何 AGPL 源码片段**；Apache-2.0 素材（Material Symbols 路径数据）已在生成文件头保留声明，发布包需附带 Apache-2.0 许可证文本。界面布局与交互模式本身属于设计参考，此判断不构成法律意见，发布前请按 `docs/04_SOURCES_LICENSES.md` 再次核对。
 
@@ -70,7 +76,7 @@ Notice-Status: pending
 Source-Project: google/material-design-icons (Material Symbols)
 Source-URL: https://github.com/google/material-design-icons
 Source-Commit: npm @material-symbols/svg-400 0.48.1
-Reuse-Type: code-adapted (SVG path data of 86 glyphs, extracted by scripts/gen-icons.mjs)
+Reuse-Type: code-adapted (SVG path data of 120 glyphs, extracted by scripts/gen-icons.mjs)
 License: Apache-2.0
 NekoPak-Paths: src/components/icons.generated.ts
 Notice-Status: preserved in file header; LICENSE text to be bundled

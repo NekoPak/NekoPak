@@ -1,6 +1,10 @@
 # 契约提案 UI-001（Opus 5.5 → Astra）
 
-状态：**提案，未冻结**　日期：2026-11-07　对应前端：`src/lib/contract-proposals.ts`
+状态：**部分采纳，其余仍是提案**　日期：2026-11-07，2026-11-08 增补 §P13–§P23　对应前端：`src/lib/contract-proposals.ts`
+
+> **2026-11-08 所有者决定**：去掉官方 CLI 后端，桌面版主后端为 `rust_compat`（直接调用 PikPak 接口），登录改为应用内账号密码（§P23）。各命令对应的 PikPak 接口见 `docs/BACKEND_API_ADAPTER.md`，以该文档为准。`official_cli` 这个 `BackendId` 不删除（属于冻结枚举），但界面不再列出，Mock 的 `backend_discover` 也不再返回它。
+
+2026-11-08 集成决定：§P0 root、§P7 flat/snake_case、§P3 十进制字符串 revision、§P23 原生邮箱登录子集按 `03_CONTRACTS.md` §10 冻结；CAPTCHA 增加 requires_password 和 auth_verify.password，当前不启用短信或重发。其他 v3 功能仍按能力禁用。
 
 `docs/03_CONTRACTS.md` 是双方基线。本提案**只做补全与新增**：没有重命名、删除或改变任何已有字段的含义。前端已经按本提案实现，并在 Mock 中跑通；Astra 确认或修改后，前端只需改 `contract-proposals.ts` 一个文件，然后把冻结的部分移入 `contract.ts`。
 
@@ -19,7 +23,7 @@
 | 类型 | 字段要点 |
 |---|---|
 | `AppStatus` | `version`, `contract_version`, `runtime: "mock" \| "tauri"`, `storage.status: "ok" \| "degraded" \| "corrupt_readonly"`, `feature_flags` |
-| `AuthFlow` | `flow_id`, `backend`, `kind: "external_browser" \| "external_cli"`, `instructions`（不含令牌）, `expires_at?` |
+| `AuthFlow` | `flow_id`, `backend`, `kind: "external_browser"`, `instructions`（不含令牌）, `expires_at?`；仅未来扩展保留 |
 | `AuthState` | `state: "signed_out" \| "pending" \| "signed_in" \| "expired"`, `account?.display_name`（**由 Rust 脱敏**）, `account?.tier`, `checked_at` |
 | `TaskRef` | `{ task_id }`；`sync_apply` 也返回它，`task_id` 即 `sync/changed` 的 `job_id` |
 | `QuotaReport` | `backend`, `account_tier`, `items: QuotaItem[]`, `checked_at` |
@@ -153,4 +157,95 @@ Tauri v2 默认把 Rust 参数名转为 camelCase。为保持契约要求的 sna
 
 ---
 
-**需要 Astra 回复：** §P0 根目录值、§P7 参数风格、§P3 是否接受 `revision`、§P5 命令名是否沿用，其余可按本提案执行或逐条修改。
+# 第二批（2026-11-08）：功能补齐
+
+全部是**新增**：新增命令、可选参数、可选字段、新事件。没有修改任何已有字段。后端没有实现的命令，界面会收到 `UNSUPPORTED`，相应按钮禁用并显示“暂不支持”。
+
+## §P13 扩展能力键
+
+`CapabilityReport.operations` 中可以出现以下新键（§2 冻结的 `Operation` 联合类型不变）。缺少某个键表示不支持：
+
+`media_probe`、`clip_download`、`quality_download`、`folder_download`、`star`、`duplicates`、`space_summary`、`archive`、`link_preview`、`external_player`、`share`
+
+前端用 `gate(op)` 统一判断，原因文案只有“暂时无法连接 PikPak”或“暂不支持……”。
+
+## §P14 视频：探测、关键帧对齐、预览帧、片段 / 画质下载
+
+| 命令 | 参数 | 返回 |
+|---|---|---|
+| `media_probe` | `{ remote_id }` | `MediaProbe`：`duration_ms`、`qualities[]`（`id`、`label`、`size_bytes?`、`container`、`readable`、`unreadable_reason?`）、`keyframes: indexed\|estimated\|unavailable`、`preview` |
+| `media_align` | `{ remote_id, quality_id, start_ms, end_ms }` | `ClipAlignment`：实际切点（起点对齐到前一个关键帧）、`estimated_bytes?`、`exactness` |
+| `media_preview_frame` | `{ remote_id, position_ms, max_width }` | `PreviewFrame`：`mime`、`data_base64`、`synthetic?` |
+
+`transfer_start` 增加可选参数 `options: TransferOptions`：
+
+```ts
+{ quality_id?: string; quality_cap?: "original"|"2160p"|"1080p"|"720p"|"480p";
+  clip?: { start_ms: number; end_ms: number; align: "previous_keyframe" } }
+```
+
+`TransferTask` 增加可选字段 `quality_label?`、`clip?: { start_ms, end_ms }`，任务行据此显示标签。`Settings` 增加可选的 `download: { default_quality, connections_per_task }`（1–16）。片段文件名使用 `06.04-16.59` 这样的写法，不含冒号，Windows 可用。
+
+切片由 Rust 核心完成（读取 MP4 `moov/stss`、MKV `Cues` 或 HLS 分段），**不捆绑 FFmpeg**；做法见 `BACKEND_API_ADAPTER.md` §4.3。
+
+## §P15 文件夹 / 批量下载
+
+`transfer_start_batch { remote_ids, destination, options?, idempotency_key } → BatchRef { task_ids, skipped[], expanded_files, group_id? }`。展开出来的任务带相同的 `group_id`（`TransferTask` 可选字段）。
+
+## §P16 星标
+
+`files_mutate.op` 增加 `star` / `unstar`；`RemoteEntry` 增加可选字段 `starred?: boolean`；新命令 `files_starred { cursor?, limit? } → Page<RemoteEntry>`。
+
+## §P17 查找重复
+
+`duplicates_scan { folder_id } → { scan_id }`，`duplicates_report { scan_id } → DuplicateReport`，`duplicates_cancel { scan_id }`。进度事件 `nekopak://duplicates/progress`（`scan_id`、`state`、`files_scanned`、`folders_scanned`、`error?`）。只按**哈希 + 大小**判定重复；没有哈希的文件计入 `unhashed_files`，不参与比较；无法读取的文件夹放进 `skipped[]`。
+
+## §P18 空间分析
+
+`files_space_summary { folder_id } → SpaceSummary`：`total_bytes`、`file_count`、`folder_count`、`children[]`（递归大小），`exactness: exact|partial`。
+
+## §P19 压缩包与云端任务
+
+| 命令 | 参数 | 返回 |
+|---|---|---|
+| `archive_list` | `{ file_id, path?, password_ref? }` | `ArchiveListing`：`format`、`supported`、`reason?`（分卷等）、`encrypted`、`needs_password`、`entries[]` |
+| `archive_unlock` | `{ file_id, password }` | `{ password_ref }`：密码只传给核心一次，界面只保留这个不透明引用，并且只存在内存里 |
+| `archive_extract` | `{ file_id, paths: string[]\|"all", target_parent_id, password_ref?, idempotency_key }` | `{ job_id }` |
+| `jobs_list` | `{ cursor?, limit? }` | `Page<ServerJob>` |
+
+`ServerJob` 带 `revision`。事件 `nekopak://job/changed` 推送完整的 `ServerJob`；前端先加载快照，再订阅事件，`revision` 不大于已有值的事件直接丢弃。
+
+## §P20 添加链接前预览
+
+`cloud_task_preview { source_url } → LinkPreview { preview_id, source_kind, title, total_bytes?, files[{ index, path, size_bytes }], expires_at }`。`cloud_task_create` 增加可选参数 `preview_id`、`file_indices`，表示只保存所选文件。
+
+## §P21 外部播放器
+
+`media_open_external { remote_id, quality_id? } → { launched, player?, note? }`。播放地址不经过 IPC，由核心直接启动系统播放器。
+
+## §P22 分享
+
+`share_create { ids, expires_in_days: 1|7|30|null, with_code, idempotency_key } → ShareInfo`，`shares_list { cursor?, limit? } → Page<ShareInfo>`，`shares_cancel { share_ids, idempotency_key } → BulkResult`（新的通用结构 `{ succeeded, failed[{ id, error }], replayed }`）。`ShareInfo.url` 是分享页链接，不是签名下载地址。
+
+## §P23 应用内登录（替代网页授权）
+
+| 命令 | 参数 | 返回 |
+|---|---|---|
+| `auth_sign_in` | `{ username, password }` | `SignInResult { state: "signed_in"\|"challenge", challenge? }` |
+| `auth_verify` | `{ challenge_id, code }` | `SignInResult`（人机验证完成后 `code` 传空字符串） |
+| `auth_resend` | `{ challenge_id }` | `{ resend_after_s }` |
+
+```ts
+type SignInChallenge =
+  | { challenge_id; kind: "captcha"; url; expires_at? }
+  | { challenge_id; kind: "verify_code"; channel: "sms"|"email"; target /* 已脱敏 */; code_length; resend_after_s?; expires_at? };
+```
+
+- 账号或密码错误时返回 `PERMISSION_DENIED`，并带 `details.reason = "invalid_credentials"`，界面在表单内提示，不弹窗。
+- 密码只在这一次调用中传给核心，界面不保存、不记录日志，请求结束后立即清空输入框。令牌由核心存进系统凭据库。
+- 登录成功后照常发出 `nekopak://auth/changed`，界面不轮询。
+- `auth_begin` / `AuthFlow` 保留，供以后可能接入的 WebDAV / Rclone 浏览器授权使用。PikPak 不使用，界面不再弹出网页登录窗口。
+
+---
+
+**需要 Astra 回复：** §P0 根目录值、§P7 参数风格、§P3 是否接受 `revision`、§P5 命令名是否沿用；第二批中，§P23 验证码流程与 §P19 压缩包列表在 PikPak 接口上的行为尚待实测（`BACKEND_API_ADAPTER.md` 中标为“待验证”）。其余可以按本提案实现，也可以逐条修改。

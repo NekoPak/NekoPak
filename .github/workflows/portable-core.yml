@@ -1,0 +1,16 @@
+name: Portable Rust core
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p nekopak-domain -p nekopak-provider -p nekopak-provider-mock -p nekopak-media -p nekopak-core --locked
+      - run: cargo check -p nekopak-provider-native --locked

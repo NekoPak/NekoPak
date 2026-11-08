@@ -1,5 +1,7 @@
 # 上游功能对齐研究与不回退门禁
 
+> 2026-11-08：本文保留历史阶段记录。官方 CLI 路线已移除，当前实现以 [API_ADAPTER.md](API_ADAPTER.md) 和 [API_MIGRATION_REPORT.md](API_MIGRATION_REPORT.md) 为准；下文旧实现/下一步不再代表当前计划。
+
 核查日期：2026-11-07。本文只记录行为、接口和验收事实，不复制上游实现。它把“最终功能不能少于上游”转成可检查的范围；Windows x64 是第一发布目标，Android/macOS/Linux 的平台差异必须单独记录，不能借“首版不承诺”悄悄删掉共享能力。
 
 ## 证据边界
@@ -13,7 +15,7 @@
 - [pikpak-kotlin](https://github.com/NihilDigit/pikpak-kotlin/tree/8eaf5587a883ed4ea9bcca7b43a9194118719e63)，HEAD `8eaf5587a883ed4ea9bcca7b43a9194118719e63`，MIT。README 和 `RangeDownloadEndpoint.kt`、`TransferQuotaEndpoint.kt` 被核对。它提供随机偏移读取、共享块缓存、磁力哈希/秒传、范围下载、转移配额模型等行为参考。
 - [pikpaktui](https://github.com/Bengerthelorf/pikpaktui/tree/68b7a6bdf6e4abe2a049974dec2c38e736f2a25c)，HEAD `68b7a6bdf6e4abe2a049974dec2c38e736f2a25c`，Apache-2.0。Cargo manifest/README 被核对；它是 29 个 CLI 子命令的 Rust 社区客户端，覆盖浏览、下载、上传、分享、更新、JSON 和 dry-run。当前没有复制源码。
 - [Rclone PikPak](https://github.com/rclone/rclone/tree/82cb84b2014bec6a167dc28eb53233b2d4abe1b3)，HEAD `82cb84b2014bec6a167dc28eb53233b2d4abe1b3`，MIT。官方文档和 `backend/pikpak` 源码被核对；它覆盖 Range 下载、MD5、上传、复制、移动、回收站、离线 URL、解压等行为。
-- [PikPak 官方 CLI](https://mypikpak.com/en-US/cli)，已单独完成 v0.6.0 Windows x64 无账号探测，见 `docs/CLI_ADAPTER.md`；它是可选外部适配器，不是功能上限。
+- [PikPak 官方 CLI](https://mypikpak.com/en-US/cli)，已单独完成 v0.6.0 Windows x64 无账号探测，见 `docs/history/CLI_ADAPTER.md`；它是可选外部适配器，不是功能上限。
 
 “文档/源码已核验”不等于真实账号成功，也不等于 PikPak 承诺稳定公开 API。Piko、pikpak-kotlin、pikpaktui、Rclone 可能使用服务私有或社区兼容协议；接入前要核验服务条款、账号授权、版本兼容和许可证。禁止内置别人的客户端密钥、验证码绕过、设备伪造或隐藏风控逻辑。任何实际复用代码仍需记录原项目、commit、路径、许可证和改动，必要时按上游许可证重新评估主仓许可证。
 
@@ -177,6 +179,6 @@ NekoPak 可以参考或在审计后实现社区兼容适配器；官方 CLI 不�
 - pikpak-kotlin README/Range/Quota：<https://github.com/NihilDigit/pikpak-kotlin/blob/8eaf5587a883ed4ea9bcca7b43a9194118719e63/README.md>；<https://github.com/NihilDigit/pikpak-kotlin/blob/8eaf5587a883ed4ea9bcca7b43a9194118719e63/src/commonMain/kotlin/io/github/nihildigit/pikpak/RangeDownloadEndpoint.kt>；<https://github.com/NihilDigit/pikpak-kotlin/blob/8eaf5587a883ed4ea9bcca7b43a9194118719e63/src/commonMain/kotlin/io/github/nihildigit/pikpak/TransferQuotaEndpoint.kt>
 - pikpaktui manifest/README：<https://github.com/Bengerthelorf/pikpaktui/blob/68b7a6bdf6e4abe2a049974dec2c38e736f2a25c/Cargo.toml>；<https://github.com/Bengerthelorf/pikpaktui/blob/68b7a6bdf6e4abe2a049974dec2c38e736f2a25c/README.md>
 - Rclone PikPak docs/source/license：<https://github.com/rclone/rclone/blob/82cb84b2014bec6a167dc28eb53233b2d4abe1b3/docs/content/pikpak.md>；<https://github.com/rclone/rclone/tree/82cb84b2014bec6a167dc28eb53233b2d4abe1b3/backend/pikpak>；<https://github.com/rclone/rclone/blob/82cb84b2014bec6a167dc28eb53233b2d4abe1b3/COPYING>
-- Official CLI probe and limitations: `docs/CLI_ADAPTER.md`, `docs/evidence/official-cli-v0.6.0-probe.json`, `docs/evidence/official-cli-adapter-probe.json`。
+- Official CLI probe and limitations: `docs/history/CLI_ADAPTER.md`, `docs/evidence/official-cli-v0.6.0-probe.json`, `docs/evidence/official-cli-adapter-probe.json`。
 
 本文结论：NekoPak 可以使用第三方 API/兼容层补齐上游能力，但必须以独立 adapter、明确授权、协议 fixture、能力检测、许可证记录和真实验收为前提。官方 CLI 当前只读预览只是一个接入点；它不降低“最终功能不少于上游”的产品要求。

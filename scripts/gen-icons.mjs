@@ -32,6 +32,14 @@ const MAP = {
   library: "video_library", motion: "animation", quota: "data_usage", backend: "dns",
   network: "lan", trashSweep: "delete_sweep", list: "list", label: "label", deselect: "deselect",
   checkbox: "check_box", checkboxOff: "check_box_outline_blank", indeterminate: "indeterminate_check_box",
+  star: "star", cut: "content_cut", paste: "content_paste", share: "share", space: "space_dashboard",
+  duplicates: "difference", unarchive: "unarchive", clip: "movie_edit", quality: "high_quality",
+  undo: "undo", command: "keyboard_command_key", dragHandle: "drag_indicator", folderOpen: "folder_open",
+  subtitles: "subtitles", key: "key", visibility: "visibility", visibilityOff: "visibility_off",
+  findReplace: "find_replace", numbered: "format_list_numbered", textFields: "text_fields",
+  linkOff: "link_off", savings: "savings", folderCopy: "folder_copy", manageSearch: "manage_search",
+  schedule: "schedule", output: "output", zoomIn: "zoom_in", zoomOut: "zoom_out", inventory: "inventory_2",
+  terminal: "terminal", hub: "hub", expandContent: "expand_content", block: "block", login: "login",
 };
 
 const pathOf = (file) => {

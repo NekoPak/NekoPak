@@ -1,0 +1,24 @@
+{
+  "mode": "rust_compat_preview",
+  "scope": "Isolated real WebView2 with Rust IPC; no real account or service requests",
+  "results": [
+    {
+      "name": "native wire contract and no retired backend",
+      "passed": true
+    },
+    {
+      "name": "normal native build offers login without developer setup",
+      "passed": true
+    },
+    {
+      "name": "native feature pages reflect implemented capabilities and network settings",
+      "passed": true
+    },
+    {
+      "name": "local theme preferences persist without backend settings",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "date": "2026-11-08T15:26:54.437Z"
+}

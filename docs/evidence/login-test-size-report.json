@@ -1,0 +1,79 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "architecture": "AMD64",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+  "commit": "b2f2923e0fb22cf82a60d74574d6e8e8d0c1467b",
+  "source_sha256": "064e24167e20e9c53473438cab1da29e1d014ac2f271e8dc1c9b608d0ed7d25d",
+  "git_worktree_dirty": true,
+  "cargo_lock_sha256": "4b4950fe6291eaf9e9e518aa67b50a8fb036af8095323bd7551e0a01b37a1968",
+  "npm_lock_sha256": "00e3fc681755a1d4bee563e07fbe82f2a8fb42cb4e049800ff2f7386bfa3f38c",
+  "frontend_license_inventory": [
+    {
+      "name": "preact",
+      "version": "10.27.2",
+      "license": "MIT",
+      "files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@tauri-apps/api",
+      "version": "2.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "files": [
+        "LICENSE_APACHE-2.0",
+        "LICENSE_MIT"
+      ]
+    },
+    {
+      "name": "@material-symbols/svg-400",
+      "version": "0.48.1",
+      "license": "Apache-2.0",
+      "files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@material/material-color-utilities",
+      "version": "0.4.0",
+      "license": "Apache-2.0",
+      "files": [
+        "LICENSE"
+      ]
+    }
+  ],
+  "frontend_assets_bytes": 523100,
+  "profile": "release, opt-level=s, LTO, codegen-units=1, strip",
+  "archive": "NekoPak-0.1.0-windows-x64-login-test.zip",
+  "compression": "ZIP DEFLATE level 9; executable + notices + resolved dependency licenses",
+  "executable_bytes": 8816640,
+  "archive_bytes": 5077513,
+  "executable_sha256": "a171cceceef83e47c856c1675d6bbe372f2312399e7303337c9d5751b0f1ca96",
+  "archive_sha256": "5a2ef927e26193e899d0e45cd5a911920abab9e2da093554ab6887d22c4dafa8",
+  "external_requirements": [
+    "Windows x64",
+    "Microsoft Edge WebView2 Evergreen runtime (not bundled)"
+  ],
+  "not_bundled": [
+    "PikPak CLI",
+    "Rclone",
+    "WinFsp",
+    "Chromium",
+    "JVM",
+    "FFmpeg",
+    "mpv"
+  ],
+  "scope": "Native login test build: built-in public Web protocol metadata, email/password initiation, human CAPTCHA callback and OS credential vault. No developer setup, no CLI; live account acceptance belongs to the user; real transfers remain unimplemented.",
+  "runtime_measurement": "Not measured by this script; no memory/startup claim.",
+  "license_inventory_scope": "Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.",
+  "license_text_unresolved": [
+    "cesu8@1.1.0",
+    "libappindicator-sys@0.9.0",
+    "r-efi@5.3.0",
+    "r-efi@6.0.0",
+    "winapi-i686-pc-windows-gnu@0.4.0",
+    "winapi-x86_64-pc-windows-gnu@0.4.0"
+  ],
+  "windows_dependency_license_text_gaps": []
+}

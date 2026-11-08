@@ -1,4 +1,4 @@
-name: Windows backend
+name: Windows desktop checks
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
@@ -27,14 +27,17 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo run --locked -p nekopak-core --example export_fixtures
+      - run: cargo run --locked -p nekopak-provider-native --example export_fixture
       - run: git diff --exit-code -- tests/fixtures
       - run: npm run check
       - run: npm test
+      - run: npx playwright install chromium
+      - run: npm run e2e
       - run: cargo run --locked -p nekopak-core --example mock_smoke
       - run: npm run tauri -- build --no-bundle
       - run: cargo fetch --locked
       - run: python scripts/package_release.py
       - uses: actions/upload-artifact@v4
         with:
-          name: NekoPak-windows-x64-ui-preview
+          name: NekoPak-windows-x64-integration
           path: dist/

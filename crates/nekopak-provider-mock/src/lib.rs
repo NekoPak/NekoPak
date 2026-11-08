@@ -155,9 +155,12 @@ impl ProviderPort for MockProvider {
         Ok(AuthState {
             backend: BackendId::Mock,
             authenticated: false,
+            account_id: None,
             credential_owner: "none".into(),
             account_tier: AccountTier::Unknown,
             message: "Mock mode uses no account or credentials.".into(),
+            state: AuthStatus::SignedOut,
+            display_name: None,
         })
     }
     async fn discover(&self) -> Result<CapabilityReport, ClientError> {
@@ -243,6 +246,7 @@ impl ProviderPort for MockProvider {
             account_tier: if self.scenario == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free },
             source: "mock".into(),
             dimensions: ["download", "upload", "cloud_download"].into_iter().map(|dimension| QuotaDimension {
+                used_bytes: None,
                 dimension: dimension.into(), period: "synthetic_month".into(), limit_bytes: Some(DecimalU64(100_000_000_000)), remaining_bytes: Some(DecimalU64(if exhausted { 0 } else { 42_000_000_000 })), resets_at: None,
             }).collect(),
             checked_at: FIXTURE_TIME.into(),
@@ -375,6 +379,7 @@ pub fn entries(scenario: Scenario) -> Vec<RemoteEntry> {
             etag: Some("mock-v1".into()),
             hash: None,
             mime_type: None,
+            starred: None,
         })
         .collect();
     let mut child = result[1].clone();

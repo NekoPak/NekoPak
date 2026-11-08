@@ -1,5 +1,7 @@
 # M0 backend verification — 2026-11-07
 
+> 2026-11-08：本文保留历史阶段记录。官方 CLI 路线已移除，当前实现以 [API_ADAPTER.md](API_ADAPTER.md) 和 [API_MIGRATION_REPORT.md](API_MIGRATION_REPORT.md) 为准；下文旧实现/下一步不再代表当前计划。
+
 Host: Windows 11 x64, build 10.0.26300. Rust/cargo 1.98.0 MSVC,
 Visual Studio C++ 14.51.36231, Node 24.18.0, npm 11.16.0.
 All results below were executed locally; the GitHub Actions job is configured

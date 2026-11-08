@@ -4,8 +4,9 @@ members = [
   "crates/nekopak-domain",
   "crates/nekopak-provider",
   "crates/nekopak-provider-mock",
-  "crates/nekopak-provider-cli",
+  "crates/nekopak-provider-native",
   "crates/nekopak-media",
+  "crates/nekopak-mount",
   "crates/nekopak-core",
   "src-tauri",
 ]
@@ -13,7 +14,7 @@ default-members = [
   "crates/nekopak-domain",
   "crates/nekopak-provider",
   "crates/nekopak-provider-mock",
-  "crates/nekopak-provider-cli",
+  "crates/nekopak-provider-native",
   "crates/nekopak-media",
   "crates/nekopak-core",
 ]
@@ -28,8 +29,10 @@ license = "MIT"
 nekopak-domain = { path = "crates/nekopak-domain" }
 nekopak-provider = { path = "crates/nekopak-provider" }
 nekopak-provider-mock = { path = "crates/nekopak-provider-mock" }
-nekopak-provider-cli = { path = "crates/nekopak-provider-cli" }
+nekopak-provider-native = { path = "crates/nekopak-provider-native" }
 nekopak-core = { path = "crates/nekopak-core" }
+nekopak-media = { path = "crates/nekopak-media" }
+nekopak-mount = { path = "crates/nekopak-mount" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 async-trait = "0.1"
@@ -40,6 +43,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 tempfile = "3"
 sha2 = "0.10"
 url = "2"
+zeroize = "1"
 
 [profile.release]
 opt-level = "s"

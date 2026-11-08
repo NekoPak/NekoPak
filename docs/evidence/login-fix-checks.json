@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-08",
+  "scope": "Default native login entry; no real account login performed",
+  "rust_workspace": {
+    "passed": 53,
+    "failed": 0,
+    "ignored": 8
+  },
+  "frontend": {
+    "vitest_passed": 80,
+    "wire_passed": 6
+  },
+  "real_webview2": {
+    "passed": 4,
+    "failed": 0,
+    "build": "debug",
+    "account_requests": 0,
+    "evidence": "desktop-native-v3.json"
+  },
+  "browser_login_e2e": {
+    "passed": 2,
+    "failed": 0,
+    "external_requests": 0,
+    "evidence": "ui-v3-e2e-focused.json"
+  },
+  "clippy": "passed",
+  "cargo_fmt": "passed",
+  "typescript": "passed",
+  "frontend_build": "passed",
+  "windows_release_build": "passed",
+  "package_crc": "passed",
+  "embedded_executable_sha256": "matched",
+  "standalone_executable_sha256": "matched",
+  "bundled_external_executables": [],
+  "windows_dependency_license_text_gaps": [],
+  "public_service_connectivity": "intermittent; not a live account success",
+  "artifacts": {
+    "exe": "dist/NekoPak-login-test.exe",
+    "zip": "dist/NekoPak-0.1.0-windows-x64-login-test.zip",
+    "exe_sha256": "a171cceceef83e47c856c1675d6bbe372f2312399e7303337c9d5751b0f1ca96",
+    "zip_sha256": "5a2ef927e26193e899d0e45cd5a911920abab9e2da093554ab6887d22c4dafa8"
+  }
+}

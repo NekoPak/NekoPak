@@ -1,0 +1,8 @@
+{
+  "command": "cargo test --workspace --locked --offline",
+  "exit_code": 0,
+  "passed": 157,
+  "failed": 0,
+  "ignored": 18,
+  "groups": 25
+}

@@ -7,7 +7,7 @@
 - Rust 作为唯一业务核心，Tauri v2 只做宿主与 IPC，前端 TypeScript/CSS 专注交互和呈现。
 - **能力优先于后端优先级：** 不能假设所有后端提供相同功能。适配器必须对每个操作声明 capability，并携带明确错误类型。
 - 运行时可选安装外部工具，基础包不捆绑官方 CLI、Rclone、WebDAV 服务器、WinFsp 或媒体解码库。
-- 官方 CLI 仅在其命令、输出、授权流程完成验证后接入；开发阶段用 Mock Backend 让前端独立推进。
+- 官方 CLI 路线已完全移除。主连接为 Rust 直接 HTTP 客户端协议 rust_compat；Mock 仅用于离线开发。登录为原生表单，token 由系统凭据库保存。
 - 不依赖未公布的“官方通用 REST API”；社区实现访问的非公开接口要在文档和 UI 中说明，并做隔离。
 - 先可用、再可靠、最后小型化；体积减少不得破坏安全与数据一致性。
 
@@ -31,8 +31,8 @@
 └───────┬───────────────────────┬──────────────────────────┘
         │ ProviderAdapter       │ PlatformAdapter
 ┌───────▼───────────────┐  ┌────▼─────────────────────────┐
-│ official-cli (opt)    │  │ Windows Cloud Files API     │
-│ native-rust (opt)     │  │ WinFsp mount (opt)          │
+│ rust_compat (primary) │  │ Windows Cloud Files API     │
+│ mock (offline dev)    │  │ WinFsp mount (opt)          │
 │ webdav (Premium/opt)  │  │ Linux FUSE (later/opt)      │
 │ rclone (opt/external) │  │ system player integration   │
 │ mock (tests)          │  └──────────────────────────────┘
@@ -52,8 +52,7 @@ nekopak/
     nekopak-core/               # 任务调度/下载/同步/缓存
     nekopak-provider/           # ProviderPort 抽象和 router
     nekopak-provider-mock/      # 静态模拟数据/错误注入
-    nekopak-provider-cli/       # 官方 CLI 子进程适配器（可选 feature）
-    nekopak-provider-native/    # 社区兼容层（可选 feature）
+    nekopak-provider-native/    # 主连接：直接 HTTP、会话、系统凭据库
     nekopak-sync/               # 同步规划器与状态机
     nekopak-mount/              # trait + 只读抽象；平台 feature
   src-tauri/                    # Tauri commands, security
@@ -70,8 +69,8 @@ nekopak/
 
 - `discover()`：探测后端版本、授权状态、账号类型、可用功能、是否支持随机读取；结果可过期，定时刷新。
 - `capabilities` **按单个操作**声明，必要时再细分：例如 `read_range`, `stream_url`, `server_copy`, `offline_task`。
-- `ProviderRouter` 按操作和用户选择选路，不是固定“WebDAV → CLI → 官方”链式盲试。
-- 官方 CLI 优先处理其能稳定表达的文件操作；需要低延迟小块随机读取时，若 CLI 没有相应能力，则直接标记 mount 不可用，而非尝试误用 `cat`。
+- 普通浏览/下载固定使用 rust_compat，按操作检查能力；不提供后端选择或自动失败回退。WebDAV/Rclone 仅作为同步/挂载扩展。
+- 主适配器的 read_range 必须独立验收；接口资料中出现下载链接不代表随机读取已验证，未通过则禁用挂载。
 - `AuthExpired`：要求用户重新授权；`PermissionDenied`：提示权限；`QuotaExceeded`：展示配额；`NotFound`：终止任务；`TransientNetwork`：指数退避有限重试；`Unsupported`：可尝试其他已授权后端。
 - 若文件在后端间切换，先比较 remote ID、期望长度、已下载分块校验信息；不满足一致性则另存/重下，禁止在不验证情况下续写旧 `.part`。
 
@@ -81,7 +80,7 @@ nekopak/
 
 视频“片段下载”是按媒体时间范围裁剪/转封装，与下载器字节分块并发是两件事。
 采用 Provider 的授权随机读取 + 内容/账号/表示身份隔离的共享缓存 + 独立媒体处理核心。
-社区 API 可以提供 CLI 缺失的能力，统一通过 ProviderPort 测试和能力协商。
+直接 API 的每项能力统一通过 ProviderPort 测试和真实账号验收。
 不能按总字节乘时间比例替代媒体 seek，也不能默认整片预下载后宣称节省片段流量。
 本地媒体核心起步实现见 `MEDIA_SEGMENTS.md`，整体上游对齐见 `UPSTREAM_PARITY.md`。
 
@@ -156,7 +155,7 @@ nekopak/
 ## 10. ADR（需要决策）
 
 - ADR-0001：选 Tauri v2 + Rust Core，Windows x64 先行（暂定）。
-- ADR-0002：官方 CLI 为可选 adapter；未确认二进制分发许可前不捆绑（已确定）。
+- ADR-0002（2026-11-08 替代旧决定）：完全移除官方 CLI，主连接 rust_compat + 原生登录，见 API_ADAPTER.md。
 - ADR-0003：Piko 参考/复用路径及 NekoPak 许可证需要 Gate 0 先决定，不能强行兼容不同许可（待定）。
 - ADR-0004：同步先只读/单向；双向删除默认关闭（已确定）。
 - ADR-0005：Windows Cloud Files 与 WinFsp 为不同功能模块（已确定）。

@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-08",
+  "scope": "Native file/verification/downloader test build; no real service/account acceptance claimed",
+  "rust_workspace": {
+    "passed": 67,
+    "failed": 0,
+    "ignored": 8
+  },
+  "additional_cdn_range_regression": {
+    "passed": 1,
+    "failed": 0
+  },
+  "frontend": {
+    "vitest_passed": 82,
+    "wire_passed": 6
+  },
+  "browser_mock_e2e": {
+    "passed": 47,
+    "failed": 0,
+    "external_requests": 0
+  },
+  "real_webview2_startup": {
+    "passed": 4,
+    "failed": 0
+  },
+  "real_webview2_native_http_files": {
+    "passed": 3,
+    "failed": 0,
+    "external_requests": 0,
+    "download_bytes": 2097289,
+    "byte_equality": "passed"
+  },
+  "clippy": "passed",
+  "typescript": "passed",
+  "cargo_fmt": "passed",
+  "frontend_build": "passed",
+  "windows_release_build": "passed",
+  "package_crc": "passed",
+  "embedded_exe_sha256": "matched",
+  "standalone_exe_sha256": "matched",
+  "release_debug_seam_strings": "absent",
+  "windows_dependency_license_gaps": [],
+  "artifacts": {
+    "exe": "D:\\Program Files (x86)\\ai\\agent\\codex\\nekopak\\dist\\NekoPak-files-test.exe",
+    "zip": "D:\\Program Files (x86)\\ai\\agent\\codex\\nekopak\\dist\\NekoPak-0.1.0-windows-x64-files-test.zip",
+    "exe_sha256": "6103486ad7f914adf9d83cfd4bab67f2b4a7a8006f1ffe8ebe043705b1c0f58c",
+    "zip_sha256": "b8df5a309884330c670383c985a4e2d71b27cd30967f5e610a58a7044bc09400"
+  },
+  "live_acceptance": "User owns account/verification testing. Prior user screenshot shows session establishment; this build live drive/download acceptance is unverified.",
+  "not_implemented": [
+    "cloud task creation",
+    "upload",
+    "share create/cancel",
+    "permanent delete",
+    "media segment/transcoded download",
+    "sync",
+    "mount",
+    "folder download"
+  ]
+}

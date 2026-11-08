@@ -845,6 +845,16 @@ button.crumb:hover {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 4px 24px;
 }
+.form-grid > .field { min-width: 0; }
+html[lang="en"] .settings-layout { grid-template-columns: 240px minmax(0, 1fr); }
+html[lang="en"] .settings-link { white-space: normal; line-height: 1.3; min-height: 44px; height: auto; padding-top: 10px; padding-bottom: 10px; }
+html[lang="en"] .settings-link .icon { flex: none; }
+
+.directory-picker { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.directory-picker .input { flex: 1; min-width: 0; cursor: pointer; }
+.directory-picker .btn { flex: none; }
+.download-help { grid-column: 1 / -1; padding: 8px 0 16px; color: var(--on-surface-variant); font-size: var(--fs-sm); }
+.form-grid > .set-row { grid-column: 1 / -1; }
 
 .switch-row {
   display: flex;

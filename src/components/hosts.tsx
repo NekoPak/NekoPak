@@ -1,3 +1,4 @@
+import { tr } from "../lib/i18n";
 import { Fragment } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useStore } from "../lib/store";
@@ -39,13 +40,16 @@ export function DialogHost() {
         if (dismissable && e.target === e.currentTarget) closeDialog(top.id);
       }}
     >
-      <div
-        ref={ref}
+      {stack.map(entry => <div
+        key={entry.id}
+        ref={entry.id === top.id ? ref : undefined}
         class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        style={{ width: `min(${top.width ?? 440}px, calc(100vw - 32px))` }}
+        role={entry.id === top.id ? "dialog" : undefined}
+        aria-modal={entry.id === top.id ? "true" : undefined}
+        aria-hidden={entry.id === top.id ? undefined : "true"}
+        inert={entry.id === top.id ? undefined : true}
+        aria-labelledby={entry.id === top.id ? titleId : `dlg-title-${entry.id}`}
+        style={{ width: `min(${entry.width ?? 440}px, calc(100vw - 32px))`, display: entry.id === top.id ? undefined : "none" }}
         onKeyDown={(e) => {
           if (e.key === "Escape" && dismissable) {
             e.stopPropagation();
@@ -69,15 +73,15 @@ export function DialogHost() {
         }}
       >
         <header class="modal-head">
-          <h2 id={titleId}>{top.title}</h2>
+          <h2 id={`dlg-title-${entry.id}`}>{entry.title}</h2>
           {dismissable ? (
-            <button type="button" class="btn btn-quiet btn-icon btn-sm" aria-label="关闭" title="关闭 (Esc)" onClick={() => closeDialog(top.id)}>
+            <button type="button" class="btn btn-quiet btn-icon btn-sm" aria-label={tr("关闭")} title={tr("关闭 (Esc)")} onClick={() => closeDialog(top.id)}>
               <Icon name="x" />
             </button>
           ) : null}
         </header>
-        <div class="modal-body">{top.render((v) => closeDialog(top.id, v))}</div>
-      </div>
+        <div class="modal-body">{entry.render((v) => closeDialog(entry.id, v))}</div>
+      </div>)}
     </div>
   );
 }
@@ -157,7 +161,7 @@ export function MenuHost() {
       ref={ref}
       class="menu"
       role="menu"
-      aria-label={m.label ?? "操作"}
+      aria-label={m.label ?? tr("操作")}
       tabIndex={-1}
       aria-activedescendant={`menu-item-${active}`}
       style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
@@ -185,7 +189,7 @@ export function MenuHost() {
       onContextMenu={(e) => e.preventDefault()}
     >
       {quickCount ? (
-        <div class="menu-quick" role="group" aria-label="常用操作">
+        <div class="menu-quick" role="group" aria-label={tr("常用操作")}>
           {items.slice(0, quickCount).map((item, i) => (
             <button
               type="button"
@@ -195,7 +199,7 @@ export function MenuHost() {
               class={`menu-qbtn${i === active ? " active" : ""}`}
               aria-label={item.label}
               aria-disabled={item.disabled ? "true" : undefined}
-              title={item.disabled ? `${item.label}：${item.reason ?? "不可用"}` : `${item.label}${item.shortcut ? `（${item.shortcut}）` : ""}`}
+              title={item.disabled ? `${item.label}：${item.reason ?? tr("不可用")}` : `${item.label}${item.shortcut ? `（${item.shortcut}）` : ""}`}
               onMouseEnter={() => !item.disabled && setActive(i)}
               onClick={() => run(i)}
             >
@@ -228,7 +232,7 @@ export function ToastHost() {
               {t.action.label}
             </button>
           ) : null}
-          <button type="button" class="btn btn-quiet btn-icon btn-sm" aria-label="关闭通知" onClick={() => dismissToast(t.id)}>
+          <button type="button" class="btn btn-quiet btn-icon btn-sm" aria-label={tr("关闭通知")} onClick={() => dismissToast(t.id)}>
             <Icon name="x" size={14} />
           </button>
         </div>

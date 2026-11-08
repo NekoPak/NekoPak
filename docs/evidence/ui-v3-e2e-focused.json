@@ -1,0 +1,15 @@
+{
+  "base": "http://localhost:4179",
+  "filter": "分享预览",
+  "ran_at": "2026-11-08T14:56:57.188Z",
+  "passed": 1,
+  "failed": 0,
+  "external_requests": [],
+  "results": [
+    {
+      "name": "IPC 契约夹具：分享预览保留原ID导航，播放和下载使用只读句柄",
+      "ok": true,
+      "ms": 815
+    }
+  ]
+}

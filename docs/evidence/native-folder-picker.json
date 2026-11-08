@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-08T09:08:32.907Z",
+  "scope": "Actual Windows IFileOpenDialog in isolated debug process; native UIAutomation used because Computer Use kernel could not initialize",
+  "cancelled": {
+    "native_dialog": true,
+    "action": "cancel",
+    "passed": true
+  },
+  "selected": {
+    "native_dialog": true,
+    "action": "choose",
+    "passed": true
+  },
+  "persisted": true
+}

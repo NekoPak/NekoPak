@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-08",
+  "platform": "Windows x64",
+  "baseline_commit": "b2f2923e0fb22cf82a60d74574d6e8e8d0c1467b",
+  "working_tree_changes_included": true,
+  "checks": [
+    {
+      "command": "npx vitest run tests/unit/i18n.test.tsx tests/unit/boot-settings.test.ts",
+      "stage": "before fix",
+      "result": "4 failed, 1 passed; reproduces startup ordering, reload, stale labels and demo-language loss"
+    },
+    {
+      "command": "npx vitest run tests/unit/i18n.test.tsx tests/unit/boot-settings.test.ts",
+      "stage": "after fix",
+      "result": "5 passed"
+    },
+    {
+      "command": "cargo test --workspace --locked --offline",
+      "result": "71 passed; 0 failed; 8 explicitly ignored"
+    },
+    {
+      "command": "cargo test -p nekopak-provider-native --locked --offline custom_proxy_routes_requests_and_disabling_it_restores_direct_connections",
+      "result": "1 passed; real local proxy and direct HTTP routing"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
+      "result": "passed"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "result": "passed"
+    },
+    {
+      "command": "npm test",
+      "result": "88 Vitest + 6 wire passed"
+    },
+    {
+      "command": "npm run build",
+      "result": "passed; TypeScript + Vite"
+    },
+    {
+      "command": "E2E_BROWSER_CHANNEL=msedge npm run e2e",
+      "result": "47/47 passed; external requests 0",
+      "evidence": "docs/evidence/ui-v3-e2e.json"
+    },
+    {
+      "command": "node tests/e2e/native-functional.mjs",
+      "result": "3 flows passed; actual 2097289-byte download, measured speed, language changes without reload and blocked-storage boot, tray registration/close survival",
+      "evidence": "docs/evidence/native-functional-e2e.json"
+    },
+    {
+      "command": "node tests/e2e/native-startup.mjs",
+      "result": "4/4 passed",
+      "evidence": "docs/evidence/desktop-native-v3.json"
+    },
+    {
+      "command": "npm run gen:app-icons",
+      "result": "passed; unrelated installed mstmc.ttf font warning, source icon has no text"
+    },
+    {
+      "command": "python scripts/check_parity.py",
+      "result": "manifest check passed; 0/24 mandatory feature groups fully verified"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "previous_window_checks": [
+    {
+      "command": "node tests/e2e/native-folder-picker.mjs",
+      "result": "actual native choose/cancel/persistence passed",
+      "evidence": "docs/evidence/native-folder-picker.json"
+    }
+  ],
+  "limitations": [
+    "No live user account requests or credentials used",
+    "Computer Use native pipe os error 2 after retries/reset; real tray-menu clicking and taskbar icon cache not newly verified",
+    "English coverage incomplete; five-language upstream parity incomplete",
+    "Browser mock media/sync/mount tests do not validate native implementations"
+  ],
+  "release": {
+    "status": "passed",
+    "command": "cargo build -p nekopak-app --release --locked --offline; python scripts/package_release.py",
+    "standalone_exe": "dist\\NekoPak-desktop-test.exe",
+    "archive": "dist\\NekoPak-0.1.0-windows-x64-desktop-test.zip",
+    "executable_bytes": 10142720,
+    "archive_bytes": 5557901,
+    "executable_sha256": "46b8c1ac73cb96ed2f270109bce49a0ceee4029af3004f8961776ebdcc42818c",
+    "archive_sha256": "59c4dde58e1025b8a83eeed757fef6b11bb03a5d344617db620e6fb7e239e656",
+    "zip_integrity": "passed; embedded EXE hash and current report matched",
+    "windows_dependency_license_text_gaps": [],
+    "icon": "Extracted from final EXE and visually confirmed cat/box icon"
+  }
+}

@@ -1,10 +1,13 @@
 import type { EventPayloads } from "../contract";
-import type { AuthChangedEvent, CommandArgs, CommandName, CommandResult } from "../contract-proposals";
+import type { AuthChangedEvent, CommandArgs, CommandName, CommandResult, DuplicatesProgressEvent, ServerJob } from "../contract-proposals";
 
 export interface AllEvents extends EventPayloads {
+  "nekopak://desktop/navigate": "transfers";
   "nekopak://auth/changed": AuthChangedEvent;
   "nekopak://transfer/resync-required": null;
   "nekopak://storage/error": import("../contract").ClientError;
+  "nekopak://duplicates/progress": DuplicatesProgressEvent;
+  "nekopak://job/changed": ServerJob;
 }
 export type AnyEventName = keyof AllEvents;
 

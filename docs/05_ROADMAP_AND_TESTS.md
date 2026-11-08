@@ -10,7 +10,8 @@
 
 - [ ] 选择路径 A（Piko AGPL Fork）或 B（Rust 独立仓 + 只读 Fork 参考）；以 `04_SOURCES_LICENSES.md` 为依据。
 - [ ] 在仓库建立 LICENSE、THIRD_PARTY_NOTICES.md、来源审计模板。
-- [ ] 检查官方 CLI 的真实存在/版本/安装方式/JSON 或机器可读输出、播放/断点/随机读取能力；只记录**实际观测**，不填“应该有”。
+- [x] 2026-11-08 淘汰官方 CLI 适配；历史探测归档。
+- [ ] 审计 rust_compat 的可用客户端身份、登录/CAPTCHA、刷新、配额和 Range；逐项记录实际观测。
 - [ ] 检查 `pikpaktui` Rust 模块，统计可复用部分、阻塞式代码和隐含鉴权/风控风险；任何实际拷贝都带 commit SHA。
 - [ ] 记录基础参考包体积：Piko v1.4.0 Windows MSI 和 APK；明确比较对象、版本和压缩算法。
 - [ ] 开始编写 mock fixtures，不依赖真实云账户就可让 UI 开工。
@@ -27,11 +28,11 @@
 
 ## M1 — 文件操作与下载稳定闭环（首个实用版）
 
-- 账号：实际后端探测、官方 CLI 外部授权（如果可行）、可替代的兼容层说明与失败处理。
+- 账号：应用内邮箱密码登录、Windows 凭据库、CAPTCHA 人工衔接、串行刷新、退出与真实账号验收。
 - 文件浏览：分页、目录缓存、搜索、元数据；新建/移动/重命名/回收站。
 - 云下载：磁力链/URL 可用能力、创建任务与进度查询，精确报错。
 - 下载：小文件/大文件并发、暂停/继续、`.part`、故障恢复与校验。
-- 视频片段：先本地媒体核心，再社区 API/CLI 可授权随机读取、共享块缓存与持久片段任务；MP4/MKV/TS、关键帧、音轨、画质、取消及恢复都需实际样本。
+- 视频片段：先本地媒体核心，再直接 API 授权随机读取、共享块缓存与持久片段任务；MP4/MKV/TS、关键帧、音轨、画质、取消及恢复都需实际样本。
 - 安全：日志脱敏、路径规范化、防重复副作用、配额显示。
 
 **验收：** 文件大小和 bytes 一致；断网、磁盘满、宕机后能恢复；连续 20 次登录/退出不遗留可读明文密钥；不把失败任务显示完成。
@@ -70,7 +71,7 @@
 - Release Notes、来源致谢、licenses、SHA-256、可复现/可追踪构建清单、自动化测试概览。
 - 用户可导出脱敏日志和诊断信息，默认不上传遥测。
 - 公开 Issues：普通 bug、同步破坏性问题、高风险安全问题分级处理。
-- 外部 CLI 版本不匹配时明确提示，不静默下载未经授权的组件。
+- 客户端协议变化时明确错误并禁用未验证能力，不回退外部 CLI 或静默下载组件。
 
 ## 首批 10 个 GitHub Issues（供 Astra / Opus 5.5 拆分）
 
@@ -79,7 +80,7 @@
 3. `[app] Tauri v2 skeleton + typed IPC commands` — 编译 + mock smoke。
 4. `[ui] Files explorer: virtual list, breadcrumbs, actions, empty/error/loading states` — 可访问性。
 5. `[core] Persistent transfer queue and crash-safe journal` — kill/断网恢复。
-6. `[backend] Official CLI compatibility probe` — 验证能力、不捆绑二进制。
+6. `[backend] Native API identity and live auth acceptance` — 核验客户端身份、登录/刷新/退出与真实分页；不回退 CLI。
 7. `[backend] Audit and extract allowed Rust logic from pikpaktui` — SHA/许可证/注释。
 8. `[ui] Transfer dashboard + live progress and task controls` — 使用完整事件/快照策略。
 9. `[sync] Read-only scan and dry-run plan engine` — 无破坏性变更。
@@ -88,7 +89,7 @@
 追加优先事项：
 
 11. `[media] Local clip core and keyframe/MP4 validation` — 本地 MP4/MKV 实验核心；TS 定位缺口独立跟踪。
-12. `[provider] Community API protocol audit and authorized Range PoC` — 参考 pikpak-kotlin/pikpaktui/Rclone，核验授权、Range/版本/配额/错误；CLI 不支持不删需求。
+12. `[provider] Community API protocol audit and authorized Range PoC` — 参考 pikpak-kotlin/pikpaktui/Rclone，核验授权、Range/版本/配额/错误；未实现时不删需求。
 13. `[media] Remote clip plan, shared cache and durable tasks` — 不默认整片下载，画质与账号隔离、进度、取消重启、输出校验。
 14. `[parity] Close published Windows feature gaps` — 搜索/整理/分享/归档/压缩包/播放器/本地映射等逐项真实验收。
 
@@ -97,7 +98,7 @@
 | 测试 | 最低集合 | 发布阻断 |
 |---|---|---|
 | Rust `unit` | 路径编码、状态机、错误映射、Range 规划、同步冲突 | 是 |
-| Rust `contract` | Mock CLI/Native/WebDAV 能力分类、分页与事件乱序 | 是 |
+| Rust `contract` | Mock/Native 能力分类、分页与事件乱序 | 是 |
 | 文件完整性 | 完成校验、半截文件、ETag 变化、服务端错误 Range | 是 |
 | 存储恢复 | kill -9/断电模拟、SQLite 损坏、部分元数据、迁移回滚 | 是 |
 | 同步安全 | 远端空响应/403/500 不触发删除、冲突副本、循环目录 | 是 |

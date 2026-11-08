@@ -1,4 +1,7 @@
-# NekoPak Rust ↔ UI 接口契约 v0.1
+# NekoPak Rust ↔ UI 接口契约 v0.2
+
+2026-11-08：当前冻结变更见 §10–§12，后续小节覆盖此前实现状态。UI-001 的其他功能仍是
+提案，不因导入 v3 界面而自动成为已实现能力。§7–§9 保留为历史记录。
 
 此文件为 Astra 与 Opus 5.5 的**共享基线**。任何字段变更需提交双向兼容说明、更新 mock fixtures、更新 UI 类型定义与测试。示例命令只表示设计，不暗示已经实现。
 
@@ -98,8 +101,8 @@ export interface SyncAction {
 | 命令 | 参数 | 返回 | 主要行为 |
 |---|---|---|---|
 | `app_status` | — | AppStatus | 版本、存储状态、feature flags |
-| `backend_discover` | — | CapabilityReport[] | 检测官方 CLI、本地兼容层等 |
-| `auth_begin` | `{ backend }` | AuthFlow | 启动外部授权/显示官方链接，绝不让 UI 收集密码 |
+| `backend_discover` | — | CapabilityReport[] | 当前主连接 rust_compat；显式离线开发模式只返回 mock |
+| `auth_begin` | `{ backend }` | AuthFlow | 未来扩展保留；PikPak 原生登录使用 §10 |
 | `auth_status` | — | AuthState | 授权状态与账号信息 |
 | `auth_logout` | `{ backend }` | void | 清除本地授权引用并调用对应注销 |
 | `files_list` | `{ parent_id, cursor?, limit? }` | Page<RemoteEntry> | 可分页、可取消 |
@@ -194,28 +197,12 @@ pub trait BackendPort: Send + Sync {
 
 本补充为后端交接基线，尚无另一位前端开发者的实际集成确认。
 
-## 8. 官方 CLI 只读预览补充（2026-11-07）
+## 8. 已撤销的 CLI 预览契约（历史）
 
-兼容增加以下字段/命令；contract_version 仍为 0.1。第 7 节的 M0 状态是历史基线。
-
-- app_status.mode 增加 `official_cli_preview`；features 增加 `real_transfers: false`。
-  real_providers 表示选择了真实适配器，不表示账号已授权或成功请求已实测。
-- 宿主 backend_discover 注册 mock 和 official_cli；未显式配置的 CLI 返回
-  `not_installed`，其含义是未配置可用安装，不声称已全盘搜索系统。
-- 新增 `official_cli_probe({ request_id? }) -> CliProbeReport`：包含 backend、status、
-  version?、binary_sha256?、verified_commands、live_account_verified、limitations、checked_at。
-  probe 只检查本地版本/帮助，不触发登录；成功探测也不意味着 ready。
-- `auth_status({ request_id? }) -> AuthState`：backend、authenticated、credential_owner
-  (`none | external_cli`)、account_tier、message。无 token/password/email/user_id 字段。
-- CLI 只读预览需显式配置 NEKOPAK_BACKEND=official_cli、NEKOPAK_CLI_PATH 和
-  NEKOPAK_CLI_PROFILE。仅允许已核验 Windows x64 v0.6.0 的 SHA-256。
-- files_list/stat 的 JSON 类型不变；CLI 分页 limit 限 10–500，低于 10 返回 CONFLICT，
-  不静默超出请求上限。raw parent_id 空串映射 root；字节数字串严格校验；时间转 UTC。
-- 仅当明确启用预览且外部 CLI 的 auth status 返回 logged_in=true 才启用 list/stat。
-  capabilities.limitations 始终注明尚未完成真实授权目录验证。
-- download/cloud_task/upload/quota/read_range 保持 false；授权配额未知，不从账户容量推导。
-- auth_begin/auth_logout 尚未注册。用户在外部 CLI 完成官方授权；NekoPak 不收集凭据，
-  不承诺外部 CLI 的凭据文件使用系统安全存储。
+2026-11-08 完全移除本节旧实现，包括 official_cli_probe、official_cli_preview 模式、
+external_cli 凭据所有者与外部程序配置。旧观察见 [历史记录](history/CLI_ADAPTER.md)，
+不是当前可调用接口。BackendId.official_cli 仅保留历史序列化兼容。
+当前主连接、命令与会话语义见 §10。
 
 ## 9. 视频片段预留契约与状态（2026-11-07）
 
@@ -236,3 +223,197 @@ subtitle_warning、requires_random_read。aligned_start_ms 未实测时省略，
 不添加可点击假入口。已实现 `nekopak-media` 本地实验库和 `clip_local` 示例，独立于 IPC。
 远端命令须在随机读取、缓存、持久任务、取消恢复、画质/轨道和真实账号验证完成后接入。
 此阶段不能宣称已实现云端片段下载；TS 明确待补齐，详见 MEDIA_SEGMENTS.md。
+
+## 10. 移除 CLI，原生 API 登录切片（2026-11-08）
+
+- `contract_version = "0.2"`。移除 `official_cli_probe` 命令、CLI crate、配置读取和运行路径。
+  `BackendId.official_cli` 只保留旧记录的反序列化兼容性，永远不注册或路由到它。
+- 默认桌面主连接为 `rust_compat`，`app_status.mode = "rust_compat_preview"`。
+  显式 `NEKOPAK_BACKEND=mock` 使用原有独立 Mock 数据库，保持离线演示语义。
+  不将历史 CLI 队列转换成模拟任务，不自动删除任何数据库。
+- 原有 AuthState 字段保留，新增 `state`（signed_out/pending/signed_in/expired）、
+  `display_name?`（已脱敏）；`credential_owner` 增加 `os_vault`。密码与 token 不进入返回值。
+- `auth_sign_in({username,password,request_id?}) -> SignInResult`；
+  `auth_verify({challenge_id,code,password?,request_id?}) -> SignInResult`；
+  `auth_logout({backend,request_id?}) -> void`。参数风格维持 flat / snake_case。
+  邮箱+密码流程先行；短信/邮箱验证码重发未验证，不注册 `auth_resend`。
+- SignInResult 使用 UI-001 §P23 的 signed_in/challenge 联合。
+  CAPTCHA challenge 增加 `requires_password?: boolean`：原生流程为 true。
+  密码在首次请求结束后即清除，人工验证后须重新输入，不能凭一个空验证码冒充已完成登录。
+  challenge 有超时且绑定当前登录尝试，只保留账号/设备/挑战元数据，不保存密码。
+- `nekopak://auth/changed {state,error?}` 只包含公开状态。登录/退出/失效后 UI 重读状态与
+  能力；刷新请求串行化。过期或取消的请求不能覆盖另一登录会话。
+- 默认安装内置已核对的公开 Web 登录协议参数，普通用户不需要环境变量或开发者资格。
+  公开 client_id / SDK 版本属于协议元数据，不是用户凭据；不内置 client_secret、
+  Android 身份或验证码自动解题逻辑。系统凭据库故障时仍明确报错，不回退明文。
+- 登录按官网 Web SDK 请求：正文仅 client_id/username/password，CAPTCHA token 放在
+  x-captcha-token 请求头；captcha init 使用 meta.email。人工验证使用带随机 state 的
+  本机回环回调接收已验证 CAPTCHA token，token 留在 Rust，继续登录仍须重新输入密码。
+- 当前切片范围：登录、人工验证码衔接、刷新、系统凭据库、退出、目录分页和元数据。
+  HTTP 协议 fixture 验证不代表真实账号验收。写操作、下载、配额、Range、媒体、同步、
+  挂载在相应引擎/真实验收完成前保持 false。`real_transfers` 始终为 false。
+  本条记录最初登录测试包；2026-11-08 后续 §11 覆盖文件与下载的当前实现状态。
+- v3 `transfer_start.options` / `cloud_task_create.preview_id,file_indices` 暂未实现，
+  宿主必须返回 UNSUPPORTED，不能静默忽略选段、画质或文件选择后执行整文件任务。
+- 字节与任务 revision 继续使用十进制 u64 字符串，根目录继续为 root。
+  本节接受了 §P0、§P3、§P7 和 §P23 的上述子集；其余提案不变。
+
+## 11. 网盘安全验证与基础文件功能修复（2026-11-08）
+
+本次接入在 §10 之上增加以下契约，同步更新 Rust、前端和离线 fixture。
+既有会话继续使用系统凭据库，不要求为了网盘安全验证退出账号或重新输入密码。
+
+- 新增 `VERIFICATION_REQUIRED` 错误，`details.verification_id` 是本地随机引用。
+  错误不含 CAPTCHA token、验证链接、账户 ID 或服务原始诊断。真正权限不足继续为
+  PERMISSION_DENIED，不提示购买会员来解决安全验证。
+- `verification_status({verification_id?}) -> {verification_id,state,expires_at}?`，
+  state 为 pending / verified / expired。`verification_open({verification_id})` 由 Rust
+  校验并在系统浏览器打开其持有的验证链接。`verification_complete({verification_id})`
+  仅在收到有效人工回调时完成，`verification_cancel` 释放本地挑战。状态查询不发账户请求。
+- 网盘请求独立获取相应 action 的 CAPTCHA，保存在 Rust 内存，账号/设备/会话切换即失效。
+  服务拒绝 token 时只读请求允许限次重新初始化；副作用请求不盲目重放。人工验证完成后
+  界面提供“继续读取”，写操作需要再次确认原意图。
+- §P2 的 mkdir / rename / move / copy / trash / restore / star / unstar 与 §P16 的
+  files_starred、trash_list、files_recent、files_search、shares_list 接入实际 Rust 路径。
+  每项仅在相应实现与协议测试完成后声明能力；不存在以 HTTP200 代表异步写入已完成。
+  删除与恢复语义分离；永久删除未接入时保持禁用。
+- 文件变更幂等记录须在请求发送前持久化。相同账号、键和参数返回已记录结果，重启后
+  未知结果保持未知并要求核对，绝不再次自动发送。其他账号不能复用原账户记录。
+- 旧凭据可增加可选 user_id；若缺少，由 Rust 使用现有会话向固定 user/me 查询 sub，
+  不从邮箱猜测、不读取其他客户端会话、不让用户提供客户端参数。
+
+准确公共协议与研究证据见 DRIVE_PROTOCOL_RESEARCH.md、FILE_PROTOCOL_RESEARCH.md。
+上述新增路径以逐项真实测试记录标注完成状态；未通过的功能不因此声明上线。
+
+### 11.1 下载、设置及字段补充
+
+- Native `transfer_start.destination` 为已经存在的本地下载目录，核心根据远端文件名生成
+  安全落盘名；Mock 原有参数仍只作模拟，不写文件。`idempotency_key` 按账号/参数隔离。
+  当前只支持原文件、单任务单连接有界块读取；不把这一能力宣称为挂载用随机读或媒体选段。
+- `TransferTask` 增加可选 name / destination。原生传输仍用既有状态、decimal bytes/revision；
+  成功必须完成长度与分块校验。启动恢复暂停，用户显式继续。失败、取消不自动删除 .part。
+  CDN 请求不携带账号 Authorization/CAPTCHA，HTTPS/公共地址校验、重定向和 Range 有界。
+- `real_transfers=true` 表示当前 provider 有实际落盘引擎；native 下载 capability 在已有会话
+  时可用。已完成离线真实文件写入与 WebView2 本地HTTP端到端验证，真实服务仍待用户验收。
+- 原生进度事件不带旧账号任务数据，仅发送 resync-required；UI 用按当前账号过滤的
+  transfers_list 快照更新。后续真实速度采样见 §12；未测量值仍不得用模拟数值补齐。
+- `settings_get/update` 接受实际实现的 theme、download_dir、bandwidth_limit_kib_s（0为不限），
+  experimental_network.enabled/proxy_mode（后续扩展见 §12）。其他提案字段不能假保存。
+  enabled=false恢复系统代理；不修改OS代理/DNS/Hosts。设置与下载元数据、远端intent存在
+  `api-preview.sqlite3.actions.sqlite3`，主任务库标记其已初始化；遗失时拒绝创建空记录。
+- QuotaReport.source 增加 account；QuotaDimension 增加 used_bytes，保留服务报告的真实
+  使用量（可大于limit），remaining单独饱和减，未知不补零。新增storage/download_daily维度。
+- RemoteEntry增加可选starred；ShareInfo增加expires_known，缺省日期不得被native标为永久。
+  分享列表与分享创建/取消是不同能力；当前只接入列表。永久删除保持禁用。
+- provider请求在宿主有45秒总期限（登录30秒）；后台下载块最多90秒并可取消。UI只读等待
+  50秒，不对写请求自行超时后重放。操作发生后结果未知显示outcome_unknown且不重发。
+
+## 12. 桌面下载体验、语言、托盘与网络设置（2026-11-08）
+
+保持 `contract_version=0.2`；新增字段可选，旧设置读取时补默认值，不迁移或清空任务。
+Rust/TS 接口、浏览器 Mock、契约与原生 E2E 同步维护。此节不启用媒体、分享写入或云下载。
+
+- 原生 `speed_bytes_per_sec` 来自 Rust 单调时钟与约 3 秒滑动窗口的实际网络字节采样，
+  不把断点已有字节计成新下载速度；停流后衰减为 0，暂停、失败、校验、完成时清除样本。
+  速率为易失信息，同一个持久 `revision` 可以有新的速度快照；UI 接受同 revision 的快照，
+  不接受更旧 revision。进度仍只计已验证、已提交的字节。UI 活动下载期间每 500ms 重读快照。
+- `download_directory_pick() -> string | null`：打开所属窗口的系统目录选择器，返回已存在的
+  本地绝对路径；取消返回 null，不更改设置、不创建任务。不能选择的路径返回结构化错误。
+  选择之后由 `settings_update` 显式保存；下载前单次选目录不覆盖默认目录。
+- `transfer_open_directory({task_id}) -> void`：Rust 根据当前账号拥有的持久下载任务解析父目录，
+  校验后调用系统文件管理器；不接收 UI 任意路径。不随新的默认下载目录改变历史任务位置。
+- 设置新增 `ask_download_directory=false`、`close_to_tray=false`、
+  `language="system" | "zh-CN" | "en"`。语言保存于 Rust 设置库，WebView localStorage 仅为
+  首屏缓存；切换不刷新页面，缓存不可用也不阻止启动。当前词典覆盖主要可用界面，五语种与
+  全量提示覆盖仍未完成，服务返回文字/文件名/路径不自动翻译。
+- 托盘提供显示、隐藏、打开下载任务和退出。关闭到托盘默认关闭；启用且托盘存在时关闭
+  窗口只隐藏，后台下载继续。退出结束进程，重启按既有恢复规则暂停待续。
+  `desktop_status() -> {tray_available:boolean,window_visible:boolean}` 返回本机宿主状态；
+  `nekopak://desktop/navigate` 负载 `"transfers"` 要求 UI 导航至下载任务。
+- `experimental_network` 默认关闭；`proxy_mode` 支持 system / none / user_provided，
+  `proxy_url` 支持 HTTP、HTTPS、SOCKS5、SOCKS5H，拒绝账号密码、路径、查询和片段。
+  地址属于非凭据配置，可回读；`user_proxy_configured` 由 Rust 推导，不接受 UI 伪造。
+  `compatibility_mode=false`；启用时仅认证/网盘 API 客户端限定 TLS 1.2，CDN 保持其下载
+  TLS 配置。始终验证证书/主机名；没有修改系统 Hosts、DNS、代理或地区检查的功能。
+- Rust 在提供网络 IPC 和后台下载前加载网络配置，UI 在认证/能力读取前恢复设置。
+  网络配置损坏时不带着默认网络继续认证，不覆盖原设置。切换仅影响后续请求，已在途请求
+  继续使用旧客户端。关闭增强恢复系统代理和正常 TLS 协商；未实现的 DNS 选项仍拒绝。
+
+验证与限制见 [DESKTOP_UX_FIX_REPORT.md](DESKTOP_UX_FIX_REPORT.md)。本地 HTTP/WebView2 测试
+不证明真实账号、区域连通性或系统播放器等后续能力已经验收。
+
+## 13. 完整客户端集成增量（2026-11-08，实施中）
+
+按用户要求连续推进完整能力；本节冻结跨模块字段，功能完成以对应测试和能力报告为准。
+新增命令只有处理器及测试完成才放入可调用集合；不为占位实现报告 true。
+
+- `RemoteEntry.hash.algorithm` 加入 `gcid`，保留服务的内容身份用于同内容重复检查，
+  不把 GCID 标为标准 SHA-1，也不作为普通下载的 SHA-1 校验承诺。
+- `transfer_start_batch({remote_ids,destination,options?,idempotency_key}) -> BatchRef` 采用
+  UI-001 §P15；递归保留目录结构，所有页读取与账号核对成功后才入队，深度/条数有界，
+  循环、路径冲突、不可读项不伪装为完整下载；相同用户意图重试不能重复创建子任务。
+- `duplicates_scan/report/cancel` 与 `files_space_summary` 采用 §P17/§P18，Rust 扫描真实
+  树和完整分页；重复仅按同算法内容身份和精确长度，不自动删除。失败与不完整分别显示。
+  扫描报告与索引按账号隔离；取消只停止扫描，不改远端文件。
+- 语言枚举扩展为 system/zh-CN/zh-TW/en/ja-JP/ko-KR；历史三值继续有效。
+- 远端写意图仍在发请求前保存，结果未知不重发；扩展操作使用带命令名的账号范围键。
+  辅助记录库采用显式验证后事务迁移，已有损坏/缺表不自动修复为空记录。
+- 媒体 RangeSource、缓存、队列由 Rust 持有来源身份和签名链接；时间参数明确为毫秒。
+  `media_probe`/`media_align` 与 `transfer_start.options` 采用 §P14，指定表示失效不得换档；
+  ClipRange 的数字必须是 JS 安全整数，在 Rust 解析时拒绝非整数、越界和倒置时间。
+
+root 与媒体/协议/前端代理按照 docs/09_AGENT_HANDOFF.md 协调本节，具体新增本地源与
+播放器返回值在实现前继续补充，不改变已有字节/任务 revision 十进制字符串规则。
+
+- `experimental_network.block_access_domains=false` 是用户明确要求的独立开关，不受代理的
+  enabled 值代管；Rust 在DNS/连接前拒绝四个精确 access 主机及其带尾点变体。匹配不扩展到
+  子域或相似后缀，规则错误不产生伪造成功响应；关闭立即用于后续请求。配置重启持久化。
+  不修改系统 Hosts，代理使用仍按用户网络需要。用户已澄清：其环境需要代理才能登录/使用，
+  未加 Hosts 屏蔽仍可用；这不是无代理直连成功的证据。
+
+### 13.1 已接入命令与恢复语义
+
+- 云任务 `cloud_task_preview/create`、分享 `share_create/shares_cancel`、压缩包
+  `archive_list/unlock/extract/jobs_list` 接入UI-001对应形状。云任务的`progress_percent`独立于
+  未知字节长度；只有服务的完成phase可完成。云任务仅取消/重试，重试原task ID不重建source URL。
+- `accounts_list()->SavedAccount[]`、`account_switch({id})->AuthState`、`account_remove({id})`。
+  SavedAccount为id/display_name/active/state，AuthState增account_id；账号最多8个，所有
+  会话及索引在系统凭据库。添加成功才激活，失败/验证中保留原账号；切换事件即使状态同为
+  signed_in也发送，前端按account_id重置账号数据。公开id不含邮箱或远端sub。
+- `ui_prefs_get()->{account_id,prefs}`、`ui_prefs_update({prefs,expected_account_id})->prefs`。
+  pins/view/sort/density/gridSize/foldersFirst按账号存Rust，迟到旧账号写被拒绝，原生pins
+  不写WebView共享localStorage。主题、语言等设备偏好继续走settings。
+- `local_sources_list/add/remove`返回`{source_id,root_id,name,path}`；add.path缺省系统picker，
+  取消null。files_list/stat/path接受Rust返回的`local:`句柄，仅访问已映射根内常规文件；
+  不允许云修改。取消映射不删除本地内容并停止相关播放读取。
+- `media_session_open({remote_id,quality_id?})->{session_id,url,mime_type,name}`仅返回随机
+  127.0.0.1流地址，支持GET/HEAD/单Range，校验Host/Origin/账号/源身份，限时限并发。
+  `media_session_close`撤销。CDN签名URL不出Rust；图片可转WebView blob后关闭流。
+- `media_probe/align`探测真实MP4/MKV/TS索引；`transfer_start.options`指定质量/时间。
+  `prepare_format(...,"mp4")`执行纯Rust转封装，所有产物校验后无覆盖发布。任务暂停重启时
+  从保存的计划重新封装并复用已验证缓存，不能宣称复用半写mux状态。缓存按账号/表示/版本
+  隔离，本地块SHA256、512MiB预算及旧块回收；转码需要强ETag并使用If-Match。
+- `player_config_pick()`选择已安装播放器；settings.media.player_path保存路径。外播用
+  独立参数启动所选程序，给它本机流URL；不调用shell拼字符串，不用浏览器冒充播放器。
+- `share_open/folder/restore`使用本地access_ref，实际share token留Rust；
+  `share_preview_entry({access_ref,file_id})`返回`shared:`只读句柄供探测/播放/原画下载。
+  下载与媒体任务保留独立系统凭据库ref供重启恢复。分享撤销/过期明确失败，不创建自有副本
+  冒充只读预览。跨子目录转存ancestor边界仍按研究/测试逐项核验。
+- `upload_pick_and_start`、`upload_directory_pick_and_start`返回BatchRef，选择前捕获账号，
+  hash/完整目录计划、分片etag、源身份和提交结果持久化，OSS临时授权在系统凭据库。
+  上传完成确认GCID/长度/phase后才清理授权；不向OSS带API Bearer/CAPTCHA。
+- sync_configs_list/config_save/scan/plan/apply/history采用原提案；apply返回聚合run ID，
+  `sync_run_status({id})`查询。子任务全完成后才更新三方基线，目标更新前备份，默认无删除。
+  SyncConfig新增auto_enabled=false、interval_seconds=300（60..86400）；自动调度遇到删除
+  或冲突只生成待确认计划，失败持久退避。读失败/链接异常不当空目录。
+- mount_config_save/list保存账号范围配置，mount_start/stop/status区分CloudFiles同步根与
+  WinFsp只读盘符；start真实tail/head/middle读验证后调用OS，status仅来自native连接状态。
+  CloudFiles停止不注销或删除占位文件，安全刷新只新增；WinFsp须用户安装。账号切换与挂载
+  启停串行，并撤销pending读；已下载本地内容不会因退出自动抹除。
+- reference_create/list/status/store_manifest/archive/restore以ReferenceManifest记录；先保存
+  完整清单，云清单实际上传并按SHA256/GCID/长度读回核对后才允许明确confirm_trash的逐文件
+  回收。restore优先原对象，allow_recreate必须单独授权；PENDING新节点ID留档，不自动重复
+  或永久删除。目录不随归档删除，分享链接不当成可恢复备份。
+- autostart_get/set独立宿主命令，Windows仅当前用户Run值，默认不写，用户显式开关时修改。
+
+以上为产品集成契约，不代表真实用户账号、所有格式、所有平台或全部上游功能已验收。

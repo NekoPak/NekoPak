@@ -12,11 +12,11 @@
 | **PikPak Enhancement Master** | <https://github.com/digbug82/PikPak_Enhancement_Master> | **AGPL-3.0** | 网页增强/文件操作功能参考 | 仅研究功能与交互；若复制实际 JS/代码需认真处理 AGPL |
 | **Piko pikpak-kotlin SDK** | <https://github.com/NihilDigit/pikpak-kotlin> | **MIT** | Kotlin 原有行为与边界条件参考 | 不作为 Rust 运行时依赖；Piko 目前依赖其 Kotlin SDK |
 | **MediaMP** | <https://github.com/open-ani/mediamp> | **Apache-2.0** | 播放交互与零拷贝渲染设计参考 | 属于 Kotlin/Compose 播放方案，不计划移植整套依赖；Piko README 表明 Windows 零拷贝渲染借鉴此项目 |
-| **Rclone** | <https://github.com/rclone/rclone> | **MIT** | 同步、挂载、PikPak 后端行为参考；可选外部程序 | 不捆绑 Rclone，CLI 兼容需检测版本，不能将其内置作为必备黑盒 |
+| **Rclone** | <https://github.com/rclone/rclone> | **MIT** | 同步、挂载、PikPak 后端行为参考；可选同步/挂载扩展 | 不参与普通浏览和下载，不捆绑 Rclone，兼容需检测版本，不能将其内置作为必备黑盒 |
 | **WinFsp** | <https://github.com/winfsp/winfsp> | GPLv3 + FLOSS 专项例外 | Windows `P:` 虚拟盘符可选依赖 | 需要用户安装驱动/运行时；核查具体 DLL 连接与二进制再分发条件、声明版权所有者 |
 | **Microsoft Cloud Files API** | <https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfregistersyncroot> | Windows 平台 API，受微软平台条款约束 | 仅 Windows 按需文件与同步根 | `CfRegisterSyncRoot`、占位文件等，**不等价**于独立盘符 |
 | **Tauri v2** | <https://tauri.app/> | 依各构件实际许可证核对 | UI Shell / IPC / 打包 | 靠系统 WebView2，仍需按官方指引处理运行时缺失情形 |
-| **PikPak 官方 CLI** | <https://mypikpak.com/en-US/cli> | 非仓库通用开源许可，需单独核实 | 可选外部后端、官方授权浏览器流程 | 不等于公开 REST API；**未确认允许再分发前不得内置二进制** |
+| **PikPak 官方 CLI** | <https://mypikpak.com/en-US/cli> | 未确认再分发许可 | 历史研究，2026-11-08 已移除后端 | 不执行、不安装、不分发；历史证据位于 history/ |
 | **PikPak WebDAV** | <https://mypikpak.com/en-US/help-center/connected_apps/webdav/how_to> | 服务功能，不是源码许可证 | Premium 账户可选连接方式 | 启用需要 WebDAV 凭据，配额与其他 Connected Apps 共享 |
 | **OpenList**（研究候选） | <https://github.com/OpenListTeam/OpenList> | **待按使用提交核对** | PikPak 驱动与错误处理对照研究 | 尚未决定复用；不得从研究候选直接复制代码 |
 
@@ -91,7 +91,7 @@ Reviewed-by: <reviewer>
 
 ## 7. 用户确认的第三方 API 研究范围（2026-11-07）
 
-第三方/社区 API 可以参考和独立适配，官方 CLI 不是产品能力上限。已核对 Piko v1.4.0、
+第三方/社区客户端协议是主适配路线；官方 CLI 已完全移除。已核对 Piko v1.4.0、
 pikpak-kotlin `8eaf5587a883ed4ea9bcca7b43a9194118719e63`、pikpaktui
 `68b7a6bdf6e4abe2a049974dec2c38e736f2a25c`、Rclone
 `82cb84b2014bec6a167dc28eb53233b2d4abe1b3` 的行为/协议资料。未复制实现。

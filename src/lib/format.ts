@@ -1,3 +1,4 @@
+import { tr, tx, resolvedLanguage } from "./i18n";
 /**
  * Formatting helpers. All u64 quantities arrive as decimal strings
  * (03_CONTRACTS §1) and are handled with BigInt so values above
@@ -53,8 +54,8 @@ export function formatBytes(value: string | bigint | undefined | null): string {
 /** "9,007,199,254,740,993 字节" — exact, no float conversion. */
 export function formatBytesExact(value: string | bigint | undefined | null): string {
   const n = typeof value === "bigint" ? value : parseU64(value ?? null);
-  if (n === null) return "未提供";
-  return `${groupDigits(n.toString())} 字节`;
+  if (n === null) return tr("未提供");
+  return tx("{0} 字节", groupDigits(n.toString()));
 }
 
 export function groupDigits(digits: string): string {
@@ -71,7 +72,7 @@ export function percent(transferred: string | undefined, total: string | undefin
 }
 
 export function formatSpeed(bytesPerSec: number | undefined): string {
-  if (bytesPerSec === undefined || !Number.isFinite(bytesPerSec) || bytesPerSec < 0) return "未提供";
+  if (bytesPerSec === undefined || !Number.isFinite(bytesPerSec) || bytesPerSec < 0) return tr("未提供");
   return `${formatBytes(BigInt(Math.round(bytesPerSec)))}/s`;
 }
 
@@ -87,6 +88,15 @@ export function formatEta(transferred: string, total: string | undefined, bytesP
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "—";
   const s = Math.round(seconds);
+  const locale = resolvedLanguage();
+  if(locale === "en") {if(s<60)return `${s} s`;const m=Math.floor(s/60);if(m<60)return `${m} min ${s%60} s`;const h=Math.floor(m/60);if(h<48)return `${h} h ${m%60} min`;return `${Math.floor(h/24)} d ${h%24} h`;}
+  if (locale === "ja-JP" || locale === "ko-KR" || locale === "zh-TW") {
+    const units = locale === "ja-JP" ? ["秒", "分", "時間", "日"] : locale === "ko-KR" ? ["초", "분", "시간", "일"] : ["秒", "分", "小時", "天"];
+    if (s < 60) return `${s} ${units[0]}`; const m = Math.floor(s / 60);
+    if (m < 60) return `${m} ${units[1]} ${s % 60} ${units[0]}`; const h = Math.floor(m / 60);
+    if (h < 48) return `${h} ${units[2]} ${m % 60} ${units[1]}`;
+    return `${Math.floor(h / 24)} ${units[3]} ${h % 24} ${units[2]}`;
+  }
   if (s < 60) return `${s} 秒`;
   const m = Math.floor(s / 60);
   if (m < 60) return `${m} 分 ${s % 60} 秒`;
@@ -95,20 +105,29 @@ export function formatDuration(seconds: number): string {
   return `${Math.floor(h / 24)} 天 ${h % 24} 小时`;
 }
 
-const dateFmt = new Intl.DateTimeFormat("zh-CN", {
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+function dateFormat(): Intl.DateTimeFormat {
+  const locale = resolvedLanguage();
+  let format = dateFormats.get(locale);
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale, {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
-});
+    });
+    dateFormats.set(locale, format);
+  }
+  return format;
+}
 
 export function formatDateTime(iso: string | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return dateFmt.format(d);
+  return dateFormat().format(d);
 }
 
 export function formatRelative(iso: string | undefined, now = Date.now()): string {
@@ -117,7 +136,12 @@ export function formatRelative(iso: string | undefined, now = Date.now()): strin
   if (Number.isNaN(t)) return "—";
   const diff = Math.round((now - t) / 1000);
   if (diff < 0) return formatDateTime(iso);
-  if (diff < 45) return "刚刚";
+  if (diff < 45) return tr("刚刚");
+  if(resolvedLanguage()!=="zh-CN"){
+    const format = new Intl.RelativeTimeFormat(resolvedLanguage(), { numeric: "auto" });
+    if(diff<3600)return format.format(-Math.max(1,Math.round(diff/60)),"minute");
+    if(diff<86400)return format.format(-Math.round(diff/3600),"hour");return formatDateTime(iso);
+  }
   if (diff < 3600) return `${Math.max(1, Math.round(diff / 60))} 分钟前`;
   if (diff < 86400) return `${Math.round(diff / 3600)} 小时前`;
   return formatDateTime(iso);

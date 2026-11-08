@@ -29,7 +29,7 @@ feat/core-foundation      # Astra
 feat/mock-provider        # Astra
 feat/ui-shell             # Opus 5.5
 feat/files-explorer       # Opus 5.5
-feat/cli-adapter          # Astra (after audit)
+codex/native-api         # Astra (direct protocol, no CLI)
 feat/sync-plan            # Astra (later)
 ```
 
@@ -55,7 +55,7 @@ feat/sync-plan            # Astra (later)
 
 - 未经沟通改动命令/字段名导致前后端不兼容。
 - 复制 AGPL 项目代码后把主仓发布为 Apache；未注明来源。
-- 将“官方 CLI 能下载”推断为“已支持随机读取和真实挂载”。
+- 把协议资料中的下载链接推断为“已支持随机读取和真实挂载”，或恢复已经弃用的 CLI 路线。
 - 为缩小体积删除 TLS 验证、可靠状态存储、任务校验。
 - 把反向工程调用描述成 PikPak 官方公开 REST API。
 - 展示伪造账号、配额和不存在的云下载进度。

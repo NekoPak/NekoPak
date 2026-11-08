@@ -27,11 +27,11 @@ async function err(p: Promise<unknown>): Promise<ClientError> {
 describe("MockTransport honours the contract", () => {
   it("lists with cursor paging and stable ids", async () => {
     const m = mk();
-    const p1 = await m.invoke("files_list", { parent_id: SPECIAL.huge, limit: 1000 });
-    expect(p1.items).toHaveLength(1000);
+    const p1 = await m.invoke("files_list", { parent_id: SPECIAL.huge, limit: 500 });
+    expect(p1.items).toHaveLength(500);
     expect(p1.next_cursor).toBeTruthy();
-    const p2 = await m.invoke("files_list", { parent_id: SPECIAL.huge, cursor: p1.next_cursor, limit: 1000 });
-    expect(new Set([...p1.items, ...p2.items].map((e) => e.id)).size).toBe(2000);
+    const p2 = await m.invoke("files_list", { parent_id: SPECIAL.huge, cursor: p1.next_cursor, limit: 500 });
+    expect(new Set([...p1.items, ...p2.items].map((e) => e.id)).size).toBe(1000);
     for (const e of p1.items) expect(e.size_bytes).toMatch(/^\d+$/);
   });
 
@@ -41,7 +41,7 @@ describe("MockTransport honours the contract", () => {
     const r2 = await m.invoke("files_mutate", { op: "mkdir", ids: [], target: { parent_id: ROOT_ID, name: "幂等测试" }, idempotency_key: "k1" });
     expect(r1.replayed).toBe(false);
     expect(r2.replayed).toBe(true);
-    const list = await m.invoke("files_list", { parent_id: ROOT_ID, limit: 1000 });
+    const list = await m.invoke("files_list", { parent_id: ROOT_ID, limit: 500 });
     expect(list.items.filter((e) => e.name === "幂等测试")).toHaveLength(1);
   });
 
@@ -81,7 +81,7 @@ describe("MockTransport honours the contract", () => {
 
   it("download destinations collide case-insensitively (Windows)", async () => {
     const m = mk();
-    const list = await m.invoke("files_list", { parent_id: ROOT_ID, limit: 1000 });
+    const list = await m.invoke("files_list", { parent_id: ROOT_ID, limit: 500 });
     const upper = list.items.find((e) => e.name === "Report.pdf")!;
     const lower = list.items.find((e) => e.name === "report.pdf")!;
     await m.invoke("transfer_start", { remote_id: upper.id, destination: "C:\\Downloads" });
@@ -90,7 +90,7 @@ describe("MockTransport honours the contract", () => {
 
   it("escapes Windows reserved names in download destinations", async () => {
     const m = mk();
-    const list = await m.invoke("files_list", { parent_id: ROOT_ID, limit: 1000 });
+    const list = await m.invoke("files_list", { parent_id: ROOT_ID, limit: 500 });
     const con = list.items.find((e) => e.name === "CON")!;
     const ref = await m.invoke("transfer_start", { remote_id: con.id, destination: "C:\\Downloads\\" });
     const t = (await m.invoke("transfers_list", {})).items.find((x) => x.id === ref.task_id)!;
@@ -137,6 +137,12 @@ describe("MockTransport honours the contract", () => {
     await new Promise((r) => setTimeout(r, 1300));
     expect(seen.length).toBeGreaterThan(2);
     for (let i = 1; i < seen.length; i++) expect(seen[i]).toBeGreaterThan(seen[i - 1]);
+  });
+
+  it("uses the same maximum page size as the Rust contract", async () => {
+    const m = mk();
+    expect((await err(m.invoke("files_list", { parent_id: "root", limit: 1000 }))).code).toBe("CONFLICT");
+    expect((await m.invoke("files_list", { parent_id: "root", limit: 500 })).items.length).toBeGreaterThan(0);
   });
 
   it("unknown command rejects the way Tauri does", async () => {

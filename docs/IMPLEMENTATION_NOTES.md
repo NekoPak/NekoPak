@@ -1,7 +1,9 @@
 # M0 backend implementation and handoff
 
+> 2026-11-08：本文保留历史阶段记录。官方 CLI 路线已移除，当前实现以 [API_ADAPTER.md](API_ADAPTER.md) 和 [API_MIGRATION_REPORT.md](API_MIGRATION_REPORT.md) 为准；下文旧实现/下一步不再代表当前计划。
+
 后续进展：M1 的官方 CLI 只读探测/适配切片已实现，详见
-[CLI_ADAPTER.md](CLI_ADAPTER.md)。以下保留 M0 历史说明；官方 CLI 的当前版本、
+[历史 CLI 记录](history/CLI_ADAPTER.md)。以下保留 M0 历史说明；官方 CLI 的当前版本、
 JSON 支持和未授权行为以新文档及对应实测证据为准。
 
 Baseline: supplied NekoPak Development Kit v0.1, 2026-11-07. Scope: backend first

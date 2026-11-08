@@ -1,5 +1,7 @@
 # 前端 M0 交接报告（Opus 5.5）
 
+> 2026-11-08：本文保留历史阶段记录。官方 CLI 路线已移除，当前实现以 [API_ADAPTER.md](API_ADAPTER.md) 和 [API_MIGRATION_REPORT.md](API_MIGRATION_REPORT.md) 为准；下文旧实现/下一步不再代表当前计划。
+
 日期：2026-11-07　分支：`feat/ui-shell`　契约：v0.1 基线 + 提案 UI-001（全部增量，未改已有字段）
 
 M0 目标：完整 UI 壳 + Mock 工作流，全部按钮要么真实调用（Mock 或 IPC），要么禁用并写明原因。本报告按 `docs/09_AGENT_HANDOFF.md` 的模板填写，所有数字都来自实际执行。

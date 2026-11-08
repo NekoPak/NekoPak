@@ -19,7 +19,7 @@ export interface ScenarioInfo {
 }
 
 export const SCENARIOS: ScenarioInfo[] = [
-  { id: "free", label: "免费账户", description: "已登录 Free，Connected Apps 每日下行 5 GB 上限" },
+  { id: "free", label: "免费账户", description: "已登录免费账号，每日下载 5 GB" },
   { id: "premium", label: "Premium", description: "已登录 Premium，月度配额可读取" },
   { id: "unauthorized", label: "未授权", description: "未登录，走首次授权流程" },
   { id: "quota_exhausted", label: "限额耗尽", description: "下行与云下载配额用尽，列表与历史仍可查看" },
@@ -69,7 +69,22 @@ const GiB = 1024n ** 3n;
 const MiB = 1024n ** 2n;
 
 let seq = 0;
-function file(parent: string, name: string, size: bigint, minutesAgo: number, extra: Partial<RemoteEntry> = {}): RemoteEntry {
+
+/** Deterministic 40-hex "sha1" for fixtures (not a real digest). */
+export function fakeSha1(seed: string): string {
+  let out = "";
+  let h = 2166136261;
+  for (let round = 0; out.length < 40; round++) {
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i) + round;
+      h = Math.imul(h, 16777619);
+    }
+    out += (h >>> 0).toString(16).padStart(8, "0");
+  }
+  return out.slice(0, 40);
+}
+
+function file(parent: string, name: string, size: bigint, minutesAgo: number, extra: Partial<RemoteEntry> & { starred?: boolean } = {}): RemoteEntry {
   seq++;
   return {
     id: extra.id ?? `f-${parent}-${seq}`,
@@ -79,8 +94,14 @@ function file(parent: string, name: string, size: bigint, minutesAgo: number, ex
     size_bytes: size.toString(),
     modified_at: iso(minutesAgo),
     etag: `"e${seq.toString(16)}"`,
+    hash: { algorithm: "sha1", value: fakeSha1(`${name}|${size}`) },
     ...extra,
   };
+}
+
+/** Same content as `of` (same hash and size), different name/place. */
+function dup(of: RemoteEntry, parent: string, name: string, minutesAgo: number): RemoteEntry {
+  return file(parent, name, BigInt(of.size_bytes), minutesAgo, { hash: of.hash, ...(of.mime_type ? { mime_type: of.mime_type } : {}) });
 }
 function folder(parent: string, id: string, name: string, minutesAgo: number): RemoteEntry {
   return { id, parent_id: parent, name, kind: "folder", size_bytes: "0", modified_at: iso(minutesAgo) };
@@ -97,6 +118,7 @@ export const SPECIAL = {
   projects: "d-projects",
   docs: "d-docs",
   empty: "d-empty",
+  backup: "d-backup",
 } as const;
 
 export const LONG_NAME =
@@ -107,7 +129,7 @@ export function buildTree(scenario: ScenarioId): RemoteEntry[] {
   const R = ROOT_ID;
   const out: RemoteEntry[] = [
     folder(R, SPECIAL.docs, "我的资料", 30),
-    folder(R, SPECIAL.movies, "影视", 300),
+    { ...folder(R, SPECIAL.movies, "影视", 300), starred: true } as RemoteEntry,
     folder(R, SPECIAL.projects, "项目 Projects", 60 * 26),
     folder(R, SPECIAL.photos, "照片 📷 2026", 60 * 24 * 3),
     folder(R, SPECIAL.readOnlyShare, "共享给我（只读）", 60 * 24 * 9),
@@ -115,7 +137,7 @@ export function buildTree(scenario: ScenarioId): RemoteEntry[] {
     folder(R, SPECIAL.huge, "超大目录（12,000 项）", 60 * 24 * 20),
     folder(R, SPECIAL.empty, "空文件夹", 60 * 24 * 40),
 
-    file(R, "片段.mp4", 1503238554n, 12, { mime_type: "video/mp4", hash: { algorithm: "sha1", value: "3f786850e387550fdab836ed7e6dc881de23001b" } }),
+    file(R, "片段.mp4", 1503238554n, 12, { mime_type: "video/mp4", starred: true, hash: { algorithm: "sha1", value: "3f786850e387550fdab836ed7e6dc881de23001b" } }),
     file(R, "🐱 猫猫图鉴 🐾.png", 2_481_337n, 95, { mime_type: "image/png" }),
     file(R, "👩‍💻 开发日志.md", 18_204n, 140),
     file(R, "日本語のファイル名.txt", 3_210n, 600),
@@ -138,13 +160,15 @@ export function buildTree(scenario: ScenarioId): RemoteEntry[] {
 
     // 我的资料
     folder(SPECIAL.docs, SPECIAL.courses, "2026 课程", 45),
-    file(SPECIAL.docs, "线性代数笔记.pdf", 12n * MiB + 33_221n, 50, { hash: { algorithm: "md5", value: "9e107d9d372bb6826bd81d3542a419d6" } }),
+    file(SPECIAL.docs, "线性代数笔记.pdf", 12n * MiB + 33_221n, 50, { starred: true, hash: { algorithm: "md5", value: "9e107d9d372bb6826bd81d3542a419d6" } }),
     file(SPECIAL.docs, "实验报告.docx", 2n * MiB + 4096n, 70),
     file(SPECIAL.docs, "C 语言程序设计 习题集.zip", 220n * MiB, 300),
     file(SPECIAL.courses, "量子信息导论 第1讲.mp4", 1_610_612_736n, 80, { mime_type: "video/mp4" }),
     file(SPECIAL.courses, "量子信息导论 第2讲.mp4", 1_702_887_424n, 79, { mime_type: "video/mp4" }),
     file(SPECIAL.courses, "微积分 期中复习.pdf", 5n * MiB, 200),
     file(SPECIAL.courses, "中国近现代史纲要 小组展示.pptx", 38n * MiB, 260),
+    file(SPECIAL.courses, "课程录像.part1.rar", 2n * GiB, 270),
+    file(SPECIAL.courses, "课程录像.part2.rar", 1n * GiB + 300n * MiB, 270),
 
     // 影视
     file(SPECIAL.movies, "4K 演示 — HDR10 (2160p).mkv", 58n * GiB + 123_456_789n, 310, { mime_type: "video/x-matroska" }),
@@ -162,10 +186,24 @@ export function buildTree(scenario: ScenarioId): RemoteEntry[] {
       file(SPECIAL.photos, `IMG_${String(2026_1101 + i)}_${String(i % 24).padStart(2, "0")}3012.heic`, BigInt(2_000_000 + i * 73_211), 60 * 24 * 3 + i, { mime_type: "image/heic" }),
     ),
 
+    // 下载备份（与其他位置内容完全相同的副本，用于查找重复）
+    folder(SPECIAL.docs, SPECIAL.backup, "下载备份", 600),
+
     // 只读共享
     file(SPECIAL.readOnlyShare, "社团活动安排.xlsx", 64_000n, 60 * 24 * 9),
     file(SPECIAL.readOnlyShare, "合唱排练.mp3", 7n * MiB, 60 * 24 * 9),
   ];
+
+  const find = (name: string) => out.find((e) => e.name === name)!;
+  out.push(
+    dup(find("片段.mp4"), R, "片段 (1).mp4", 8),
+    dup(find("纪录片 S01E01.mp4"), SPECIAL.backup, "纪录片 S01E01.mp4", 640),
+    dup(find("纪录片 S01E01.mp4"), SPECIAL.backup, "纪录片 S01E01 (2).mp4", 650),
+    dup(find("线性代数笔记.pdf"), SPECIAL.backup, "线性代数笔记 (1).pdf", 660),
+    dup(find("原声带 Disc 1.flac"), SPECIAL.backup, "原声带 Disc 1.flac", 700),
+    dup(out.find((e) => e.parent_id === SPECIAL.photos)!, SPECIAL.backup, "IMG_20261101_003012 副本.heic", 710),
+    dup(out.filter((e) => e.parent_id === SPECIAL.photos)[1], SPECIAL.photos, "IMG_20261102_013012 (1).heic", 60 * 24 * 2),
+  );
 
   if (scenario === "name_conflict") {
     out.push(
@@ -182,7 +220,10 @@ export function buildTree(scenario: ScenarioId): RemoteEntry[] {
     for (let i = 0; i < count; i++) {
       const ext = exts[Math.floor(rand() * exts.length)];
       const size = BigInt(Math.floor(rand() * 4_000_000_000));
-      out.push(file(parent, `${prefix} ${String(i + 1).padStart(5, "0")}${ext}`, size, Math.floor(rand() * 500_000), { id: `h-${parent}-${i}` }));
+      // Bulk samples carry no hash: the duplicate finder reports them as not comparable.
+      const e = file(parent, `${prefix} ${String(i + 1).padStart(5, "0")}${ext}`, size, Math.floor(rand() * 500_000), { id: `h-${parent}-${i}` });
+      delete e.hash;
+      out.push(e);
     }
   };
   genHuge(SPECIAL.huge, 12_000, "批量样本");
@@ -214,5 +255,65 @@ export function buildTasks(now: number): TransferTaskExt[] {
     { ...base, id: "task-9", remote_id: "f-doc-1", name: "线性代数笔记.pdf", kind: "download", state: "completed", transferred_bytes: "12616389", total_bytes: "12616389", destination: "%USERPROFILE%\\Downloads\\NekoPak\\线性代数笔记.pdf", created_at: t(3000), updated_at: t(2990), revision: 22 },
     { ...base, id: "task-10", remote_id: "f-old", name: "纪录片 S01E01.mp4", kind: "download", state: "cancelled", transferred_bytes: "104857600", total_bytes: "2147483648", destination: "D:\\Media\\纪录片 S01E01.mp4", created_at: t(5000), updated_at: t(4990), revision: 8 },
     { ...base, id: "task-11", remote_id: "f-share", name: "社团活动安排.xlsx", kind: "upload", state: "failed", transferred_bytes: "0", total_bytes: "64000", destination: "/共享给我（只读）", created_at: t(6000), updated_at: t(6000), revision: 2, error: { code: "PERMISSION_DENIED", message: "目标文件夹为只读共享", retryable: false, backend: "mock", request_id: "mock-req-0c3f" } },
+  ];
+}
+
+/* ------------------------------------------------------------------ */
+/* Archives (server-side listing)                                      */
+/* ------------------------------------------------------------------ */
+
+export interface ArchiveFixture {
+  format: "zip" | "rar" | "7z";
+  encrypted: boolean;
+  /** Mock-only password for encrypted fixtures. */
+  password?: string;
+  multiVolume?: boolean;
+  files: { path: string; size: bigint }[];
+}
+
+export const ARCHIVES: Record<string, ArchiveFixture> = {
+  "C 语言程序设计 习题集.zip": {
+    format: "zip",
+    encrypted: false,
+    files: [
+      ...Array.from({ length: 8 }, (_, i) => ({ path: `第1章 基础/习题1.${i + 1}.c`, size: BigInt(600 + i * 137) })),
+      ...Array.from({ length: 6 }, (_, i) => ({ path: `第2章 指针/习题2.${i + 1}.c`, size: BigInt(900 + i * 211) })),
+      { path: "第2章 指针/图解/内存布局.png", size: 284_331n },
+      { path: "答案/参考答案.pdf", size: 4n * MiB + 120_000n },
+      { path: "README.txt", size: 1_204n },
+    ],
+  },
+  "超大压缩包.zip": {
+    format: "zip",
+    encrypted: true,
+    password: "nekopak",
+    files: [
+      { path: "数据集/train.parquet", size: 61n * GiB },
+      { path: "数据集/test.parquet", size: 21n * GiB },
+      { path: "数据集/说明.md", size: 3_200n },
+      { path: "模型/checkpoint.safetensors", size: 14n * GiB },
+    ],
+  },
+  "课程录像.part1.rar": { format: "rar", encrypted: false, multiVolume: true, files: [] },
+  "课程录像.part2.rar": { format: "rar", encrypted: false, multiVolume: true, files: [] },
+};
+
+/* ------------------------------------------------------------------ */
+/* Link preview (§P20)                                                 */
+/* ------------------------------------------------------------------ */
+
+export function previewFilesFor(title: string, kind: "magnet" | "http"): { path: string; size: bigint }[] {
+  if (kind === "http") return [{ path: title, size: 2n * GiB + 512n * MiB }];
+  const show = title.replace(/\.(mkv|mp4)$/i, "");
+  const eps = Array.from({ length: 12 }, (_, i) => ({ path: `${show}/${show} - ${String(i + 1).padStart(2, "0")} [1080p].mkv`, size: 1n * GiB + BigInt(i * 37) * MiB }));
+  const subs = Array.from({ length: 12 }, (_, i) => ({ path: `${show}/Subs/${show} - ${String(i + 1).padStart(2, "0")}.chs.ass`, size: BigInt(48_000 + i * 913) }));
+  return [
+    ...eps,
+    ...subs,
+    { path: `${show}/Extras/NCOP.mkv`, size: 180n * MiB },
+    { path: `${show}/Extras/NCED.mkv`, size: 176n * MiB },
+    { path: `${show}/Sample/sample.mkv`, size: 34n * MiB },
+    { path: `${show}/poster.jpg`, size: 812_334n },
+    { path: `${show}/release.nfo`, size: 4_210n },
   ];
 }

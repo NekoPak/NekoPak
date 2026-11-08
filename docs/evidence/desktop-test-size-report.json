@@ -1,0 +1,79 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "architecture": "AMD64",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+  "commit": "b2f2923e0fb22cf82a60d74574d6e8e8d0c1467b",
+  "source_sha256": "49d9f990b609d645b7f31a80012b790e4e7ed5fc6b63a7ae105296af0a969256",
+  "git_worktree_dirty": true,
+  "cargo_lock_sha256": "e9c941be32eed432ef1194fa4492b86c430b6553937f006ce92c4a64f342570b",
+  "npm_lock_sha256": "00e3fc681755a1d4bee563e07fbe82f2a8fb42cb4e049800ff2f7386bfa3f38c",
+  "frontend_license_inventory": [
+    {
+      "name": "preact",
+      "version": "10.27.2",
+      "license": "MIT",
+      "files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@tauri-apps/api",
+      "version": "2.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "files": [
+        "LICENSE_APACHE-2.0",
+        "LICENSE_MIT"
+      ]
+    },
+    {
+      "name": "@material-symbols/svg-400",
+      "version": "0.48.1",
+      "license": "Apache-2.0",
+      "files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@material/material-color-utilities",
+      "version": "0.4.0",
+      "license": "Apache-2.0",
+      "files": [
+        "LICENSE"
+      ]
+    }
+  ],
+  "frontend_assets_bytes": 548073,
+  "profile": "release, opt-level=s, LTO, codegen-units=1, strip",
+  "archive": "NekoPak-0.1.0-windows-x64-desktop-test.zip",
+  "compression": "ZIP DEFLATE level 9; executable + notices + resolved dependency licenses",
+  "executable_bytes": 10142720,
+  "archive_bytes": 5557901,
+  "executable_sha256": "46b8c1ac73cb96ed2f270109bce49a0ceee4029af3004f8961776ebdcc42818c",
+  "archive_sha256": "59c4dde58e1025b8a83eeed757fef6b11bb03a5d344617db620e6fb7e239e656",
+  "external_requirements": [
+    "Windows x64",
+    "Microsoft Edge WebView2 Evergreen runtime (not bundled)"
+  ],
+  "not_bundled": [
+    "PikPak CLI",
+    "Rclone",
+    "WinFsp",
+    "Chromium",
+    "JVM",
+    "FFmpeg",
+    "mpv"
+  ],
+  "scope": "Desktop UX test: native directory picker, measured download speeds, tray, replaceable application icon, Chinese/English preference, app-only proxy and TLS compatibility. Includes prior native files/downloads. Isolated WebView2 + Rust HTTP + filesystem tests; live service acceptance belongs to the user. No CLI. Full language, sync/mount/media/cloud-write parity remains incomplete.",
+  "runtime_measurement": "Not measured by this script; no memory/startup claim.",
+  "license_inventory_scope": "Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.",
+  "license_text_unresolved": [
+    "cesu8@1.1.0",
+    "libappindicator-sys@0.9.0",
+    "r-efi@5.3.0",
+    "r-efi@6.0.0",
+    "winapi-i686-pc-windows-gnu@0.4.0",
+    "winapi-x86_64-pc-windows-gnu@0.4.0"
+  ],
+  "windows_dependency_license_text_gaps": []
+}

@@ -1,4 +1,21 @@
+mod catalog;
+mod cloud;
+mod downloads;
+mod intents;
+mod media;
+mod rates;
+mod settings;
+pub use media::TransferOptions;
+mod jobs;
+mod local;
+mod mounts;
+mod reference_archive;
 pub mod store;
+mod streams;
+mod sync;
+mod upload_tree;
+mod uploads;
+pub use mounts::MountConfig;
 use nekopak_domain::*;
 use nekopak_provider::{CloudTaskRequest, ProviderPort, ProviderRouter, RequestContext};
 use nekopak_provider_mock::{MockProvider, Scenario};
@@ -15,6 +32,30 @@ pub fn now() -> String {
 
 pub struct AppService {
     store: Option<Store>,
+    intents: Option<intents::IntentStore>,
+    download_gate: std::sync::Mutex<()>,
+    download_rates: rates::Rates,
+    verified_downloads:
+        std::sync::Mutex<std::collections::HashMap<String, (std::time::SystemTime, u64)>>,
+    download_cancellations: std::sync::Mutex<std::collections::HashMap<String, RequestContext>>,
+    scans: std::sync::Mutex<std::collections::HashMap<String, RequestContext>>,
+    scan_events: broadcast::Sender<serde_json::Value>,
+    cloud_gate: tokio::sync::Mutex<()>,
+    sync_gate: tokio::sync::Mutex<()>,
+    sync_auto_gate: tokio::sync::Mutex<()>,
+    data_root: std::path::PathBuf,
+    media_controls:
+        std::sync::Mutex<std::collections::HashMap<String, nekopak_media::native::RenderControl>>,
+    media_busy: std::sync::atomic::AtomicBool,
+    upload_busy: std::sync::atomic::AtomicBool,
+    upload_tree_gate: tokio::sync::Mutex<()>,
+    reference_gate: tokio::sync::Mutex<()>,
+    streams: std::sync::Mutex<std::collections::HashMap<String, RequestContext>>,
+    cache_gate: Arc<std::sync::Mutex<()>>,
+    stream_epoch: std::sync::atomic::AtomicU64,
+    mounts: std::sync::Mutex<std::collections::HashMap<String, mounts::Mounted>>,
+    mount_gate: Arc<tokio::sync::Mutex<()>>,
+    mount_epoch: std::sync::atomic::AtomicU64,
     storage_error: Option<ClientError>,
     router: ProviderRouter,
     provider: Arc<dyn ProviderPort>,
@@ -32,13 +73,69 @@ impl AppService {
         provider: Arc<dyn ProviderPort>,
         providers: Vec<Arc<dyn ProviderPort>>,
     ) -> Self {
-        let (store, storage_error) = match Store::open(path) {
+        let (mut store, mut storage_error) = match Store::open(path) {
             Ok(store) => (Some(store), None),
             Err(error) => (None, Some(error)),
         };
+        let intents = if store.is_some() {
+            let mut filename = path.as_os_str().to_os_string();
+            filename.push(".actions.sqlite3");
+            let initialize = (|| {
+                if store
+                    .as_ref()
+                    .ok_or_else(|| ClientError::new(ErrorCode::Internal, "存储不可用。"))?
+                    .actions_initialized()?
+                    && !Path::new(&filename).exists()
+                {
+                    return Err(ClientError::new(
+                        ErrorCode::IntegrityFailed,
+                        "操作记录文件缺失，已保留任务数据库；未创建空记录或重发请求。",
+                    ));
+                }
+                let journal = intents::IntentStore::open(Path::new(&filename))?;
+                store
+                    .as_ref()
+                    .ok_or_else(|| ClientError::new(ErrorCode::Internal, "存储不可用。"))?
+                    .mark_actions_initialized()?;
+                Ok(journal)
+            })();
+            match initialize {
+                Ok(intents) => Some(intents),
+                Err(error) => {
+                    store = None;
+                    storage_error = Some(error);
+                    None
+                }
+            }
+        } else {
+            None
+        };
         let (events, _) = broadcast::channel(256);
+        let (scan_events, _) = broadcast::channel(64);
         Self {
             store,
+            intents,
+            download_gate: Default::default(),
+            download_rates: Default::default(),
+            verified_downloads: Default::default(),
+            download_cancellations: Default::default(),
+            scans: Default::default(),
+            scan_events,
+            cloud_gate: tokio::sync::Mutex::new(()),
+            sync_gate: tokio::sync::Mutex::new(()),
+            sync_auto_gate: tokio::sync::Mutex::new(()),
+            data_root: path.parent().unwrap_or_else(|| Path::new(".")).to_owned(),
+            media_controls: Default::default(),
+            media_busy: Default::default(),
+            upload_busy: Default::default(),
+            upload_tree_gate: Default::default(),
+            reference_gate: Default::default(),
+            streams: Default::default(),
+            cache_gate: Arc::new(std::sync::Mutex::new(())),
+            stream_epoch: std::sync::atomic::AtomicU64::new(0),
+            mounts: Default::default(),
+            mount_gate: Arc::new(tokio::sync::Mutex::new(())),
+            mount_epoch: std::sync::atomic::AtomicU64::new(0),
             storage_error,
             router: ProviderRouter::new(providers),
             provider,
@@ -59,7 +156,7 @@ impl AppService {
             mode: if self.provider.id() == BackendId::Mock {
                 "mock"
             } else {
-                "official_cli_preview"
+                "rust_compat_preview"
             }
             .into(),
             storage: StorageStatus {
@@ -78,12 +175,53 @@ impl AppService {
                     "real_providers".into(),
                     self.provider.id() != BackendId::Mock,
                 ),
-                ("real_transfers".into(), false),
-                ("segment_download".into(), false),
-                ("sync".into(), false),
-                ("mount".into(), false),
+                ("real_transfers".into(), self.provider.supports_downloads()),
+                (
+                    "settings".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                (
+                    "auth_sign_in".into(),
+                    self.provider.supports_password_auth(),
+                ),
+                (
+                    "auth_logout".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                (
+                    "segment_download".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                ("sync".into(), self.provider.id() == BackendId::RustCompat),
+                (
+                    "sync_bidirectional".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                ("mount".into(), cfg!(windows)),
                 ("experimental_network".into(), false),
                 ("telemetry".into(), false),
+                ("local_sources".into(), true),
+                ("media_session".into(), true),
+                ("local_media_probe".into(), true),
+                ("local_clip".into(), true),
+                ("ui_prefs".into(), true),
+                (
+                    "accounts".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                (
+                    "share_preview".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                (
+                    "upload_directory".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
+                ("autostart".into(), cfg!(windows)),
+                (
+                    "reference_archive".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
             ]),
         }
     }
@@ -93,6 +231,9 @@ impl AppService {
     fn emit(&self, task: &TransferTask) {
         // Broadcast has no subscribers during startup/headless runs; persisted snapshots remain authoritative.
         let _ = self.events.send(TransferEvent::from(task));
+    }
+    pub fn uses_native_transfers(&self) -> bool {
+        self.provider.id() != BackendId::Mock
     }
     pub async fn backend_discover(
         &self,
@@ -107,6 +248,9 @@ impl AppService {
         limit: Option<u32>,
         context: &RequestContext,
     ) -> Result<Page<RemoteEntry>, ClientError> {
+        if parent.starts_with("local:") {
+            return self.local_list(parent, cursor, limit);
+        }
         let limit = page_limit(limit)?;
         let provider = self
             .router
@@ -119,11 +263,117 @@ impl AppService {
         id: &str,
         context: &RequestContext,
     ) -> Result<RemoteEntry, ClientError> {
+        if id.starts_with("local:") {
+            return self.local_stat(id);
+        }
         let provider = self
             .router
             .select(Operation::Stat, self.provider.id(), context)
             .await?;
         context.run(provider.stat(id)).await
+    }
+    pub async fn files_query(
+        &self,
+        query: &FileQuery,
+        cursor: Option<&str>,
+        limit: Option<u32>,
+        context: &RequestContext,
+    ) -> Result<Page<RemoteEntry>, ClientError> {
+        let provider = self
+            .router
+            .select(Operation::List, self.provider.id(), context)
+            .await?;
+        context
+            .run(provider.query_files(query, cursor, page_limit(limit)?))
+            .await
+    }
+    pub async fn shares_list(
+        &self,
+        cursor: Option<&str>,
+        limit: Option<u32>,
+        context: &RequestContext,
+    ) -> Result<Page<ShareInfo>, ClientError> {
+        context
+            .run(self.provider.list_shares(cursor, page_limit(limit)?))
+            .await
+    }
+    pub async fn files_mutate(
+        &self,
+        request: &FileMutation,
+        key: &str,
+        context: &RequestContext,
+    ) -> Result<OperationResult, ClientError> {
+        let scope = context.run(self.provider.account_scope()).await?;
+        self.files_mutate_at(request, key, &scope, context).await
+    }
+    pub(crate) async fn files_mutate_at(
+        &self,
+        request: &FileMutation,
+        key: &str,
+        scope: &str,
+        context: &RequestContext,
+    ) -> Result<OperationResult, ClientError> {
+        self.store()?;
+        self.check_scope(scope, context).await?;
+        let key = scoped_key("files", key)?;
+        let fingerprint = fingerprint(&[&serde_json::to_string(request)
+            .map_err(|_| ClientError::new(ErrorCode::Internal, "无法创建操作记录。"))?]);
+        let journal = self
+            .intents
+            .as_ref()
+            .ok_or_else(|| ClientError::new(ErrorCode::Internal, "操作记录不可用。"))?;
+        if let intents::Intent::Completed(result) = journal.begin(scope, &key, &fingerprint)? {
+            return Ok(result);
+        }
+        let result = context
+            .run(self.provider.mutate_files(request, scope))
+            .await
+            .map_err(|mut error| {
+                if matches!(
+                    error.code,
+                    ErrorCode::TransientNetwork | ErrorCode::Cancelled | ErrorCode::IntegrityFailed
+                ) {
+                    error.code = ErrorCode::Conflict;
+                    error.retryable = false;
+                    error.message =
+                        "云端操作结果尚未确认，请刷新列表核对；此请求不会自动重复提交。".into();
+                    error
+                        .details
+                        .get_or_insert_with(Default::default)
+                        .insert("outcome_unknown".into(), true.into());
+                }
+                error
+            });
+        journal.finish(scope, &key, &result)?;
+        result
+    }
+    pub async fn verification_status(
+        &self,
+        id: Option<&str>,
+        context: &RequestContext,
+    ) -> Result<Option<VerificationState>, ClientError> {
+        context.run(self.provider.verification_status(id)).await
+    }
+    pub async fn verification_url(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<String, ClientError> {
+        context.run(self.provider.verification_url(id)).await
+    }
+    pub async fn verification_complete(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<(), ClientError> {
+        context.run(self.provider.verification_complete(id)).await
+    }
+    pub async fn verification_cancel(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<(), ClientError> {
+        context.run(self.provider.verification_cancel(id)).await
     }
     /// Bounded read-only ancestry lookup; never treats missing parents as a root directory.
     pub async fn files_path(
@@ -131,6 +381,9 @@ impl AppService {
         id: &str,
         context: &RequestContext,
     ) -> Result<Vec<RemoteEntry>, ClientError> {
+        if id.starts_with("local:") {
+            return self.local_path(id);
+        }
         let provider = self
             .router
             .select(Operation::Stat, self.provider.id(), context)
@@ -171,6 +424,106 @@ impl AppService {
     pub async fn auth_status(&self, context: &RequestContext) -> Result<AuthState, ClientError> {
         context.run(self.provider.auth_status()).await
     }
+    pub async fn accounts_list(
+        &self,
+        context: &RequestContext,
+    ) -> Result<Vec<SavedAccount>, ClientError> {
+        context.run(self.provider.accounts_list()).await
+    }
+    fn cancel_media_sessions(&self) -> Result<(), ClientError> {
+        let streams = self
+            .streams
+            .lock()
+            .map_err(|_| ClientError::new(ErrorCode::Internal, "媒体会话暂不可用。"))?;
+        self.stream_epoch
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        for control in streams.values() {
+            control.cancel();
+        }
+        for control in self
+            .media_controls
+            .lock()
+            .map_err(|_| ClientError::new(ErrorCode::Internal, "媒体队列暂不可用。"))?
+            .values()
+        {
+            control.cancel();
+        }
+        Ok(())
+    }
+    pub async fn account_switch(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<AuthState, ClientError> {
+        let _mount_guard = self.mount_account_change_guard().await?;
+        self.cancel_media_sessions()?;
+        context.run(self.provider.account_switch(id)).await
+    }
+    pub async fn account_remove(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<(), ClientError> {
+        let _mount_guard = self.mount_account_change_guard().await?;
+        self.cancel_media_sessions()?;
+        context.run(self.provider.account_remove(id)).await
+    }
+    pub fn subscribe_auth(&self) -> Option<broadcast::Receiver<AuthChangedEvent>> {
+        self.provider.subscribe_auth()
+    }
+    pub async fn auth_sign_in(
+        &self,
+        username: &str,
+        password: &str,
+        context: &RequestContext,
+    ) -> Result<SignInResult, ClientError> {
+        let _mount_guard = self.mount_account_change_guard().await?;
+        self.cancel_media_sessions()?;
+        context.run(self.provider.sign_in(username, password)).await
+    }
+    pub async fn auth_verify(
+        &self,
+        challenge_id: &str,
+        code: &str,
+        password: Option<&str>,
+        context: &RequestContext,
+    ) -> Result<SignInResult, ClientError> {
+        let _mount_guard = self.mount_account_change_guard().await?;
+        self.cancel_media_sessions()?;
+        context
+            .run(self.provider.verify_sign_in(challenge_id, code, password))
+            .await
+    }
+    pub async fn auth_logout(
+        &self,
+        backend: BackendId,
+        context: &RequestContext,
+    ) -> Result<(), ClientError> {
+        let _mount_guard = self.mount_account_change_guard().await?;
+        if backend != self.provider.id() {
+            return Err(nekopak_provider::unsupported(backend));
+        }
+        {
+            let streams = self
+                .streams
+                .lock()
+                .map_err(|_| ClientError::new(ErrorCode::Internal, "媒体会话暂不可用。"))?;
+            self.stream_epoch
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            for control in streams.values() {
+                control.cancel();
+            }
+        }
+        for control in self
+            .media_controls
+            .lock()
+            .map_err(|_| ClientError::new(ErrorCode::Internal, "媒体队列暂不可用。"))?
+            .values()
+        {
+            control.cancel();
+        }
+        context.run(self.provider.logout()).await
+    }
     pub fn transfers_list(
         &self,
         cursor: Option<&str>,
@@ -182,7 +535,32 @@ impl AppService {
         self.store()?.get(id)
     }
     pub fn transfer_control(&self, id: &str, action: TransferAction) -> Result<(), ClientError> {
+        if let Some(control) = self
+            .media_controls
+            .lock()
+            .map_err(|_| ClientError::new(ErrorCode::Internal, "媒体队列暂不可用。"))?
+            .get(id)
+        {
+            if matches!(action, TransferAction::Pause | TransferAction::Cancel) {
+                control.cancel();
+            }
+        }
+        let _guard = self
+            .download_gate
+            .lock()
+            .map_err(|_| ClientError::new(ErrorCode::Internal, "下载队列暂不可用。"))?;
+        if matches!(action, TransferAction::Pause | TransferAction::Cancel) {
+            if let Some(context) = self
+                .download_cancellations
+                .lock()
+                .map_err(|_| ClientError::new(ErrorCode::Internal, "下载队列暂不可用。"))?
+                .get(id)
+            {
+                context.cancel();
+            }
+        }
         let task = self.store()?.control(id, action)?;
+        self.download_rates.remove(id);
         self.emit(&task);
         Ok(())
     }
@@ -193,6 +571,20 @@ impl AppService {
         idempotency_key: Option<&str>,
         context: &RequestContext,
     ) -> Result<TaskRef, ClientError> {
+        if self.provider.id() != BackendId::Mock {
+            if remote_id.starts_with("shared:") {
+                let scope = self.account_scope(context).await?;
+                let id = self
+                    .retain_shared_source(remote_id, &scope, idempotency_key, context)
+                    .await?;
+                return self
+                    .start_native_download_at(&id, destination, idempotency_key, &scope, context)
+                    .await;
+            }
+            return self
+                .start_native_download(remote_id, destination, idempotency_key, context)
+                .await;
+        }
         self.ensure_mock()?;
         // The simulation writes no destination files. Reject paths that would be dangerous for the future downloader.
         validate_destination(destination)?;
@@ -226,6 +618,17 @@ impl AppService {
         self.emit(&task);
         Ok(TaskRef { task_id: task.id })
     }
+    pub(crate) async fn transfer_start_at(
+        &self,
+        id: &str,
+        destination: &str,
+        key: Option<&str>,
+        scope: &str,
+        ctx: &RequestContext,
+    ) -> Result<TaskRef, ClientError> {
+        self.start_native_download_at(id, destination, key, scope, ctx)
+            .await
+    }
     pub async fn cloud_task_create(
         &self,
         source_url: &str,
@@ -233,6 +636,11 @@ impl AppService {
         idempotency_key: &str,
         context: &RequestContext,
     ) -> Result<TaskRef, ClientError> {
+        if self.provider.id() != BackendId::Mock {
+            return self
+                .create_native_cloud(source_url, parent_id, idempotency_key, context)
+                .await;
+        }
         self.ensure_mock()?;
         validate_source(source_url)?;
         let key = scoped_key("cloud", idempotency_key)?;
@@ -275,7 +683,8 @@ impl AppService {
     /// Called by the host worker. Never holds the database mutex across provider work.
     pub async fn tick(&self) -> Result<(), ClientError> {
         if self.provider.id() != BackendId::Mock {
-            return Ok(());
+            self.tick_cloud().await?;
+            return self.tick_native_download().await;
         }
         for task in self.store()?.active()? {
             if !task.simulated || task.backend != BackendId::Mock {
@@ -322,6 +731,11 @@ fn new_task(remote_id: String, kind: TaskKind, total_bytes: Option<DecimalU64>) 
         updated_at: timestamp,
         revision: DecimalU64(0),
         simulated: true,
+        name: None,
+        destination: None,
+        progress_percent: None,
+        quality_label: None,
+        clip: None,
     }
 }
 fn fingerprint(fields: &[&str]) -> String {

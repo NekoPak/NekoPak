@@ -13,6 +13,7 @@
 7. `docs/06_SECURITY_AND_COMPAT.md`
 8. `docs/08_RESEARCH_AND_DECISIONS.md`
 9. `docs/09_AGENT_HANDOFF.md`
+10. `docs/API_ADAPTER.md`、`docs/BACKEND_API_ADAPTER.md`（2026-11-08 主路线）
 
 ## 任务目标与边界
 
@@ -20,13 +21,13 @@
 
 **许可证先行：** 核对用户采用 Piko AGPL Fork 还是独立 Rust 主仓路线。建议独立主仓、Piko 只读参考；`pikpaktui` Apache-2.0 可在审计后抽取，保留原始声明及改动记录。切勿直接复制 Piko AGPL 源码到准备采用 Apache/MIT 的独立仓库。引用 Piko、pikpaktui、52funny/pikpakcli、PikPak Enhancement Master、pikpak-kotlin、MediaMP、Rclone、WinFsp 及官方 CLI 时，请逐项写入 NOTICE，并标明参考还是复用。
 
-**真实性边界：** 不能把社区未公开接口说成官方公开 API；官方 CLI 是否有 JSON、Range 等能力要先实测；不要捆绑官方 CLI 直到明确授权。CLI 访问需 browser auth/用户授权。不要伪造设备、绕过验证码/地域风控，不自动改 Hosts。
+**真实性边界：** 不能把社区未公开接口说成官方公开 API；完全移除官方 CLI 的实现、探测、安装与回退；以 rust_compat 直接 HTTP 和原生邮箱密码登录实现主流程。密码请求结束即清除，token 存系统凭据库。不要伪造设备、绕过验证码/地域风控，不自动改 Hosts。
 
 ## 首轮必须交付（不要只输出架构建议）
 
 用户后续硬要求：最终功能不少于 Piko 已发布能力，尤其视频指定片段下载；参考第三方 API
-与社区兼容层是允许的。首轮/CLI 预览不等于完成；按 docs/UPSTREAM_PARITY.md 跟踪全部
-必需项，官方 CLI 不是功能上限。片段要有媒体时间语义、Range/缓存、取消恢复与轨道验证。
+与社区兼容层是允许的。首轮/API 预览不等于完成；按 docs/UPSTREAM_PARITY.md 跟踪全部
+必需项，API 切片不是功能上限。片段要有媒体时间语义、Range/缓存、取消恢复与轨道验证。
 
 1. 初始化可编译的 Rust workspace + Tauri v2 Shell（可以先用最小静态 UI/Mock）。
 2. `nekopak-domain`：RemoteEntry、Capabilities、Task、SyncPlan、ClientError 等类型，遵守 `docs/03_CONTRACTS.md`；确保 u64 与 JS 精度规则正确。
@@ -39,7 +40,7 @@
 
 ## 后续分期（首轮不要全塞入）
 
-- M1：真实 Provider 适配（官方 CLI 已验证后优先，可选 Rust 社区兼容层），安全账号流程；文件操作、云下载与分段下载，`.part`/版本校验与异常恢复。
+- M1：真实 Provider 适配（Rust 直接客户端协议 rust_compat），安全账号流程；文件操作、云下载与分段下载，`.part`/版本校验与异常恢复。
 - M2：压缩目标：移除多余 crates、UI 资源和播放器依赖，实测 `opt-level s/z`；记录所有体积数据。
 - M3：同步计划/差异预览/单向→双向（删除默认禁止），冲突副本、SQLite journal。
 - M4：Windows Cloud Files 同步根与 WinFsp 真正盘符分别做 PoC；仅在后端 `read_range` 测试通过后启动；WinFsp 驱动为用户可选外部依赖。

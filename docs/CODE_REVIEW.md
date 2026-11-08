@@ -1,5 +1,7 @@
 # M0 review and resolutions
 
+> 2026-11-08：本文保留历史阶段记录。官方 CLI 路线已移除，当前实现以 [API_ADAPTER.md](API_ADAPTER.md) 和 [API_MIGRATION_REPORT.md](API_MIGRATION_REPORT.md) 为准；下文旧实现/下一步不再代表当前计划。
+
 Review baseline: `f3583a1` imported development-kit documents.
 Initial implementation: `3dca23f`. Two independent, read-only agents used the
 code-review skill's Standards and Spec axes. No full product/frontend review was
