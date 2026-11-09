@@ -1,0 +1,79 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "architecture": "AMD64",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+  "commit": "6d0b0c1f076580c3293f15a8363b9f3bf3468591",
+  "source_sha256": "4c4dd9e94372f5e911d4678df056fb457d40374da4709c3b84d517b6fff91f7a",
+  "git_worktree_dirty": false,
+  "cargo_lock_sha256": "5db5e65aa3c80ab46a80ea1e1eca6c43e00749272a4af9d85695bfa13e40992a",
+  "npm_lock_sha256": "00e3fc681755a1d4bee563e07fbe82f2a8fb42cb4e049800ff2f7386bfa3f38c",
+  "frontend_license_inventory": [
+    {
+      "name": "preact",
+      "version": "10.27.2",
+      "license": "MIT",
+      "files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@tauri-apps/api",
+      "version": "2.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "files": [
+        "LICENSE_APACHE-2.0",
+        "LICENSE_MIT"
+      ]
+    },
+    {
+      "name": "@material-symbols/svg-400",
+      "version": "0.48.1",
+      "license": "Apache-2.0",
+      "files": [
+        "LICENSE"
+      ]
+    },
+    {
+      "name": "@material/material-color-utilities",
+      "version": "0.4.0",
+      "license": "Apache-2.0",
+      "files": [
+        "LICENSE"
+      ]
+    }
+  ],
+  "frontend_assets_bytes": 873045,
+  "profile": "release, opt-level=s, LTO, codegen-units=1, strip",
+  "archive": "NekoPak-0.1.0-windows-x64-integration.zip",
+  "compression": "ZIP DEFLATE level 9; executable + notices + resolved dependency licenses",
+  "executable_bytes": 13865984,
+  "archive_bytes": 6848061,
+  "executable_sha256": "82192948da3477cf5ca71c67654b2e969c2a593ac4362cd5ec3105605752cf03",
+  "archive_sha256": "59d7da295dbb96549594f96338d6076a26096acb560f43d67a0c27dfc4af8332",
+  "external_requirements": [
+    "Windows x64",
+    "Microsoft Edge WebView2 Evergreen runtime (not bundled)"
+  ],
+  "not_bundled": [
+    "PikPak CLI",
+    "Rclone",
+    "WinFsp",
+    "Chromium",
+    "JVM",
+    "FFmpeg",
+    "mpv"
+  ],
+  "scope": "Desktop integration: native accounts/files/upload/cloud/share/archive/MP4-MKV-TS clips and remux/sync/local media/CloudFiles plus optional WinFsp and five-language desktop UX. Tests use synthetic accounts and isolated OS fixtures. Live account, full upstream parity and other-platform acceptance remain separately tracked. No CLI or bundled media runtime/driver.",
+  "runtime_measurement": "Not measured by this script; no memory/startup claim.",
+  "license_inventory_scope": "Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.",
+  "license_text_unresolved": [
+    "cesu8@1.1.0",
+    "libappindicator-sys@0.9.0",
+    "r-efi@5.3.0",
+    "r-efi@6.0.0",
+    "winapi-i686-pc-windows-gnu@0.4.0",
+    "winapi-x86_64-pc-windows-gnu@0.4.0"
+  ],
+  "windows_dependency_license_text_gaps": []
+}

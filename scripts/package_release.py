@@ -6,6 +6,8 @@ from pathlib import Path
 import platform
 import subprocess
 import zipfile
+import tempfile
+import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,7 +35,8 @@ def main():
         raise SystemExit('Source files are newer than the executable; rebuild before packaging.')
     output = ROOT / 'dist'
     output.mkdir(exist_ok=True)
-    archive = output / 'NekoPak-0.1.0-windows-x64-integration.zip'
+    version = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
+    archive = output / f'NekoPak-{version}-windows-x64-portable.zip'
     license_entries = []
     supplemental_sources = json.loads((ROOT / 'licenses/sources.json').read_text(encoding='utf-8'))
     # Actual bundled UI runtime + generated glyph/color assets. Test/build-only packages are not shipped.
@@ -71,6 +74,26 @@ def main():
                 bundle.write(file, f"licenses/{package['name']}-{package['version']}/upstream/{file.name}")
         manifest = json.dumps(license_entries, ensure_ascii=False, indent=2)
         bundle.writestr('DEPENDENCY_LICENSES.json', manifest)
+    # Stage the exact contents as an ordinary multi-file application directory.
+    # The installer consumes the same notices/resources, while Rust/WebView
+    # assets remain embedded: no self-extraction happens on application startup.
+    portable = output / 'portable' / 'NekoPak'
+    portable.parent.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='nekopak-stage-', dir=output) as staging:
+        staging = Path(staging)
+        with zipfile.ZipFile(archive) as bundle:
+            bundle.extractall(staging)
+        if portable.exists():
+            resolved = portable.resolve()
+            intended = (output.resolve() / 'portable' / 'NekoPak')
+            if resolved != intended or portable.is_symlink():
+                raise SystemExit('Refusing to replace an unexpected portable staging directory.')
+            shutil.rmtree(portable)
+        shutil.copytree(staging, portable)
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=False) as bundle:
+        for path in sorted(portable.rglob('*')):
+            if path.is_file():
+                bundle.write(path, f'NekoPak/{path.relative_to(portable).as_posix()}')
     (output / 'DEPENDENCY_LICENSES.json').write_text(manifest, encoding='utf-8')
     windows_tree = run('cargo', 'tree', '--locked', '--offline', '-p', 'nekopak-app', '--target', 'x86_64-pc-windows-msvc', '--edges', 'normal,build', '--prefix', 'none')
     windows_packages = {f"{parts[0]}@{parts[1][1:]}" for line in windows_tree.splitlines() if len(parts := line.split()) > 1 and parts[1].startswith('v')}
@@ -98,7 +121,10 @@ def main():
         'frontend_license_inventory': ui_licenses,
         'frontend_assets_bytes': sum(p.stat().st_size for p in (ROOT / 'ui-dist').rglob('*') if p.is_file()),
         'profile': 'release, opt-level=s, LTO, codegen-units=1, strip',
-        'archive': archive.name, 'compression': 'ZIP DEFLATE level 9; executable + notices + resolved dependency licenses',
+        'archive': archive.name, 'compression': 'ZIP DEFLATE level 9; NekoPak directory with executable, notices and resolved dependency licenses',
+        'portable_directory': portable.relative_to(ROOT).as_posix(),
+        'portable_file_count': sum(p.is_file() for p in portable.rglob('*')),
+        'runtime_layout': 'Native executable with embedded frontend; no startup self-extraction. External system WebView2 is required.',
         'executable_bytes': executable.stat().st_size, 'archive_bytes': archive.stat().st_size,
         'executable_sha256': hashlib.sha256(executable.read_bytes()).hexdigest(),
         'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),

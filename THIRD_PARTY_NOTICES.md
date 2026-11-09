@@ -80,7 +80,7 @@ imported and adapted for Rust IPC, native sign-in, honest capability gating and
 lossless revisions. The original source provenance report is retained at
 docs/UI_SOURCES_AND_DEPENDENCIES.md; no Piko implementation was copied.
 
-Bundled frontend runtime: preact 10.27.2 (MIT), @tauri-apps/api 2.9.0 (MIT OR Apache-2.0).
+Bundled frontend runtime: preact 10.27.2 (MIT), @tauri-apps/api 2.12.4 (MIT OR Apache-2.0).
 Generated assets: selected Material Symbols Rounded 0.48.1 glyph paths (Google,
 Apache-2.0; file header preserved), colors generated using material-color-utilities
 0.4.0 (Apache-2.0). Source paths: src/components/icons.generated.ts,
@@ -160,3 +160,9 @@ https://github.com/winfsp/winfsp . Cloud Files is a distinct Windows system API.
 
 The Python cryptography package is used only by the release signing workflow,
 not bundled in the desktop application. Private signing material is never included.
+
+The optional Windows Setup.exe is produced by Tauri's NSIS bundler (build-time tooling).
+It installs the same executable, notices and dependency license files as the portable ZIP.
+NSIS is not launched as part of normal application operation. WebView2's Microsoft
+bootstrapper is downloaded only when the installed system runtime is missing; the
+full runtime is not part of NekoPak's Lite payload.

@@ -10,6 +10,8 @@ try {
     if ($Package) {
         python scripts/package_release.py
         if ($LASTEXITCODE -ne 0) { throw 'Packaging failed.' }
+        python scripts/package_installer.py
+        if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
     }
 } finally { Pop-Location }
 

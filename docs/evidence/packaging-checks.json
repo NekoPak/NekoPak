@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-09",
+  "commands": [
+    {
+      "command": "npm test",
+      "result": "114 Vitest + 6 wire passed after @tauri-apps/api upgrade"
+    },
+    {
+      "command": "npm run tauri -- build --no-bundle --ci",
+      "result": "passed; NPM API/CLI 2.12.4 and Rust2.12.5 version gate passed"
+    },
+    {
+      "command": "python scripts/package_release.py",
+      "result": "passed; 916 files in NekoPak directory; ZIP CRC, root directory and executable/license checks passed"
+    },
+    {
+      "command": "python scripts/package_installer.py",
+      "result": "passed; actual NSIS installer, preserved portable executable hash"
+    },
+    {
+      "command": "python -m unittest discover -s tests -p test_release_signing.py",
+      "result": "passed; signature rejects modified file and version"
+    }
+  ],
+  "tooling": {
+    "nsis_version": "3.13",
+    "nsis_zip_sha256": "ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8",
+    "tauri_plugin_sha256": "5ba143b5db4a87d32d6e7802e033330aae56cbceabe0d1e3ba41948385ad4709",
+    "download": "Official GitHub releases; locally recovered via gh after TLS/504 downloads; hashes matched pinned bundler"
+  },
+  "portable": {
+    "name": "NekoPak-0.1.0-windows-x64-portable.zip",
+    "bytes": 6864466,
+    "sha256": "52ac3f33a5082aaf6f9b62a032bdd5ec5205d66361d5669f78f6861a73345e4b",
+    "files": 916
+  },
+  "installer": {
+    "name": "NekoPak-0.1.0-windows-x64-setup.exe",
+    "bytes": 4008800,
+    "sha256": "10f271ac57847707fccd28e6dc6ec4816d5c0522dfbfc05ff825022a734554a1",
+    "type": "NSIS, per-user install, shortcuts and uninstall support",
+    "webview2": "Downloads Microsoft bootstrapper only if needed; runtime not bundled",
+    "authenticode": false,
+    "execution_test": "Not installed by this packaging script."
+  },
+  "runtime": "Embedded native frontend, no runtime self-extraction; WebView2 external; no measured single-file vs split-resource performance claim",
+  "android": "APK after desktop stability/mobile adaptation; Android signing distinct",
+  "installation_validation": "NSIS built and generated install/shortcut/uninstall script reviewed; not installed on user machine"
+}

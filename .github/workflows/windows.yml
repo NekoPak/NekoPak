@@ -37,7 +37,12 @@ jobs:
       - run: npm run tauri -- build --no-bundle
       - run: cargo fetch --locked
       - run: python scripts/package_release.py
+      - run: python scripts/package_installer.py
       - uses: actions/upload-artifact@v4
         with:
           name: NekoPak-windows-x64-integration
-          path: dist/
+          path: |
+            dist/*-portable.zip
+            dist/*-setup.exe
+            dist/size-report.json
+          if-no-files-found: error

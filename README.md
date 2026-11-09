@@ -92,8 +92,10 @@ cargo run -p nekopak-app --locked
 
 浏览器 `npm run dev` 使用离线演示数据；桌面离线验收须显式设置
 `$env:NEKOPAK_BACKEND = 'mock'`。桌面不会回退到浏览器 Mock。
-当前 Windows 包为 `dist/NekoPak-0.1.0-windows-x64-integration.zip`，独立入口为
-`dist/NekoPak-integration.exe`。本轮目录选择、速度、语言、网络和托盘记录见
+当前 Windows 发行形式为 `dist/NekoPak-0.1.0-windows-x64-portable.zip`（解压为完整多文件目录）
+和 `dist/NekoPak-0.1.0-windows-x64-setup.exe`（安装/快捷方式/卸载）。目录中的
+`NekoPak/nekopak.exe` 是程序入口；无需单独复制程序以外的系统依赖。
+本轮目录选择、速度、语言、网络和托盘记录见
 [DESKTOP_UX_FIX_REPORT.md](docs/DESKTOP_UX_FIX_REPORT.md)。此前文件、登录与迁移记录保留在
 DRIVE_FILES_FIX_REPORT.md、LOGIN_FIX_REPORT.md 和 API_MIGRATION_REPORT.md。
 

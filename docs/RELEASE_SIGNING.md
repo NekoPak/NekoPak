@@ -25,6 +25,25 @@ Android适配时生成独立keystore，后续同一应用更新必须保留原�
   上传Actions artifact。不会自动创建公开Release。parity-*仍受严格功能门禁约束。
 - `portable-core.yml`：Linux/macOS核心测试和native provider编译，不能替代相应桌面真实验收。
 
+### 实际产物约定（2026-11-09）
+
+- `NekoPak-<version>-windows-x64-portable.zip`：解压为 `NekoPak/` 多文件目录，包含
+  `nekopak.exe`、使用说明、完整许可证与依赖清单；可直接运行目录中的程序。
+- `NekoPak-<version>-windows-x64-setup.exe`：真实NSIS安装器，当前用户安装，提供
+  开始菜单快捷方式、卸载入口和中繁英日韩安装语言。缺WebView2时下载安装微软引导器，
+  不捆绑Chromium或完整WebView2运行时。安装器内容沿用便携目录的许可证资源。
+- `release-manifest.json`：对这两个产物的名称、版本、长度和SHA256签名；公钥单独附带。
+- Android APK在桌面稳定、Android宿主/凭据库/存储/后台任务实际适配后接入工作流，
+  使用独立keystore，不能把Windows EXE改扩展名或把无手机代码的流程说成APK已可用。
+
+Tauri前端资源目前嵌入原生EXE，不属于启动时自解压的打包器。发行目录包含多个文件，
+不代表必须人为拆分Rust/TLS/SQLite库。两种布局的性能要量测启动时间、WebView2整体内存、
+I/O和安全扫描，不能仅按文件数判断。更新前端或媒体组件时可继续按实际需要分包。
+
+可复现命令：`npm ci` → `npm run tauri -- build --no-bundle` →
+`python scripts/package_release.py` → `python scripts/package_installer.py`。
+NPM Tauri API/CLI固定为2.12.4，与Rust Tauri 2.12.x使用相同minor版本，避免CLI版本门禁失败。
+
 未来Android需要Tauri mobile宿主、Android Keystore实现、目录选择/存储权限/后台下载/
 网络代理/播放器/触屏布局以及设备测试。Windows Credential Manager、CfAPI、WinFsp及
 EXE外部播放器不是Android可用功能，须按平台能力分别实现。

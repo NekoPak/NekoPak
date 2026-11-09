@@ -37,8 +37,9 @@ jobs:
       - run: python scripts/check_parity.py
       - if: startsWith(github.ref, 'refs/tags/parity-')
         run: python scripts/check_parity.py --release
-      - run: cargo build -p nekopak-app --release --locked
+      - run: npm run tauri -- build --no-bundle
       - run: python scripts/package_release.py
+      - run: python scripts/package_installer.py
       - run: python -m pip install cryptography==50.0.1
       - name: Sign and verify artifacts
         shell: pwsh
@@ -47,12 +48,19 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
         run: |
           if (-not $env:NEKOPAK_RELEASE_PRIVATE_KEY) { throw 'Release signing secret is missing.' }
-          $archive = Get-ChildItem -LiteralPath dist -Filter '*.zip' | Select-Object -First 1
-          python scripts/release_signing.py sign $archive.FullName --version $env:RELEASE_VERSION --output dist/release-manifest.json
+          $report = Get-Content -LiteralPath dist/size-report.json -Raw | ConvertFrom-Json
+          $archive = Join-Path dist $report.archive
+          $installer = Join-Path dist $report.installer.name
+          python scripts/release_signing.py sign $archive $installer --version $env:RELEASE_VERSION --output dist/release-manifest.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/release_signing.py verify --manifest dist/release-manifest.json --public release/release-signing.pub
       - uses: actions/upload-artifact@v4
         with:
           name: NekoPak-signed-windows-x64
-          path: dist/
+          path: |
+            dist/*-portable.zip
+            dist/*-setup.exe
+            dist/release-manifest.json
+            dist/size-report.json
+            release/release-signing.pub
           if-no-files-found: error

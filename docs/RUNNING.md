@@ -13,7 +13,10 @@ see the integration report for source/format/runtime limitations.
 
 ## Run the provided Windows application
 
-Extract `NekoPak-0.1.0-windows-x64-integration.zip` and double-click `nekopak.exe`.
+Extract `NekoPak-0.1.0-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
+Keep the directory's notices and licenses alongside the executable. Alternatively, run
+`NekoPak-0.1.0-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
+The native application embeds its frontend resources and does not self-extract them on startup.
 The required runtime is Windows x64 with Microsoft Edge WebView2 Evergreen.
 No compiler, terminal command, CLI installation, client registration or environment
 variable is needed to run the provided application. Enter the account email and
@@ -29,9 +32,9 @@ keeps the previous folder. **下载时询问保存位置** enables a per-downloa
 menu opens the containing folder recorded for that task, including after changing the default.
 Task rows, the footer and sidebar show measured download throughput.
 
-**设置 → 外观** offers system/Simplified Chinese/English, and **关闭窗口时最小化到托盘**.
-Language changes apply without reloading; translated coverage is still incomplete outside the
-main supported flows. Tray actions show/hide the window, open Downloads, or quit. Closing to
+**设置 → 外观** offers system/Simplified Chinese/Traditional Chinese/English/Japanese/Korean,
+and **关闭窗口时最小化到托盘**. Language changes apply without reloading. Tray actions show/hide
+the window, open Downloads, or quit. Closing to
 tray is off by default; when enabled the downloader keeps running after the window closes.
 
 **设置 → 网络 → 网络增强** is off by default. It supports the system proxy, direct
@@ -122,7 +125,7 @@ credential only; it never enumerates or reads user credentials:
 cargo test -p nekopak-provider-native windows_vault_roundtrip_and_delete -- --ignored
 ```
 
-Package: `dist/NekoPak-0.1.0-windows-x64-integration.zip`. It includes the binary,
+Portable package: `dist/NekoPak-0.1.0-windows-x64-portable.zip`. It includes the binary,
 notices, full dependency license inventory and current usage notes, not historical
 CLI installation instructions. `dist/size-report.json` records build/source hashes,
 bytes, runtime requirements and license gaps. No driver, media runtime, browser,

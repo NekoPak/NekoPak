@@ -1,0 +1,36 @@
+{
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "NekoPak",
+    "category": "Utility",
+    "shortDescription": "NekoPak desktop cloud client",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "resources": {
+      "../dist/portable/NekoPak/LICENSE": "LICENSE",
+      "../dist/portable/NekoPak/licenses/": "licenses/",
+      "../dist/portable/NekoPak/DEPENDENCY_LICENSES.json": "DEPENDENCY_LICENSES.json",
+      "../dist/portable/NekoPak/FRONTEND_LICENSES.json": "FRONTEND_LICENSES.json",
+      "../dist/portable/NekoPak/THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "../dist/portable/NekoPak/RUNNING.md": "RUNNING.md",
+      "../dist/portable/NekoPak/DESKTOP_INTEGRATION_REPORT.md": "DESKTOP_INTEGRATION_REPORT.md",
+      "../dist/portable/NekoPak/MOUNT_IMPLEMENTATION.md": "MOUNT_IMPLEMENTATION.md",
+      "../dist/portable/NekoPak/ACCOUNTS_IMPLEMENTATION.md": "ACCOUNTS_IMPLEMENTATION.md",
+      "../dist/portable/NekoPak/REFERENCE_ARCHIVE_IMPLEMENTATION.md": "REFERENCE_ARCHIVE_IMPLEMENTATION.md",
+      "../dist/portable/NekoPak/RELEASE_SIGNING.md": "RELEASE_SIGNING.md"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "allowDowngrades": false,
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "TradChinese", "English", "Japanese", "Korean"],
+        "displayLanguageSelector": true,
+        "compression": "lzma",
+        "startMenuFolder": "NekoPak",
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

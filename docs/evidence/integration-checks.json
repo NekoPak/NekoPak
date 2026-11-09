@@ -79,7 +79,17 @@
     "private_key_in_repository": false,
     "authenticode": false
   },
-  "release_build": "running",
+  "release_build": {
+    "status": "passed",
+    "commit": "6d0b0c1f076580c3293f15a8363b9f3bf3468591",
+    "exe_bytes": 13865984,
+    "zip_bytes": 6848061,
+    "exe_sha256": "82192948da3477cf5ca71c67654b2e969c2a593ac4362cd5ec3105605752cf03",
+    "zip_sha256": "59d7da295dbb96549594f96338d6076a26096acb560f43d67a0c27dfc4af8332",
+    "signed_manifest": "dist/release-manifest.json",
+    "signature_verified": true,
+    "windows_license_gaps": []
+  },
   "upstream_stable_review": {
     "project": "NihilDigit/piko",
     "tag": "v1.4.0",
@@ -87,5 +97,17 @@
     "checked_on": "2026-11-08",
     "source": "https://api.github.com/repos/NihilDigit/piko/releases/latest",
     "note": "latest stable unchanged; earlier fixed behavior reference still baseline, not a parity completion declaration"
+  },
+  "ci": {
+    "portable_core": "https://github.com/NekoPak/NikoPak/actions/runs/42565781252",
+    "portable_result": "Ubuntu/macOS core tests and native-provider check passed at 6d0b0c1",
+    "windows": "https://github.com/NekoPak/NikoPak/actions/runs/42565781231",
+    "windows_result": "Rust/frontend checks passed; Tauri build failed on NPM API2.9/Rust2.12 mismatch. Fixed to API+CLI2.12.4, rechecking installer pipeline."
+  },
+  "distribution": {
+    "portable_zip": "NekoPak-0.1.0-windows-x64-portable.zip",
+    "installer_exe": "NekoPak-0.1.0-windows-x64-setup.exe",
+    "layout": "portable ZIP contains NekoPak folder; installer uses same notices/license tree",
+    "android": "explicit follow-up after desktop stability, no APK declared yet"
   }
 }
