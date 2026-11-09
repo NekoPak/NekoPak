@@ -683,6 +683,7 @@ export interface CommandMap {
   desktop_status: [undefined,{tray_available:boolean;window_visible:boolean}];
   download_directory_pick: [undefined, string | null];
   transfer_open_directory: [{task_id:string}, void];
+  transfer_export: [{task_id:string}, boolean];
   verification_status: [{ verification_id?: string }, VerificationState | null];
   verification_open: [{ verification_id: string }, void];
   verification_complete: [{ verification_id: string }, void];

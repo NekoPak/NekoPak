@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Android UI events and user initiated HTTPS browser links. Files and credentials stay in Rust/native code.",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }] }
+  ]
+}

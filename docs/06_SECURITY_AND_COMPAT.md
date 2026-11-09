@@ -10,6 +10,9 @@
 - 不在日志/崩溃报告/前端事件、错误文本中记录 refresh token、cookies、真实下载直链、PAT、密码；支持脱敏日志导出。
 - 授权刷新串行化且带超时；失败显示 `AUTH_EXPIRED`，不无限重试；退出登录清除本地凭据及缓存中的敏感 URL。
 - 不提供明文自动提取官方客户端 cookie 的功能。
+- Android 使用 AndroidKeyStore AES-256-GCM，密钥不导出，target作为AAD；密文位于
+  noBackupFilesDir，应用禁用备份。缺密钥或坏密文失败并保留，不静默重建；不保证设备提供
+  StrongBox。SAF仅用于用户选择的文件导出，不将content URI伪装成本地路径。
 
 ## 2. 外部服务与权限
 

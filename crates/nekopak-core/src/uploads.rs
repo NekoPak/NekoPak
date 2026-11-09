@@ -72,6 +72,10 @@ impl AppService {
             etags: vec![],
         };
         self.save_upload_record(&task.id, &record)?;
+        let _gate = self.download_gate.lock().map_err(|_| invalid())?;
+        if !self.is_foreground() {
+            task.state = TaskState::Paused;
+        }
         let task = self.store()?.insert(task, Some((&key, &fp)))?;
         self.emit(&task);
         Ok(TaskRef { task_id: task.id })
@@ -97,6 +101,9 @@ impl AppService {
         Ok(self.upload_record(id)?.scope)
     }
     pub async fn run_upload(&self) -> Result<(), ClientError> {
+        if !self.is_foreground() {
+            return Ok(());
+        }
         if self.upload_busy.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
@@ -123,21 +130,22 @@ impl AppService {
             return Ok(());
         };
         if task.state == TaskState::Queued {
+            let _gate = self.download_gate.lock().map_err(|_| invalid())?;
+            if !self.is_foreground() || self.store()?.get(&task.id)?.revision != task.revision {
+                return Ok(());
+            }
             let updated =
                 self.store()?
                     .update(&task, TaskState::Running, task.transferred_bytes.0, None)?;
             self.emit(&updated);
             return Ok(());
         }
-        self.download_cancellations
-            .lock()
-            .map_err(|_| invalid())?
-            .insert(task.id.clone(), ctx.clone());
+        let Some(_registration) = self.register_transfer_request(&task, &ctx)? else {
+            return Ok(());
+        };
+        // Each provider await already observes ctx. Let the step unwind so a
+        // cancelled side-effecting request still records its unknown outcome.
         let result = self.upload_step_at(&task, record, &ctx).await;
-        self.download_cancellations
-            .lock()
-            .map_err(|_| invalid())?
-            .remove(&task.id);
         if let Err(error) = result {
             let current = self.store()?.get(&task.id)?;
             if current.revision == task.revision {

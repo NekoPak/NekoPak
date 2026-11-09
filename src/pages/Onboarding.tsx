@@ -1,7 +1,7 @@
 import { tr } from "../lib/i18n";
 import { useEffect } from "preact/hooks";
 import { useStore } from "../lib/store";
-import { acceptDisclaimer, app } from "../state/app";
+import { acceptDisclaimer, app, isMobileHost } from "../state/app";
 import { navigate } from "../state/route";
 import { LogoMark } from "../components/Brand";
 import { Btn } from "../components/ui";
@@ -14,6 +14,7 @@ import { AuthPanel } from "./Auth";
  */
 export function Onboarding({ onClose }: { onClose: () => void }) {
   const auth = useStore(app, (x) => x.auth?.state);
+  const mobile = useStore(app, isMobileHost);
 
   useEffect(() => {
     if (auth === "signed_in" || auth === "demo") {
@@ -25,11 +26,11 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
 
   return (
     <div class="onboarding" role="dialog" aria-modal="true" aria-labelledby="ob-title">
-      <div class="ob-caption" data-tauri-drag-region><span class="pf-drag" data-tauri-drag-region /><WindowControls /></div>
+      <div class="ob-caption" data-tauri-drag-region={mobile ? undefined : true}><span class="pf-drag" data-tauri-drag-region={mobile ? undefined : true} /><WindowControls /></div>
       <div class="ob-brand">
         <LogoMark size={72} />
         <p class="ob-name">NekoPak</p>
-        <p class="ob-tagline">{tr("轻快的 PikPak 桌面客户端")}</p>
+        <p class="ob-tagline">{tr(mobile ? "轻快的 PikPak 客户端" : "轻快的 PikPak 桌面客户端")}</p>
       </div>
       <div class="ob-island">
         <div class="ob-body">

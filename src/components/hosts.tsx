@@ -100,7 +100,7 @@ export function MenuHost() {
     if (!m.open || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
     // Opens to the bottom-right of the pointer; flips per axis when it would overflow.
-    const x = m.x + r.width > window.innerWidth - 8 ? Math.max(8, m.x - r.width) : m.x;
+    const x = Math.max(8, Math.min(m.x, window.innerWidth - r.width - 8));
     const y = m.y + r.height > window.innerHeight - 8 ? Math.max(8, m.y - r.height) : m.y;
     setPos({ x, y });
     // Initial focus on the first list row, not the icon row (avoids an instant tooltip).

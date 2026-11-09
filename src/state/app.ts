@@ -111,6 +111,17 @@ export function canSignIn(s: AppState = app.get()): boolean {
   return s.app?.feature_flags.auth_sign_in === true && !!native && (native.status === "needs_login" || native.status === "ready");
 }
 
+/** Host capabilities come from Rust. A narrow browser window is not an Android host. */
+export function isMobileHost(s: AppState = app.get()): boolean {
+  return s.app?.feature_flags.mobile === true;
+}
+
+export function hostSupports(feature: string, s: AppState = app.get()): boolean {
+  const value = s.app?.feature_flags[feature];
+  // Old desktop builds did not publish these additive flags.
+  return value ?? !isMobileHost(s);
+}
+
 function clearAccountData(): void {
   resetSessionUi();
   app.set(s => ({ quota: undefined, quotaError: undefined, epoch: s.epoch + 1, sessionEpoch: s.sessionEpoch + 1 }));
@@ -141,6 +152,9 @@ export const OP_LABEL: Record<AnyOperation, string> = {
 /** Whether `op` may be offered right now, with a human reason when not. */
 export function gate(op: AnyOperation, s: AppState = app.get()): Gate {
   if (s.boot !== "ready") return { ok: false, reason: tr("正在启动") };
+  if ((op === "upload" && !hostSupports("upload", s)) || (op === "external_player" && !hostSupports("media_external", s))) {
+    return { ok: false, reason: tr("Android 当前版本尚未支持这项操作") };
+  }
   if (!signedIn(s)) {
     return { ok: false, reason: s.auth?.state === "expired" ? tr("登录已过期，请重新授权") : tr("需要先登录") };
   }
@@ -157,6 +171,7 @@ export function gate(op: AnyOperation, s: AppState = app.get()): Gate {
 
 /** Permission belongs to the selected source, even after a tab or route changes. */
 export function fileGate(op: AnyOperation, ids: string | string[], s: AppState = app.get()): Gate {
+  if (op === "external_player" && !hostSupports("media_external", s)) return { ok: false, reason: tr("Android 当前版本尚未支持外部播放器") };
   const sources = (Array.isArray(ids) ? ids : [ids]).map(entrySource);
   if (sources.includes("shared")) return sources.every(source => source === "shared") ? sharedFileGate(op, s) : { ok: false, reason: tr("请先将分享文件转存到自己的云盘") };
   if (!sources.includes("local")) return gate(op, s);

@@ -47,7 +47,7 @@ function blankConfig(): SyncConfig {
 export function SyncPage({ config }: { config?: string }) {
   const desktop = useStore(app, s => s.runtime === "tauri");
   const enabled = useStore(app, s => !!s.app?.feature_flags.sync);
-  if (desktop && !enabled) return <PageFrame label={tr("自动同步")} caption={<PageTitle>{tr("自动同步")}</PageTitle>}><div class="canvas-pad"><Empty title={tr("同步功能尚未实现")}>{tr("单向与双向同步仍在开发计划中，当前不能扫描或执行同步。")}</Empty><Btn label={tr("新建同步")} disabled reason={tr("同步引擎尚未实现")} /></div></PageFrame>;
+  if (desktop && !enabled) return <PageFrame label={tr("自动同步")} caption={<PageTitle>{tr("自动同步")}</PageTitle>}><div class="canvas-pad"><Empty title={tr("当前平台暂不支持同步")}>{tr("单向与双向同步仍在开发计划中，当前不能扫描或执行同步。")}</Empty><Btn label={tr("新建同步")} disabled reason={tr("当前平台暂不支持同步")} /></div></PageFrame>;
   return <BrowserSyncPage config={config} />;
 }
 

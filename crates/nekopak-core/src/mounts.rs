@@ -4,7 +4,9 @@ use nekopak_media::native::RangeSource;
 use nekopak_mount::{CancellationToken, MountEntry, MountSnapshot, ReadSource};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{path::PathBuf, sync::atomic::Ordering, time::Duration};
+#[cfg(windows)]
+use std::path::PathBuf;
+use std::{sync::atomic::Ordering, time::Duration};
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

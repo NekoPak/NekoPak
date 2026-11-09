@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-09",
+  "status": "Android preview integration; not full feature or live-account acceptance",
+  "rust_workspace": {
+    "command": "cargo test --workspace --locked --offline",
+    "passed": 162,
+    "failed": 0,
+    "ignored": 19
+  },
+  "rust_clippy": {
+    "command": "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
+    "result": "passed"
+  },
+  "frontend": {
+    "unit": "116 Vitest + 6 wire passed",
+    "desktop_e2e": "57/57 browser scenarios; external requests zero",
+    "mobile_e2e": "5/5 browser mobile IPC-fixture scenarios",
+    "native_windows_startup": "4/4 real WebView2/Rust checks"
+  },
+  "android": {
+    "keystore_instrumentation": "3/3 actual AndroidKeyStore tests",
+    "native_e2e": "8/8 real WebView/Rust/JNI/lifecycle/download/SAF tests",
+    "device": "Isolated Android15/API35 x86_64 emulator-5580; synthetic account and loopback server only",
+    "debug_apk_sha256": "86882c74d165fb27dd9e2852502dfc438bb59b6a3bfb9b1bb798a075a0b2720f"
+  },
+  "packaging_tests": "12 Android packaging +1 Ed25519 signing +4 parity tests passed",
+  "regressions_fixed": [
+    "Android SELinux denied hard-link publication: use renameat2 NOREPLACE + directory sync",
+    "Activity suspension races around asynchronous worker/creation registration",
+    "Android WebView starts after Rust managed state",
+    "Preserve Windows vault namespace; embed CommonControls v6 in lib test EXE"
+  ],
+  "license": "Independent MIT implementation; no AGPL client code; JNI/ndk-context and pinned Tauri-generated host; full runtime dependency notices packaged",
+  "remaining": [
+    "Real account login/CAPTCHA, physical ARM64 and weak networks",
+    "Android upload/SAF directory sync and foreground service",
+    "All 24 mandatory Windows parity groups remain partial",
+    "GitHub Actions final run results recorded after remote completion"
+  ]
+}

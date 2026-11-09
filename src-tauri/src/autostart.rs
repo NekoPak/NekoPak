@@ -1,6 +1,7 @@
 //! Explicit per-user startup registration. No default write and no elevation.
 use nekopak_domain::{ClientError, ErrorCode};
 use serde_json::{json, Value};
+#[cfg(windows)]
 fn unavailable() -> ClientError {
     ClientError::new(ErrorCode::PermissionDenied, "无法访问当前用户的启动项。")
 }
@@ -112,6 +113,7 @@ fn read_write(path: &str, name: &str, write: Option<bool>) -> Result<bool, Clien
     }
     Ok(String::from_utf16(&value).map_err(|_| unavailable())? == command)
 }
+#[cfg(windows)]
 const RUN: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 #[tauri::command]
 pub fn autostart_get() -> Result<Value, ClientError> {

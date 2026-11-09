@@ -1,7 +1,8 @@
 # Run NekoPak desktop integration
 
 Current integrated capabilities and actual tests: [DESKTOP_INTEGRATION_REPORT.md](DESKTOP_INTEGRATION_REPORT.md).
-Windows first; Android/Linux/macOS follow desktop stabilization. Current connections may require
+Windows packaging and installer lifecycle are verified. Android instructions and acceptance are in
+[ANDROID.md](ANDROID.md); Linux/macOS desktop acceptance remains pending. Current connections may require
 the user's proxy; absence of Hosts blocking is not evidence of proxy-free connectivity.
 
 2026-11-08: the official PikPak CLI adapter has been removed. Desktop uses the
@@ -95,7 +96,8 @@ and are preserved. Do not delete databases to fix configuration problems.
 Tokens are held in Windows Credential Manager, scoped by app-data directory and
 client ID. Passwords never persist. CAPTCHA continuation requires password re-entry
 because the initial password has been discarded. Logout deletes the credential item;
-no remote revoke endpoint is claimed. Other OS secret stores are not implemented.
+no remote revoke endpoint is claimed. Android uses Android Keystore to encrypt session records in
+app-private no-backup storage. Linux/macOS secret stores are not implemented.
 
 ## Checks and packaging
 
@@ -134,8 +136,9 @@ mandatory upstream capabilities pass actual acceptance.
 
 Current functional evidence: DESKTOP_INTEGRATION_REPORT.md and evidence/native-functional-e2e.json.
 Prior native file implementation: DRIVE_FILES_FIX_REPORT.md.
-Earlier login/migration evidence: LOGIN_FIX_REPORT.md, API_MIGRATION_REPORT.md. Linux/macOS, clean Windows VM,
-signing, installer, live throughput and production readiness are not verified.
+Earlier login/migration evidence: LOGIN_FIX_REPORT.md, API_MIGRATION_REPORT.md. Windows signed manifests, portable ZIP and installer install/uninstall have passed Actions checks
+(RELEASE_SIGNING.md). Linux/macOS desktop, clean consumer Windows10/11, live throughput
+and production readiness remain unverified.
 
 The auxiliary `.actions.sqlite3` file stores remote operation intents, download receipts
 and settings. Keep it alongside the main DB. A missing initialized journal stops writes

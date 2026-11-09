@@ -12,6 +12,7 @@ import { clip } from "../state/clipboard";
 import type { GridSize } from "../state/prefs";
 import { Icon } from "./Icon";
 import { onSessionReset } from "../state/session";
+import { app, isMobileHost } from "../state/app";
 
 export type ColumnId = "name" | "size" | "modified" | "kind" | "location";
 export type SortKey = "name" | "size" | "modified" | "kind";
@@ -171,16 +172,16 @@ function Lead({ entry, selected, onToggle }: { entry: RemoteEntry; selected: boo
   return (
     <span class={`lead${selected ? " on" : ""}`}>
       <KindTile entry={entry} />
-      <span
+      <button
+        type="button"
         class="lead-check"
-        aria-hidden="true"
-        onMouseDown={(ev) => {
-          ev.stopPropagation();
-          onToggle();
-        }}
+        aria-label={tx("选择 {0}", entry.name)}
+        aria-pressed={selected}
+        onMouseDown={(ev) => ev.stopPropagation()}
+        onClick={(ev) => { ev.stopPropagation(); onToggle(); }}
       >
         <Icon name={selected ? "checkbox" : "checkboxOff"} filled={selected} size={22} />
-      </span>
+      </button>
     </span>
   );
 }
@@ -229,6 +230,8 @@ interface Marquee {
 }
 
 export function FileTable(p: FileTableProps) {
+  const mobile = useStore(app, isMobileHost);
+  const touchPress = useRef(false);
   const scroller = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1000);
   const grid = p.mode === "grid";
@@ -381,6 +384,7 @@ export function FileTable(p: FileTableProps) {
   const pendingSingle = useRef<number | null>(null);
   const onItemMouseDown = (e: MouseEvent, i: number) => {
     pendingSingle.current = null;
+    if (touchPress.current || mobile) return;
     if (e.button === 2) {
       if (!sel.ids.has(items[i].id)) setSelection({ ids: new Set([items[i].id]), anchor: i, focus: i });
       return;
@@ -399,6 +403,11 @@ export function FileTable(p: FileTableProps) {
     }
   };
   const onItemClick = (i: number) => {
+    if (touchPress.current || mobile) {
+      if (sel.ids.size) toggle(i);
+      else p.onOpen(items[i]);
+      return;
+    }
     if (pendingSingle.current === i) setSelection({ ids: new Set([items[i].id]), anchor: i, focus: i });
     pendingSingle.current = null;
   };
@@ -409,7 +418,7 @@ export function FileTable(p: FileTableProps) {
     "aria-selected": selected ? "true" : "false",
     "data-index": i,
     "data-id": e.id,
-    ...(drop ? {
+    ...(drop && !mobile ? {
       draggable: true,
       onDragStart: (ev: DragEvent) => {
         const chosen = sel.ids.has(e.id) ? items.filter((x) => sel.ids.has(x.id)) : [e];
@@ -431,9 +440,10 @@ export function FileTable(p: FileTableProps) {
       },
       ...(e.kind === "folder" ? dropTarget(e.id, drop) : {}),
     } : {}),
+    onPointerDown: (ev: PointerEvent) => { touchPress.current = ev.pointerType === "touch" || ev.pointerType === "pen"; },
     onMouseDown: (ev: MouseEvent) => onItemMouseDown(ev, i),
     onClick: () => onItemClick(i),
-    onDblClick: () => p.onOpen(e),
+    onDblClick: () => { if (!touchPress.current && !mobile) p.onOpen(e); },
     onContextMenu: (ev: MouseEvent) => {
       ev.preventDefault();
       const chosen = sel.ids.has(e.id) ? items.filter((x) => sel.ids.has(x.id)) : [e];
@@ -460,9 +470,9 @@ export function FileTable(p: FileTableProps) {
             <div class="card-art">
               <KindTile entry={e} size="lg" />
               {isStarred(e) ? <span class="card-star" aria-label={tr("已加星标")}><Icon name="star" size={18} filled /></span> : null}
-              <span class={`card-check${selected ? " on" : ""}`} aria-hidden="true" onMouseDown={(ev) => { ev.stopPropagation(); toggle(i); }}>
+              <button type="button" class={`card-check${selected ? " on" : ""}`} aria-label={tx("选择 {0}", e.name)} aria-pressed={selected} onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); toggle(i); }}>
                 <Icon name={selected ? "checkbox" : "checkboxOff"} filled={selected} size={22} />
-              </span>
+              </button>
             </div>
             <span class="card-name" dir="auto" title={e.name}>{e.name}</span>
             <span class="card-meta">{e.kind === "folder" ? formatDateTime(e.modified_at) : `${formatBytes(e.size_bytes)}`}</span>

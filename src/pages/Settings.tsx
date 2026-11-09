@@ -7,7 +7,7 @@ import { PROPOSED_COMMANDS } from "../lib/contract-proposals";
 import { api, errorOf } from "../lib/api";
 import { formatBytes, formatDateTime, parseU64, percent } from "../lib/format";
 import { useStore } from "../lib/store";
-import { app, applyTheme, refreshQuota, updateSettings } from "../state/app";
+import { app, applyTheme, hostSupports, isMobileHost, refreshQuota, updateSettings } from "../state/app";
 import { navigate, type SettingsSection } from "../state/route";
 import { toast } from "../state/ui";
 import { Icon } from "../components/Icon";
@@ -92,6 +92,7 @@ function Row({ label, hint, children, id, icon, below }: { label: string; hint?:
 
 function General() {
   const settings = useStore(app, (s) => s.settings);
+  const tray = useStore(app, s => hostSupports("tray", s));
   const accent = useStore(prefs, (p) => p.accent);
   const reduce = useStore(prefs, (p) => p.reduceMotion);
   const foldersFirst = useStore(prefs, (p) => p.foldersFirst);
@@ -150,7 +151,7 @@ function General() {
         <AutostartSetting/>
       </Row>
       <Row icon="minimize" label={tr("关闭窗口时最小化到托盘")}>
-        <Switch label={tr("关闭窗口时最小化到托盘")} checked={settings?.close_to_tray??false} onChange={v=>void updateSettings({close_to_tray:v}).catch(e=>toast(errorOf(e).message,"error"))} />
+        <Switch label={tr("关闭窗口时最小化到托盘")} checked={settings?.close_to_tray??false} disabled={!tray} reason={tr("Android 不提供系统托盘")} onChange={v=>void updateSettings({close_to_tray:v}).catch(e=>toast(errorOf(e).message,"error"))} />
       </Row>
     </Section>
   );
@@ -248,6 +249,9 @@ function TransfersSettings() {
 
 function NativeTransfersSettings() {
   const settings = useStore(app, s => s.settings);
+  const mobile = useStore(app, isMobileHost);
+  const directoryPicker = useStore(app, s => hostSupports("directory_picker", s));
+  const playerPicker = useStore(app, s => hostSupports("player_config", s));
   const [dir, setDir] = useState(settings?.download_dir ?? "");
   const [bandwidth, setBandwidth] = useState(String(settings?.bandwidth_limit_kib_s ?? 0));
   const [busy, setBusy] = useState(false);
@@ -258,26 +262,28 @@ function NativeTransfersSettings() {
   const pick=async()=>{setPicking(true);try{const chosen=await api.downloadDirectoryPick();if(chosen!==null)setDir(chosen);}catch(e){toast(errorOf(e).message,"error");}finally{setPicking(false);}};
   const save = async () => {
     setBusy(true);
-    try { await updateSettings({ download_dir: dir, bandwidth_limit_kib_s: Number(bandwidth), ask_download_directory:ask,download:{default_quality:quality},media:{player_path:player} }); toast(tr("下载设置已保存"), "success"); }
+    try { await updateSettings({ ...(directoryPicker ? {download_dir: dir, ask_download_directory:ask} : {}), bandwidth_limit_kib_s: Number(bandwidth),download:{default_quality:quality},...(playerPicker ? {media:{player_path:player}} : {}) }); toast(tr("下载设置已保存"), "success"); }
     catch (e) { toast(errorOf(e).message, "error", { error: errorOf(e) }); }
     finally { setBusy(false); }
   };
   return <Section title={tr("下载与传输")}>
+    {mobile ? <p class="mobile-storage-note">{tr("文件先保存到应用内。下载完成后，在任务菜单中选择“导出文件”。卸载前请导出需要保留的文件。")}</p> : null}
     <form class="form-grid" onSubmit={e => { e.preventDefault(); if (!busy) void save(); }}>
-      <Field label={tr("下载目录")} htmlFor="native-download-dir" hint={tr("点击路径或“选择文件夹”浏览目录。同名文件不会被覆盖。")}>
-        <div class="directory-picker"><input id="native-download-dir" class="input mono" value={dir} readOnly onClick={()=>void pick()} aria-label={tr("下载目录")} />
-        <Btn icon="folderOpen" label={tr("选择文件夹")} busy={picking} onClick={()=>void pick()} /></div>
+      <Field label={tr("下载目录")} htmlFor="native-download-dir" hint={tr(directoryPicker ? "点击路径或“选择文件夹”浏览目录。同名文件不会被覆盖。" : "应用私有目录；完成后通过系统保存对话框导出。") }>
+        <div class="directory-picker"><input id="native-download-dir" class="input mono" value={dir} readOnly onClick={directoryPicker ? ()=>void pick() : undefined} aria-label={tr("下载目录")} />
+        <Btn icon="folderOpen" label={tr("选择文件夹")} disabled={!directoryPicker} reason={tr("Android 当前版本使用应用私有下载目录")} busy={picking} onClick={()=>void pick()} /></div>
       </Field>
       <Field label={tr("带宽上限（KiB/s）")} htmlFor="native-bandwidth" hint={tr("0 表示不限速，修改后对后续下载块生效。")}>
         <input id="native-bandwidth" class="input" type="number" min={0} max={1048576} value={bandwidth} onInput={e => setBandwidth((e.target as HTMLInputElement).value)} />
       </Field>
-      <Row label={tr("下载时询问保存位置")}><Switch label={tr("每次下载选择文件夹")} checked={ask} onChange={setAsk} /></Row>
+      <Row label={tr("下载时询问保存位置")}><Switch label={tr("每次下载选择文件夹")} checked={ask} disabled={!directoryPicker} reason={tr("Android 当前版本使用应用私有下载目录")} onChange={setAsk} /></Row>
       <Field label={tr("默认下载画质")} htmlFor="native-quality"><select id="native-quality" class="select" value={quality} onChange={e=>setQuality((e.target as HTMLSelectElement).value as QualityCap)}>{(["original","2160p","1080p","720p","480p"] as QualityCap[]).map(value=><option value={value}>{CAP_LABEL[value]}</option>)}</select></Field>
-      <Field label={tr("外部播放器")} htmlFor="native-player" hint={tr("选择已安装的播放器。媒体地址由 Rust 交给播放器，不经过命令行脚本。") }>
-        <div class="directory-picker"><input id="native-player" class="input mono" value={player} readOnly/><Btn label={tr("选择播放器")} icon="folderOpen" onClick={()=>void api.playerConfigPick().then(value=>{if(value!==null)setPlayer(value);},e=>toast(errorOf(e).message,"error"))}/></div>
+      <Field label={tr("外部播放器")} htmlFor="native-player" hint={tr(playerPicker ? "选择已安装的播放器。媒体地址由 Rust 交给播放器，不经过命令行脚本。" : "Android 当前版本尚未支持外部播放器") }>
+        <div class="directory-picker"><input id="native-player" class="input mono" value={player} readOnly/><Btn label={tr("选择播放器")} icon="folderOpen" disabled={!playerPicker} reason={tr("Android 当前版本尚未支持外部播放器")} onClick={()=>void api.playerConfigPick().then(value=>{if(value!==null)setPlayer(value);},e=>toast(errorOf(e).message,"error"))}/></div>
         {player?<Btn label={tr("清除播放器配置")} size="sm" tone="quiet" onClick={()=>setPlayer("")}/>:null}
       </Field>
       <p class="download-help">{tr("下载原始文件，支持暂停、继续及重启后恢复。")}</p>
+      {mobile ? <p class="download-help">{tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
       <div class="form-actions"><Btn type="submit" tone="primary" label={tr("保存")} busy={busy} /></div>
     </form>
   </Section>;

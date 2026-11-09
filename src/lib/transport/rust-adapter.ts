@@ -50,7 +50,7 @@ export const RUST_COMMANDS = new Set([
   "settings_get", "settings_update",
   "autostart_get", "autostart_set",
   "reference_create", "reference_list", "reference_status", "reference_store_manifest", "reference_archive", "reference_restore",
-  "download_directory_pick", "transfer_open_directory",
+  "download_directory_pick", "transfer_open_directory", "transfer_export",
   "desktop_status",
   "transfer_start_batch", "duplicates_scan", "duplicates_report", "duplicates_cancel", "files_space_summary",
   "local_sources_list", "local_sources_add", "local_sources_remove", "media_session_open", "media_session_close",

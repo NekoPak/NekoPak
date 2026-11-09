@@ -31,6 +31,7 @@ pub fn now() -> String {
 }
 
 pub struct AppService {
+    foreground: std::sync::atomic::AtomicBool,
     store: Option<Store>,
     intents: Option<intents::IntentStore>,
     download_gate: std::sync::Mutex<()>,
@@ -113,6 +114,7 @@ impl AppService {
         let (events, _) = broadcast::channel(256);
         let (scan_events, _) = broadcast::channel(64);
         Self {
+            foreground: std::sync::atomic::AtomicBool::new(true),
             store,
             intents,
             download_gate: Default::default(),
@@ -192,15 +194,18 @@ impl AppService {
                     "segment_download".into(),
                     self.provider.id() == BackendId::RustCompat,
                 ),
-                ("sync".into(), self.provider.id() == BackendId::RustCompat),
+                (
+                    "sync".into(),
+                    self.provider.id() == BackendId::RustCompat && !cfg!(target_os = "android"),
+                ),
                 (
                     "sync_bidirectional".into(),
-                    self.provider.id() == BackendId::RustCompat,
+                    self.provider.id() == BackendId::RustCompat && !cfg!(target_os = "android"),
                 ),
                 ("mount".into(), cfg!(windows)),
                 ("experimental_network".into(), false),
                 ("telemetry".into(), false),
-                ("local_sources".into(), true),
+                ("local_sources".into(), !cfg!(target_os = "android")),
                 ("media_session".into(), true),
                 ("local_media_probe".into(), true),
                 ("local_clip".into(), true),
@@ -215,8 +220,21 @@ impl AppService {
                 ),
                 (
                     "upload_directory".into(),
-                    self.provider.id() == BackendId::RustCompat,
+                    self.provider.id() == BackendId::RustCompat && !cfg!(target_os = "android"),
                 ),
+                ("upload".into(), !cfg!(target_os = "android")),
+                ("mobile".into(), cfg!(target_os = "android")),
+                ("desktop_window".into(), !cfg!(target_os = "android")),
+                ("tray".into(), !cfg!(target_os = "android")),
+                ("directory_picker".into(), !cfg!(target_os = "android")),
+                (
+                    "transfer_open_directory".into(),
+                    !cfg!(target_os = "android"),
+                ),
+                ("transfer_export".into(), cfg!(target_os = "android")),
+                ("media_external".into(), !cfg!(target_os = "android")),
+                ("player_config".into(), !cfg!(target_os = "android")),
+                ("background_transfers".into(), !cfg!(target_os = "android")),
                 ("autostart".into(), cfg!(windows)),
                 (
                     "reference_archive".into(),
@@ -534,6 +552,42 @@ impl AppService {
     pub fn task(&self, id: &str) -> Result<TransferTask, ClientError> {
         self.store()?.get(id)
     }
+    pub fn set_foreground(&self, foreground: bool) {
+        self.foreground
+            .store(foreground, std::sync::atomic::Ordering::SeqCst);
+    }
+    pub fn is_foreground(&self) -> bool {
+        self.foreground.load(std::sync::atomic::Ordering::SeqCst)
+    }
+    /// Android activity suspension never cancels server-side cloud work. Local
+    /// verification can finish its atomic commit, but no next step is scheduled.
+    pub fn pause_local_transfers(&self) -> Result<(), ClientError> {
+        let active = {
+            // Serialize the snapshot with new task insertion. A task that
+            // finishes preparing after this snapshot observes background state
+            // while holding the same gate and starts paused.
+            let _gate = self
+                .download_gate
+                .lock()
+                .map_err(|_| ClientError::new(ErrorCode::Internal, "下载队列暂不可用。"))?;
+            self.store()?.active()?
+        };
+        for task in active {
+            if task.kind != TaskKind::CloudDownload
+                && matches!(
+                    task.state,
+                    TaskState::Queued | TaskState::Running | TaskState::Retrying
+                )
+            {
+                match self.transfer_control(&task.id, TransferAction::Pause) {
+                    Ok(()) => {}
+                    Err(error) if error.code == ErrorCode::Conflict => {}
+                    Err(error) => return Err(error),
+                }
+            }
+        }
+        Ok(())
+    }
     pub fn transfer_control(&self, id: &str, action: TransferAction) -> Result<(), ClientError> {
         if let Some(control) = self
             .media_controls
@@ -682,6 +736,9 @@ impl AppService {
     }
     /// Called by the host worker. Never holds the database mutex across provider work.
     pub async fn tick(&self) -> Result<(), ClientError> {
+        if !self.is_foreground() {
+            return Ok(());
+        }
         if self.provider.id() != BackendId::Mock {
             self.tick_cloud().await?;
             return self.tick_native_download().await;

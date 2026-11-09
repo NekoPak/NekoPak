@@ -29,6 +29,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci
+      - run: npm run check
       - run: npm run build
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -62,5 +63,85 @@ jobs:
             dist/*-setup.exe
             dist/release-manifest.json
             dist/size-report.json
+            release/release-signing.pub
+          if-no-files-found: error
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS: -C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+          targets: aarch64-linux-android
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android SDK and NDK
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.2.12479018'
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run check
+      - run: cargo fmt --all --check
+      - run: cargo fetch --locked
+      - run: npm test
+      - run: python -m unittest discover -s tests -p test_android_packaging.py
+      - run: python scripts/check_parity.py
+      - if: startsWith(github.ref, 'refs/tags/parity-')
+        run: python scripts/check_parity.py --release
+      - run: npm run tauri -- android init --ci --skip-targets-install
+      - run: python scripts/android_project.py
+      - name: Build with the Android release signing identity
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          umask 077
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/nekopak-android-release.jks"
+          trap 'rm -f -- "$ANDROID_KEYSTORE_PATH"' EXIT
+          python - <<'PY'
+          import base64, os
+          from pathlib import Path
+          required = ['ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD']
+          if any(not os.environ.get(name) for name in required):
+              raise SystemExit('Android release signing secrets are missing.')
+          path = Path(os.environ['ANDROID_KEYSTORE_PATH'])
+          with path.open('xb') as file:
+              file.write(base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64'], validate=True))
+          path.chmod(0o600)
+          PY
+          npm run tauri -- android build --target aarch64 --apk --ci
+      - run: python scripts/package_android.py package --profile release --abi arm64-v8a
+      - run: python -m pip install cryptography==50.0.1
+      - name: Sign and verify Android release manifest
+        env:
+          NEKOPAK_RELEASE_PRIVATE_KEY: ${{ secrets.NEKOPAK_RELEASE_PRIVATE_KEY }}
+          RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
+        run: |
+          python scripts/release_signing.py sign dist/android/*.apk dist/android/*-licenses.zip dist/android/*-report.json --version "$RELEASE_VERSION" --output dist/android/release-manifest.json
+          python scripts/release_signing.py verify --manifest dist/android/release-manifest.json --public release/release-signing.pub
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NekoPak-signed-android-arm64
+          path: |
+            dist/android/*.apk
+            dist/android/*-licenses.zip
+            dist/android/*-report.json
+            dist/android/release-manifest.json
             release/release-signing.pub
           if-no-files-found: error

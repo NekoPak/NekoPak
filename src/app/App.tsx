@@ -1,12 +1,12 @@
 import { language, tr, tx } from "../lib/i18n";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { useStore } from "../lib/store";
-import { app, boot } from "../state/app";
-import { closeTab, cycleTab, initRouter, navigate, navigateHistory, openTab, route, workspaceTabs } from "../state/route";
+import { app, boot, isMobileHost } from "../state/app";
+import { activeTab, closeTab, cycleTab, initRouter, navigate, navigateHistory, openTab, route, workspaceTabs } from "../state/route";
 import { WorkspaceTabs } from "../components/WorkspaceTabs";
 import { loadSnapshot } from "../state/transfers";
-import { dialogs, focusRequests, menu, toast } from "../state/ui";
-import { applyPrefs, prefs, setPref } from "../state/prefs";
+import { closeDialog, closeMenu, dialogs, focusRequests, menu, toast } from "../state/ui";
+import { applyPrefs, closeSide, prefs, setPref, side } from "../state/prefs";
 import { clip } from "../state/clipboard";
 import { runPageCommand } from "../state/bus";
 import { startJobs, watchJobs } from "../state/jobs";
@@ -16,6 +16,7 @@ import { openPalette, palette } from "../state/palette";
 import { lazyPage } from "./lazyPage";
 import { newCloudTask } from "../components/dialogs";
 import { LogoMark } from "../components/Brand";
+import { Icon } from "../components/Icon";
 import { ErrorPanel } from "../components/ui";
 import { showShortcuts } from "../components/dialogs";
 import { NAV_KEYS, Sidebar } from "./Shell";
@@ -162,7 +163,14 @@ export function App() {
   const tabId = useStore(workspaceTabs, state => state.activeId);
   const s = useStore(app, (x) => ({ boot: x.boot, err: x.bootError, accepted: x.disclaimerAccepted, auth: x.auth?.state, sessionEpoch: x.sessionEpoch }));
   const collapsedPref = useStore(prefs, (p) => p.sidebarCollapsed);
+  const mobile = useStore(app, isMobileHost);
+  const currentRoute = useStore(route, state => state.current);
+  const canBack = useStore(workspaceTabs, () => activeTab().at > 0);
   const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.innerWidth < 1000);
+  const [phone, setPhone] = useState(() => typeof window !== "undefined" && window.innerWidth <= 600);
+  const [navOpen, setNavOpen] = useState(false);
+  const drawer = useRef<HTMLDivElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
   // Decided once when boot completes: first run, or signed out at launch.
   const [obActive, setObActive] = useState<boolean | null>(null);
   useGlobalShortcuts();
@@ -172,10 +180,38 @@ export function App() {
     initRouter();
     void boot();
     const mq = window.matchMedia("(max-width: 999px)");
-    const onChange = () => setNarrow(mq.matches);
+    const phoneQuery = window.matchMedia("(max-width: 600px)");
+    const onChange = () => { setNarrow(mq.matches); setPhone(phoneQuery.matches); };
     mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    phoneQuery.addEventListener("change", onChange);
+    return () => { mq.removeEventListener("change", onChange); phoneQuery.removeEventListener("change", onChange); };
   }, []);
+  useEffect(() => setNavOpen(false), [currentRoute, phone]);
+  useEffect(() => {
+    if (!phone || !navOpen) return;
+    drawer.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
+    return () => menuTrigger.current?.focus();
+  }, [navOpen, phone]);
+  useEffect(() => {
+    if (!mobile) return;
+    // The Android activity sends this event for system-back. Frontend routing
+    // remains authoritative; opening the drawer never adds fake history.
+    const back = (event: Event) => {
+      const stack = dialogs.get().stack;
+      if (menu.get().open) { event.preventDefault(); closeMenu(); }
+      else if (palette.get().open) { event.preventDefault(); palette.set({ open: false }); }
+      else if (stack.length) {
+        event.preventDefault();
+        const top = stack[stack.length - 1];
+        if (top.dismissable !== false) closeDialog(top.id);
+      }
+      else if (side.get().panel) { event.preventDefault(); void closeSide(); }
+      else if (navOpen) { event.preventDefault(); setNavOpen(false); }
+      else if (activeTab().at > 0) { event.preventDefault(); navigateHistory(-1); }
+    };
+    window.addEventListener("nekopak:back", back);
+    return () => window.removeEventListener("nekopak:back", back);
+  }, [mobile, navOpen]);
   useEffect(()=>{
     let stop:(()=>void)|undefined;let disposed=false;
     void on("nekopak://desktop/navigate",()=>navigate({page:"transfers",tab:"active"})).then(unlisten=>{if(disposed)unlisten();else stop=unlisten;});
@@ -231,13 +267,32 @@ export function App() {
 
   const showOnboarding = !s.accepted || obActive === true;
   // Narrow windows always use the rail; the user preference applies to wide windows.
-  const collapsed = narrow || collapsedPref;
+  const collapsed = !phone && (narrow || collapsedPref);
 
   return (
-    <div class={`app${collapsed ? " rail" : ""}`}>
+    <div class={`app${collapsed ? " rail" : ""}${mobile ? " mobile-host" : ""}${phone && navOpen ? " nav-open" : ""}`}>
       <a class="skip-link" href="#main">{tr("跳到主要内容")}</a>
-      <Sidebar collapsed={collapsed} />
-      <main id="main" class="workspace" tabIndex={-1}>
+      {phone ? <header class="mobile-topbar" inert={navOpen || showOnboarding || undefined}>
+        <button ref={menuTrigger} type="button" class="btn btn-quiet btn-icon" aria-label={tr("打开导航")} aria-expanded={navOpen} aria-controls="app-navigation" onClick={() => setNavOpen(true)}><Icon name="menu" /></button>
+        <LogoMark size={24} /><span class="mobile-brand">NekoPak</span>
+        <button type="button" class="btn btn-quiet btn-icon" aria-label={tr("返回上一页")} disabled={!canBack} onClick={() => navigateHistory(-1)}><Icon name="arrowBack" /></button>
+      </header> : null}
+      {phone && navOpen ? <button type="button" class="mobile-scrim" aria-label={tr("关闭导航")} tabIndex={-1} onClick={() => setNavOpen(false)} /> : null}
+      <div ref={drawer} id="app-navigation" class="navigation-shell" role={phone && navOpen ? "dialog" : undefined} aria-modal={phone && navOpen ? "true" : undefined} aria-label={phone ? tr("主导航") : undefined} inert={phone && !navOpen || undefined}
+        onKeyDown={e => {
+          if (!phone || !navOpen) return;
+          if (e.key === "Escape") { e.stopPropagation(); setNavOpen(false); }
+          if (e.key === "Tab") {
+            const items = [...drawer.current!.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]')].filter(el => el.offsetParent !== null);
+            const first = items[0], last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+          }
+        }}>
+        {phone ? <button type="button" class="btn btn-quiet mobile-nav-close" onClick={() => setNavOpen(false)}><Icon name="x" />{tr("关闭导航")}</button> : null}
+        <Sidebar collapsed={collapsed} />
+      </div>
+      <main id="main" class="workspace" tabIndex={-1} inert={phone && navOpen || undefined}>
         <WorkspaceTabs />
         <div class="workspace-panel" id="workspace-panel" role="tabpanel" aria-labelledby={`workspace-tab-${tabId}`}>
           <Page key={`${s.sessionEpoch}:${tabId}`} />

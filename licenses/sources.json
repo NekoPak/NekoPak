@@ -286,5 +286,31 @@
     "url": "https://raw.githubusercontent.com/tauri-apps/tauri/30da1fd6e17de6107ecc850c95dfb16b5729f2dd/LICENSE-MIT",
     "file": "licenses/upstream/tauri-plugin-2.7.1/LICENSE-MIT",
     "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d"
+  },
+  {
+    "name": "cesu8",
+    "version": "1.1.0",
+    "upstream_commit": "f18962a9de5189f21600b7ff2898845157df4447",
+    "url": "https://raw.githubusercontent.com/emk/cesu8-rs/f18962a9de5189f21600b7ff2898845157df4447/COPYRIGHT-RUST.txt",
+    "file": "licenses/upstream/cesu8-1.1.0/COPYRIGHT-RUST.txt",
+    "sha256": "5ca77347e58205d3b543c04a9c5bdd11d20a9f3108a7b246640edffa999b5f35"
+  },
+  {
+    "name": "cesu8",
+    "version": "1.1.0",
+    "upstream_commit": "f18962a9de5189f21600b7ff2898845157df4447",
+    "url": "https://raw.githubusercontent.com/emk/cesu8-rs/f18962a9de5189f21600b7ff2898845157df4447/src/lib.rs",
+    "file": "licenses/upstream/cesu8-1.1.0/COPYRIGHT-CESU8.txt",
+    "sha256": "869f33d1c6a0c94b3200413d8c9ebdfe50351d7f69b250962758400b0d295f3d",
+    "modifications": "License/copyright comment only, original lines 1-8; trailing blank line omitted. No implementation copied."
+  },
+  {
+    "name": "cesu8",
+    "version": "1.1.0",
+    "upstream_commit": "f18962a9de5189f21600b7ff2898845157df4447",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "file": "licenses/upstream/cesu8-1.1.0/LICENSE-APACHE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "selected_license": "Apache-2.0 (one of the crate-declared dual licenses); standard text linked by the pinned source header."
   }
 ]

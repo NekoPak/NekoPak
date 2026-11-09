@@ -1,4 +1,127 @@
 use crate::*;
+
+fn require_desktop_files() -> Result<(), ClientError> {
+    if cfg!(mobile) {
+        Err(ClientError::new(
+            ErrorCode::Unsupported,
+            "此功能需要桌面文件系统；Android 适配尚未完成。",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn transfer_export<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    service: State<'_, Service>,
+    task_id: String,
+) -> Result<bool, ClientError> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri_plugin_fs::{FsExt, OpenOptions};
+        let context = RequestContext::new(Duration::from_secs(45));
+        let scope = service.account_scope(&context).await?;
+        let mut auth_events = service.subscribe_auth();
+        let (name, mut source, length) =
+            service.completed_transfer_file(&task_id, &context).await?;
+        let (send, receive) = tokio::sync::oneshot::channel();
+        app.dialog()
+            .file()
+            .set_file_name(&name)
+            .save_file(move |path| {
+                let _ = send.send(path);
+            });
+        let Some(target) = receive.await.map_err(|_| internal())? else {
+            return Ok(false);
+        };
+        // Account may change while the Android document picker is visible.
+        if service.account_scope(&RequestContext::default()).await? != scope {
+            return Err(ClientError::new(
+                ErrorCode::AuthExpired,
+                "账号已改变，请重新导出。",
+            ));
+        }
+        if !matches!(&target, tauri_plugin_dialog::FilePath::Url(url) if url.scheme() == "content")
+        {
+            return Err(ClientError::new(
+                ErrorCode::PermissionDenied,
+                "请选择系统文档保存位置。",
+            ));
+        }
+        tauri::async_runtime::spawn_blocking(move || {
+            let check_account = |events: &mut Option<
+                tokio::sync::broadcast::Receiver<AuthChangedEvent>,
+            >|
+             -> Result<(), ClientError> {
+                if let Some(events) = events {
+                    if !matches!(
+                        events.try_recv(),
+                        Err(tokio::sync::broadcast::error::TryRecvError::Empty)
+                    ) {
+                        return Err(ClientError::new(
+                            ErrorCode::AuthExpired,
+                            "账号状态已改变，导出已停止；原文件仍保留。",
+                        ));
+                    }
+                }
+                Ok(())
+            };
+            check_account(&mut auth_events)?;
+            let mut options = OpenOptions::new();
+            options.write(true).truncate(true);
+            let mut output = app
+                .fs()
+                .open(target, options)
+                .map_err(|_| ClientError::new(ErrorCode::PermissionDenied, "无法写入所选文件。"))?;
+            use std::io::{Read, Write};
+            let mut copied = 0u64;
+            let mut buffer = vec![0; 256 * 1024];
+            loop {
+                check_account(&mut auth_events)?;
+                let count = source.read(&mut buffer).map_err(|_| internal())?;
+                if count == 0 {
+                    break;
+                }
+                output.write_all(&buffer[..count]).map_err(|_| {
+                    ClientError::new(
+                        ErrorCode::Internal,
+                        "导出失败，目标可能不完整；原下载文件仍保留。",
+                    )
+                })?;
+                copied += count as u64;
+                if copied > length {
+                    break;
+                }
+            }
+            if copied != length {
+                return Err(ClientError::new(
+                    ErrorCode::IntegrityFailed,
+                    "导出长度不符，原下载文件仍保留。",
+                ));
+            }
+            check_account(&mut auth_events)?;
+            output.flush().map_err(|_| internal())?;
+            // Some SAF providers expose a stream rather than a regular file.
+            // Sync real files; successful streaming export is not advertised as
+            // atomic or power-loss safe on arbitrary document providers.
+            if output.metadata().map_err(|_| internal())?.is_file() {
+                output.sync_all().map_err(|_| internal())?;
+            }
+            Ok(true)
+        })
+        .await
+        .map_err(|_| internal())?
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, service, task_id);
+        Err(ClientError::new(
+            ErrorCode::Unsupported,
+            "系统文档导出仅用于 Android。",
+        ))
+    }
+}
 #[tauri::command(rename_all = "snake_case")]
 pub async fn reference_create(
     service: State<'_, Service>,
@@ -95,6 +218,7 @@ pub async fn upload_directory_pick_and_start<R: tauri::Runtime>(
     service: State<'_, Service>,
     parent_id: String,
 ) -> Result<BatchRef, ClientError> {
+    require_desktop_files()?;
     let scope = service.account_scope(&RequestContext::default()).await?;
     let path = crate::download_directory_pick(app, window, service.clone()).await?;
     let Some(path) = path else {
@@ -204,6 +328,7 @@ pub async fn transfer_start_batch(
     idempotency_key: String,
     options: Option<serde_json::Value>,
 ) -> Result<BatchRef, ClientError> {
+    validate_host_destination(&service, &destination)?;
     let options = options
         .map(serde_json::from_value::<nekopak_core::TransferOptions>)
         .transpose()
@@ -354,6 +479,7 @@ pub async fn local_sources_add<R: tauri::Runtime>(
     service: State<'_, Service>,
     path: Option<String>,
 ) -> Result<Option<serde_json::Value>, ClientError> {
+    require_desktop_files()?;
     let path = if let Some(path) = path {
         path
     } else {
@@ -380,15 +506,17 @@ pub async fn upload_pick_and_start<R: tauri::Runtime>(
     service: State<'_, Service>,
     parent_id: String,
 ) -> Result<BatchRef, ClientError> {
+    require_desktop_files()?;
     let scope = service.account_scope(&RequestContext::default()).await?;
     let (send, receive) = tokio::sync::oneshot::channel();
-    app.dialog()
-        .file()
-        .set_parent(&window)
-        .set_title("选择上传文件 / Upload files")
-        .pick_files(move |files| {
-            let _ = send.send(files);
-        });
+    let dialog = app.dialog().file().set_title("选择上传文件 / Upload files");
+    #[cfg(desktop)]
+    let dialog = dialog.set_parent(&window);
+    #[cfg(mobile)]
+    let _ = window;
+    dialog.pick_files(move |files| {
+        let _ = send.send(files);
+    });
     let mut result = BatchRef {
         task_ids: vec![],
         skipped: vec![],
@@ -504,6 +632,7 @@ pub async fn sync_config_save(
     service: State<'_, Service>,
     config: SyncConfig,
 ) -> Result<SyncConfig, ClientError> {
+    require_desktop_files()?;
     service
         .sync_config_save(&config, &RequestContext::new(Duration::from_secs(45)))
         .await
@@ -538,6 +667,7 @@ pub async fn sync_apply(
     plan_id: String,
     confirm_deletes: bool,
 ) -> Result<TaskRef, ClientError> {
+    require_desktop_files()?;
     service
         .sync_apply(
             &plan_id,
@@ -570,15 +700,20 @@ pub async fn player_config_pick<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     window: tauri::WebviewWindow<R>,
 ) -> Result<Option<String>, ClientError> {
+    require_desktop_files()?;
     let (send, receive) = tokio::sync::oneshot::channel();
-    app.dialog()
+    let dialog = app
+        .dialog()
         .file()
-        .set_parent(&window)
         .set_title("选择播放器 / Select player")
-        .add_filter("Windows application", &["exe"])
-        .pick_file(move |file| {
-            let _ = send.send(file);
-        });
+        .add_filter("Windows application", &["exe"]);
+    #[cfg(desktop)]
+    let dialog = dialog.set_parent(&window);
+    #[cfg(mobile)]
+    let _ = window;
+    dialog.pick_file(move |file| {
+        let _ = send.send(file);
+    });
     receive
         .await
         .map_err(|_| internal())?
@@ -595,6 +730,7 @@ pub async fn media_open_external(
     remote_id: String,
     quality_id: Option<String>,
 ) -> Result<serde_json::Value, ClientError> {
+    require_desktop_files()?;
     let settings = service.settings_get()?;
     let player = settings["media"]["player_path"]
         .as_str()

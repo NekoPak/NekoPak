@@ -62,6 +62,7 @@ export interface SyncPlan {
 export interface CommandMap {
   download_directory_pick: {args: Record<string,never>;result:string|null};
   transfer_open_directory: {args:{task_id:string};result:void};
+  transfer_export: {args:{task_id:string};result:boolean};
   verification_status: { args: { verification_id?: string; request_id?: string }; result: {verification_id: string; state: 'pending' | 'verified' | 'expired'; expires_at: string} | null };
   verification_open: { args: {verification_id: string; request_id?: string}; result: void };
   verification_complete: { args: {verification_id: string; request_id?: string}; result: void };

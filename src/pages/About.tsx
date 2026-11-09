@@ -41,7 +41,7 @@ export function AboutContent() {
         <LogoMark size={56} />
         <div>
           <h2 class="about-name">NekoPak</h2>
-          <p class="about-sub">A lightweight, Rust-powered PikPak desktop client</p>
+          <p class="about-sub">A lightweight, Rust-powered PikPak desktop and Android client</p>
           <p class="dim">{tr("版本")}{version ?? "—"}，Pre-alpha</p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export function AboutContent() {
       <p class="dim">{tr("猫箱标志为 NekoPak 原创；界面使用系统字体，未嵌入字体文件。")}</p>
 
       <div class="row-gap pad-top">
-        <Btn tone="tonal" icon="external" label={tr("源码仓库与反馈")} disabled reason={tr("暂未公开")} />
+        <Btn tone="tonal" icon="external" label={tr("源码仓库与反馈")} onClick={() => void openOfficial("https://github.com/NekoPak/NikoPak")} />
         <Btn tone="ghost" icon="external" label={tr("PikPak 官网")} onClick={() => void openOfficial("https://mypikpak.com/")} />
       </div>
     </div>

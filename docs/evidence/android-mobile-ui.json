@@ -1,0 +1,26 @@
+{
+  "scope": "Browser mobile IPC fixture, not device or live service acceptance",
+  "results": [
+    {
+      "name": "mobile IPC UI 360px",
+      "passed": true
+    },
+    {
+      "name": "mobile IPC UI 390px",
+      "passed": true
+    },
+    {
+      "name": "mobile IPC UI 412px",
+      "passed": true
+    },
+    {
+      "name": "mobile sign-in fixture clears password and navigates",
+      "passed": true
+    },
+    {
+      "name": "narrow layout does not infer Android platform",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

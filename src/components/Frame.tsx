@@ -9,7 +9,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { inTauri } from "../lib/transport/tauri";
 import { useStore } from "../lib/store";
-import { app } from "../state/app";
+import { app, hostSupports, isMobileHost } from "../state/app";
 import { navigate } from "../state/route";
 import { closeSide, side } from "../state/prefs";
 import { Icon } from "./Icon";
@@ -26,12 +26,15 @@ async function currentWindow(): Promise<WinApi | null> {
 
 /** Min / max / close. Only functional inside the desktop app; in a browser preview they are disabled. */
 export function WindowControls() {
-  const desktop = inTauri();
+  const mobile = useStore(app, isMobileHost);
+  const windowAvailable = useStore(app, s => hostSupports("desktop_window", s));
+  const desktop = inTauri() && windowAvailable;
   const [max, setMax] = useState(false);
   useEffect(() => {
     if (!desktop) return;
     void currentWindow().then((w) => w?.isMaximized().then(setMax).catch(() => undefined));
   }, [desktop]);
+  if (mobile) return null;
   const reason = tr("浏览器预览中不可用，桌面应用中可用");
   const act = (fn: (w: WinApi) => Promise<unknown>) => () => void currentWindow().then((w) => w && fn(w)).catch(() => toast(tr("窗口操作失败，请重试。"), "error"));
   return (
@@ -132,11 +135,12 @@ export interface PageFrameProps {
 }
 
 export function PageFrame(p: PageFrameProps) {
+  const mobile = useStore(app, isMobileHost);
   return (
     <section class={`pf${p.class ? ` ${p.class}` : ""}`} aria-labelledby="page-title">
-      <header class="pf-caption" data-tauri-drag-region>
+      <header class="pf-caption" data-tauri-drag-region={mobile ? undefined : true}>
         <div class="pf-caption-main">{p.caption}</div>
-        <div class="pf-drag" data-tauri-drag-region />
+        <div class="pf-drag" data-tauri-drag-region={mobile ? undefined : true} />
         {p.captionEnd ? <div class="pf-caption-end">{p.captionEnd}</div> : null}
         <WindowControls />
       </header>

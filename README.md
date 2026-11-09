@@ -1,12 +1,14 @@
 # NekoPak
 
-> A lightweight, Rust-powered PikPak desktop client.
+> A lightweight, Rust-powered PikPak client for desktop and Android.
 >
 > 独立社区项目，非 PikPak 官方客户端，与 PikPak 服务提供者无隶属关系。
 
-**状态：** `Pre-alpha / Desktop integration`（主要文件、上传、媒体、同步与桌面功能已接入Rust；真实服务与全部上游功能仍逐项验收）
-**文档基线：** 2026-11-08
-**平台顺序：** 先稳定 Windows x64 桌面版，随后 Linux / macOS 与 Android。Android 是明确后续适配目标，当前桌面构建不代表手机已适配。
+**状态：** `Pre-alpha / Desktop + Android integration`（Rust 核心与手机宿主已接入；真实服务与全部上游功能仍逐项验收）
+**文档基线：** 2026-11-09
+**平台：** Windows x64 已通过自动构建、签名清单及安装／卸载测试。Android 已接入独立宿主、Keystore 凭据库、小屏界面和 APK 构建流程，完整验收状态见 [Android 说明](docs/ANDROID.md)。Linux / macOS 已有核心 CI，尚未完成桌面验收。
+
+**验收结论：** Windows 打包通过不等于产品功能验收完成。`python scripts/check_parity.py --release` 当前仍拒绝功能对齐发布，24 组必需能力均未完成全部验收。真实账号由用户在应用内验证。
 
 NekoPak 的目标不是再包装一个网页，而是构建具有原生 Rust 核心的轻量云盘管理工具：文件管理、云下载、分段下载、可靠同步、按需缓存、可选的文件系统挂载。UI 采用 **Tauri v2 + 轻量 TypeScript/CSS**，利用 Windows 已有 WebView2；不捆绑 JVM、Chromium、全套 mpv/FFmpeg、Rclone 或 WinFsp。
 
@@ -22,7 +24,7 @@ NekoPak 的目标不是再包装一个网页，而是构建具有原生 Rust 核
 3. **默认不破坏数据：** 先只读浏览和单向备份，再做双向同步。远端不可达、令牌失效、元数据不全时禁止判定文件“已删除”。
 4. **可选组件、完整能力：** 媒体处理和外部后端可按需配置，只有检测通过才启用；最终上游功能对齐版不能用“可选”或小包目标删除媒体、片段、分享等已发布功能。Cloud Files/WinFsp 分别验收。
 5. **公开致谢：** README 及 `THIRD_PARTY_NOTICES.md` 明确注明参考、复用、外部依赖的来源和各自许可证。
-6. **凭据保护：** 应用内邮箱密码登录；密码仅用于当前请求，结束即清除。会话存 Windows 凭据管理器，不保存明文到配置或任务库。不修改系统 Hosts、不绕过账号风控；高级网络功能默认关闭。
+6. **凭据保护：** 应用内邮箱密码登录；密码仅用于当前请求，结束即清除。Windows 会话存系统凭据管理器；Android 使用系统 Keystore 密钥加密后存入不备份的私有目录。不保存明文到配置或任务库。不修改系统 Hosts、不绕过账号风控；高级网络功能默认关闭。
 
 ## 文档导航
 
@@ -105,3 +107,19 @@ DRIVE_FILES_FIX_REPORT.md、LOGIN_FIX_REPORT.md 和 API_MIGRATION_REPORT.md。
 
 发布仓库：[NekoPak/NikoPak](https://github.com/NekoPak/NikoPak)。持续集成与发布签名方案见
 [RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md)。私钥只保存在受保护的本机备份和 GitHub Actions Secrets，源码只包含公钥和工作流。
+
+## Android 构建与当前范围
+
+Android 7.0 / API24 起，首个手机发行目标为 ARM64；x86_64 用于模拟器验收。
+共享 Rust 登录、文件、云任务和媒体核心，使用系统 Android WebView，不捆绑浏览器或 JVM。
+APK 内包含原生代码、Android 宿主和第三方许可材料；手机包大小不套用 Windows Lite 的挑战值。
+
+手机本地下载写入应用私有目录，完成后通过任务菜单的 **导出文件** 调用系统保存选择器。
+卸载应用会删除未导出的私有文件。应用切到后台会暂停本地任务，返回后手动继续；当前没有
+前台服务，不承诺锁屏连续下载。上传、共享目录同步、本地映射、桌面托盘／自启动、
+外部播放器和 Windows 挂载在 Android 上明确禁用，后续适配要求保留。
+
+开发环境需要 JDK21、SDK36、Build Tools36、NDK27.2.12479018，命令与验证证据见
+[docs/ANDROID.md](docs/ANDROID.md)。`android.yml` 生成明确标为 debug 的测试 APK；
+`release.yml` 分别构建 Windows ZIP/Setup.exe 与独立签名的 Android APK。
+Actions 产物与公开 GitHub Release 是两个步骤；未通过功能对齐门禁的版本仅可标为预览。

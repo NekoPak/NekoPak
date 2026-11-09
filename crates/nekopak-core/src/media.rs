@@ -468,6 +468,10 @@ impl AppService {
         };
         self.check_scope(expected_scope, ctx).await?;
         self.save_export(&task.id, &record)?;
+        let _gate = self.download_gate.lock().map_err(|_| invalid())?;
+        if !self.is_foreground() {
+            task.state = TaskState::Paused;
+        }
         let task = self
             .store()?
             .insert(task, task_key.as_deref().map(|k| (k, fp.as_str())))?;
@@ -506,6 +510,9 @@ impl AppService {
         Ok(parent.to_owned())
     }
     pub async fn run_media(self: &Arc<Self>) -> Result<(), ClientError> {
+        if !self.is_foreground() {
+            return Ok(());
+        }
         if self.media_busy.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
@@ -532,11 +539,18 @@ impl AppService {
             return Ok(());
         };
         if task.state == TaskState::Queued {
+            let _gate = self.download_gate.lock().map_err(|_| invalid())?;
+            if !self.is_foreground() || self.store()?.get(&task.id)?.revision != task.revision {
+                return Ok(());
+            }
             task =
                 self.store()?
                     .update(&task, TaskState::Running, task.transferred_bytes.0, None)?;
             self.emit(&task);
         }
+        let Some(_registration) = self.register_transfer_request(&task, &ctx)? else {
+            return Ok(());
+        };
         let service = Arc::downgrade(self);
         let task_id = task.id.clone();
         let control = RenderControl::with_progress(move |done, _| {
@@ -556,12 +570,23 @@ impl AppService {
             .lock()
             .map_err(|_| invalid())?
             .insert(task.id.clone(), control.clone());
-        let result = self.render_export(&task, record, &ctx, &control).await;
+        // Pause can happen before media_controls contains this task. The request
+        // registration above is already visible to pause, so cancellation also
+        // covers source metadata awaits and an otherwise late RenderControl.
+        let result = ctx
+            .run(self.render_export(&task, record, &ctx, &control))
+            .await;
         self.media_controls
             .lock()
             .map_err(|_| invalid())?
             .remove(&task.id);
         if let Err(error) = result {
+            if error.code == ErrorCode::Cancelled && ctx.run(async { Ok(()) }).await.is_err() {
+                // A user may have resumed while this cancelled future was
+                // unwinding. Never fail the newer Running revision. An
+                // independently cancelled source still uses normal handling.
+                return Ok(());
+            }
             let current = self.store()?.get(&task.id)?;
             if matches!(current.state, TaskState::Running | TaskState::Verifying) {
                 let next = self.store()?.update(
@@ -724,4 +749,380 @@ fn enforce_cache_budget(root: &Path, additional: u64) -> Result<(), ClientError>
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use super::*;
+    use async_trait::async_trait;
+    use nekopak_provider::{DownloadChunk, DownloadObserver};
+    use std::sync::atomic::{AtomicBool, AtomicUsize};
+    use tokio::sync::Notify;
+
+    #[derive(Default)]
+    struct HeldScopeProvider {
+        hold_scope: AtomicBool,
+        hold_info: AtomicBool,
+        hold_io: AtomicBool,
+        entered: Notify,
+        release: Notify,
+        io_calls: AtomicUsize,
+    }
+    impl HeldScopeProvider {
+        async fn io_boundary(&self) {
+            if self.hold_io.swap(false, Ordering::SeqCst) {
+                self.entered.notify_one();
+                self.release.notified().await;
+            }
+            self.io_calls.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    fn entry() -> RemoteEntry {
+        RemoteEntry {
+            id: "source".into(),
+            parent_id: Some("root".into()),
+            name: "source.bin".into(),
+            kind: EntryKind::File,
+            size_bytes: DecimalU64(6),
+            modified_at: None,
+            etag: None,
+            hash: None,
+            mime_type: None,
+            starred: None,
+        }
+    }
+    #[async_trait]
+    impl ProviderPort for HeldScopeProvider {
+        fn id(&self) -> BackendId {
+            BackendId::RustCompat
+        }
+        fn supports_downloads(&self) -> bool {
+            true
+        }
+        async fn account_scope(&self) -> Result<String, ClientError> {
+            if self.hold_scope.swap(false, Ordering::SeqCst) {
+                self.entered.notify_one();
+                self.release.notified().await;
+            }
+            Ok("synthetic-scope".into())
+        }
+        async fn discover(&self) -> Result<CapabilityReport, ClientError> {
+            unreachable!()
+        }
+        async fn list(
+            &self,
+            _: &str,
+            _: Option<&str>,
+            _: usize,
+        ) -> Result<Page<RemoteEntry>, ClientError> {
+            unreachable!()
+        }
+        async fn stat(&self, _: &str) -> Result<RemoteEntry, ClientError> {
+            Ok(entry())
+        }
+        async fn quota(&self) -> Result<QuotaReport, ClientError> {
+            unreachable!()
+        }
+        async fn download_info(&self, _: &str) -> Result<DownloadInfo, ClientError> {
+            if self.hold_info.swap(false, Ordering::SeqCst) {
+                self.entered.notify_one();
+                self.release.notified().await;
+            }
+            Ok(DownloadInfo {
+                entry: entry(),
+                identity: "version-one".into(),
+                account_scope: "synthetic-scope".into(),
+            })
+        }
+        async fn download_chunk(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+            _: u64,
+            _: u64,
+            _: DownloadObserver,
+        ) -> Result<DownloadChunk, ClientError> {
+            self.io_boundary().await;
+            Ok(DownloadChunk {
+                bytes: b"abcdef".to_vec(),
+                total: 6,
+            })
+        }
+        async fn upload_prepare(
+            &self,
+            _: &str,
+            _: &str,
+            _: &str,
+        ) -> Result<UploadPrepared, ClientError> {
+            self.io_boundary().await;
+            Err(ClientError::new(
+                ErrorCode::Unsupported,
+                "synthetic upload boundary",
+            ))
+        }
+        async fn media_info(&self, _: &str, _: &str) -> Result<DownloadInfo, ClientError> {
+            self.io_boundary().await;
+            Err(ClientError::new(
+                ErrorCode::Unsupported,
+                "synthetic media boundary",
+            ))
+        }
+    }
+    #[derive(Clone, Copy, Debug)]
+    enum Worker {
+        Download,
+        Upload,
+        Media,
+    }
+    async fn step(app: &Arc<AppService>, worker: Worker) -> Result<(), ClientError> {
+        match worker {
+            Worker::Download => app.tick().await,
+            Worker::Upload => app.run_upload().await,
+            Worker::Media => app.run_media().await,
+        }
+    }
+    async fn running_task(app: &Arc<AppService>, root: &Path, worker: Worker) -> String {
+        match worker {
+            Worker::Download => {
+                let task = app
+                    .transfer_start(
+                        "source",
+                        root.to_str().unwrap(),
+                        Some("download"),
+                        &RequestContext::default(),
+                    )
+                    .await
+                    .unwrap();
+                app.tick().await.unwrap();
+                task.task_id
+            }
+            Worker::Upload => {
+                let source = root.join("upload.bin");
+                std::fs::write(&source, b"abcdef").unwrap();
+                let task = app
+                    .upload_start(
+                        source.to_str().unwrap(),
+                        "root",
+                        "upload",
+                        &RequestContext::default(),
+                    )
+                    .await
+                    .unwrap();
+                app.run_upload().await.unwrap();
+                task.task_id
+            }
+            Worker::Media => {
+                // The scheduler must never reach this synthetic media I/O
+                // boundary after pause. No codec fixture or external oracle is
+                // needed to deterministically exercise its scheduling race.
+                let mut task = new_task(
+                    "source".into(),
+                    TaskKind::SegmentDownload,
+                    Some(DecimalU64(6)),
+                );
+                task.backend = BackendId::RustCompat;
+                task.simulated = false;
+                task.state = TaskState::Running;
+                let plan: ClipPlan = serde_json::from_value(json!({
+                    "source_identity":"version-one","source_bytes":6,
+                    "start_ms":0,"end_ms":1000,"aligned_start_ms":0,"output_duration_ms":1000,
+                    "output_format":"mp4","output_bytes":6,"warnings":[],"header":[],"spans":[]
+                }))
+                .unwrap();
+                app.save_export(
+                    &task.id,
+                    &ExportRecord {
+                        scope: "synthetic-scope".into(),
+                        quality: "original".into(),
+                        plan,
+                        destination: root.join("export.mp4"),
+                        part: root.join("export.part"),
+                        file_identity: None,
+                        result: None,
+                        publish_started: false,
+                    },
+                )
+                .unwrap();
+                app.store().unwrap().insert(task, None).unwrap().id
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn suspension_during_scope_await_does_not_start_late_io_or_fail_resumed_tasks() {
+        for worker in [Worker::Download, Worker::Upload, Worker::Media] {
+            for rapid_resume in [false, true] {
+                let temporary = tempfile::tempdir().unwrap();
+                #[cfg(windows)]
+                let root = temporary.path().to_path_buf();
+                #[cfg(not(windows))]
+                let root = temporary.path().canonicalize().unwrap();
+                let provider = Arc::new(HeldScopeProvider::default());
+                let app = Arc::new(AppService::with_provider(
+                    &root.join("tasks.db"),
+                    provider.clone(),
+                ));
+                let id = running_task(&app, &root, worker).await;
+                assert_eq!(app.task(&id).unwrap().state, TaskState::Running);
+                provider.hold_scope.store(true, Ordering::SeqCst);
+                let worker_app = app.clone();
+                let running = tokio::spawn(async move { step(&worker_app, worker).await });
+                tokio::time::timeout(Duration::from_secs(3), provider.entered.notified())
+                    .await
+                    .unwrap();
+
+                app.set_foreground(false);
+                app.pause_local_transfers().unwrap();
+                assert_eq!(app.task(&id).unwrap().state, TaskState::Paused);
+                if rapid_resume {
+                    app.set_foreground(true);
+                    app.transfer_control(&id, TransferAction::Resume).unwrap();
+                }
+                let expected = app.task(&id).unwrap();
+                provider.release.notify_one();
+                tokio::time::timeout(Duration::from_secs(3), running)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .unwrap();
+
+                assert_eq!(
+                    provider.io_calls.load(Ordering::SeqCst),
+                    0,
+                    "{worker:?} started late I/O"
+                );
+                assert_eq!(
+                    app.task(&id).unwrap(),
+                    expected,
+                    "{worker:?} changed newer task state"
+                );
+                assert!(!root.join("export.part").exists());
+                assert!(app.download_cancellations.lock().unwrap().is_empty());
+                assert!(app.media_controls.lock().unwrap().is_empty());
+
+                // A rejected stale worker must release its registration/busy
+                // state so a subsequent explicit resume can still perform I/O.
+                if !rapid_resume {
+                    app.set_foreground(true);
+                    app.transfer_control(&id, TransferAction::Resume).unwrap();
+                }
+                step(&app, worker).await.unwrap();
+                step(&app, worker).await.unwrap();
+                assert!(
+                    provider.io_calls.load(Ordering::SeqCst) > 0,
+                    "{worker:?} stayed wedged after resume"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn suspension_cancels_registered_io_and_removes_all_worker_registrations() {
+        for worker in [Worker::Download, Worker::Upload, Worker::Media] {
+            let temporary = tempfile::tempdir().unwrap();
+            #[cfg(windows)]
+            let root = temporary.path().to_path_buf();
+            #[cfg(not(windows))]
+            let root = temporary.path().canonicalize().unwrap();
+            let provider = Arc::new(HeldScopeProvider::default());
+            let app = Arc::new(AppService::with_provider(
+                &root.join("tasks.db"),
+                provider.clone(),
+            ));
+            let id = running_task(&app, &root, worker).await;
+            provider.hold_io.store(true, Ordering::SeqCst);
+            let worker_app = app.clone();
+            let running = tokio::spawn(async move { step(&worker_app, worker).await });
+            tokio::time::timeout(Duration::from_secs(3), provider.entered.notified())
+                .await
+                .unwrap();
+            assert!(app.download_cancellations.lock().unwrap().contains_key(&id));
+            app.set_foreground(false);
+            app.pause_local_transfers().unwrap();
+            // The provider intentionally never releases the blocked I/O. Only
+            // the registered cancellation can allow the worker to return.
+            tokio::time::timeout(Duration::from_secs(3), running)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            assert_eq!(provider.io_calls.load(Ordering::SeqCst), 0);
+            assert_eq!(app.task(&id).unwrap().state, TaskState::Paused);
+            assert!(app.download_cancellations.lock().unwrap().is_empty());
+            assert!(app.media_controls.lock().unwrap().is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn creation_completing_after_background_sweep_is_paused_until_explicit_resume() {
+        for worker in [Worker::Download, Worker::Upload] {
+            let temporary = tempfile::tempdir().unwrap();
+            #[cfg(windows)]
+            let root = temporary.path().to_path_buf();
+            #[cfg(not(windows))]
+            let root = temporary.path().canonicalize().unwrap();
+            let provider = Arc::new(HeldScopeProvider::default());
+            let app = Arc::new(AppService::with_provider(
+                &root.join("tasks.db"),
+                provider.clone(),
+            ));
+            let source = root.join("upload.bin");
+            std::fs::write(&source, b"abcdef").unwrap();
+            match worker {
+                Worker::Download => provider.hold_info.store(true, Ordering::SeqCst),
+                Worker::Upload => provider.hold_scope.store(true, Ordering::SeqCst),
+                Worker::Media => unreachable!(),
+            }
+            let creator = app.clone();
+            let destination = root.clone();
+            let creation = tokio::spawn(async move {
+                match worker {
+                    Worker::Download => {
+                        creator
+                            .transfer_start(
+                                "source",
+                                destination.to_str().unwrap(),
+                                Some("late"),
+                                &RequestContext::default(),
+                            )
+                            .await
+                    }
+                    Worker::Upload => {
+                        creator
+                            .upload_start(
+                                source.to_str().unwrap(),
+                                "root",
+                                "late",
+                                &RequestContext::default(),
+                            )
+                            .await
+                    }
+                    Worker::Media => unreachable!(),
+                }
+            });
+            tokio::time::timeout(Duration::from_secs(3), provider.entered.notified())
+                .await
+                .unwrap();
+            app.set_foreground(false);
+            app.pause_local_transfers().unwrap();
+            assert!(app.transfers_list(None, None).unwrap().items.is_empty());
+            provider.release.notify_one();
+            let task = tokio::time::timeout(Duration::from_secs(3), creation)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Paused);
+            app.set_foreground(true);
+            step(&app, worker).await.unwrap();
+            assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Paused);
+            assert_eq!(provider.io_calls.load(Ordering::SeqCst), 0);
+            app.transfer_control(&task.task_id, TransferAction::Resume)
+                .unwrap();
+            step(&app, worker).await.unwrap();
+            step(&app, worker).await.unwrap();
+            assert!(provider.io_calls.load(Ordering::SeqCst) > 0);
+        }
+    }
 }

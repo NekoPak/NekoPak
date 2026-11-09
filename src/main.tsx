@@ -8,6 +8,7 @@ import "./styles/shell.css";
 import "./styles/components.css";
 import "./styles/pages.css";
 import "./styles/features.css";
+import "./styles/mobile.css";
 
 const root = document.getElementById("app");
 setLanguage(language.get().preference);

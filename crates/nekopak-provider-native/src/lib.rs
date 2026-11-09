@@ -177,6 +177,19 @@ pub struct NativeProvider {
     auth_events: broadcast::Sender<AuthChangedEvent>,
 }
 impl NativeProvider {
+    /// Explicit offline Android acceptance only. Exercises the actual Rust-JNI
+    /// bridge from a native worker with unique synthetic records; no HTTP or
+    /// account data is accessed. This API does not exist in release builds.
+    #[cfg(all(target_os = "android", debug_assertions))]
+    pub fn android_vault_self_test() -> Result<(), ClientError> {
+        std::thread::Builder::new()
+            .name("nekopak-vault-selftest".into())
+            .spawn(vault::android_self_test)
+            .map_err(|_| error(ErrorCode::Internal, "Android 凭据库离线自检未完成。"))?
+            .join()
+            .map_err(|_| error(ErrorCode::Internal, "Android 凭据库离线自检未完成。"))?
+    }
+
     /// Isolated development harness only. Not compiled into release; never uses the OS vault.
     #[cfg(debug_assertions)]
     pub fn synthetic_loopback(origin: &str) -> Result<Self, ClientError> {
@@ -333,7 +346,7 @@ impl NativeProvider {
             profile,
             http,
             vault: Arc::new(OsVault { target }),
-            vault_supported: cfg!(windows),
+            vault_supported: cfg!(any(windows, target_os = "android")),
             session: Mutex::new(Session::default()),
             auth_events,
         })

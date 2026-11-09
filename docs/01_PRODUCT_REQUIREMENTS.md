@@ -8,7 +8,7 @@
 
 ## 1. 项目定位
 
-**NekoPak** 是社区独立开发的轻量 PikPak 桌面客户端。它以 Rust 核心、高可靠文件操作、可选择的授权接入后端为基础，逐步提供无缝同步与虚拟盘挂载功能。桌面版优先 Windows x64，随后 Linux x64/macOS。
+**NekoPak** 是社区独立开发的轻量 PikPak 桌面客户端。它以 Rust 核心、高可靠文件操作、可选择的授权接入后端为基础，逐步提供无缝同步与虚拟盘挂载功能。桌面版优先 Windows x64，随后 Linux x64/macOS；Android已进入宿主与APK集成，独立设备验收见ANDROID.md。
 
 ### 用户价值
 

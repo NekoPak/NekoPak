@@ -41,7 +41,57 @@ fn io_fault(e: std::io::Error) -> ClientError {
     )
 }
 
+/// Registration lives for exactly one worker step, including when its future
+/// is dropped. The same gate as pause/cancel closes the late-registration race.
+pub(crate) struct TransferRequest<'a> {
+    service: &'a AppService,
+    id: String,
+}
+impl Drop for TransferRequest<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut requests) = self.service.download_cancellations.lock() {
+            requests.remove(&self.id);
+        }
+    }
+}
+
 impl AppService {
+    pub(crate) fn register_transfer_request(
+        &self,
+        task: &TransferTask,
+        context: &RequestContext,
+    ) -> Result<Option<TransferRequest<'_>>, ClientError> {
+        let _gate = self
+            .download_gate
+            .lock()
+            .map_err(|_| fault(ErrorCode::Internal, "下载队列暂不可用。"))?;
+        {
+            let mut requests = self
+                .download_cancellations
+                .lock()
+                .map_err(|_| fault(ErrorCode::Internal, "下载队列暂不可用。"))?;
+            if requests.contains_key(&task.id) {
+                return Ok(None);
+            }
+            requests.insert(task.id.clone(), context.clone());
+        }
+        let registration = TransferRequest {
+            service: self,
+            id: task.id.clone(),
+        };
+        let current = self.store()?.get(&task.id)?;
+        if !self.is_foreground()
+            || current.revision != task.revision
+            || !matches!(
+                current.state,
+                TaskState::Running | TaskState::Retrying | TaskState::Verifying
+            )
+        {
+            context.cancel();
+            return Ok(None);
+        }
+        Ok(Some(registration))
+    }
     pub(crate) fn download_scope(&self, id: &str) -> Result<String, ClientError> {
         Ok(self.download_record(id)?.scope)
     }
@@ -156,6 +206,13 @@ impl AppService {
                 file_identity: None,
             },
         )?;
+        let _gate = self
+            .download_gate
+            .lock()
+            .map_err(|_| fault(ErrorCode::Internal, "下载队列暂不可用。"))?;
+        if !self.is_foreground() {
+            task.state = TaskState::Paused;
+        }
         let task = self
             .store()?
             .insert(task, key.as_deref().map(|key| (key, fingerprint.as_str())))?;
@@ -258,7 +315,47 @@ impl AppService {
         let _parents = lock_parents(parent)?;
         Ok(parent.to_owned())
     }
+    /// Resolve only a completed task belonging to the current account. The
+    /// returned read-only handle pins the validated file across a system picker.
+    pub async fn completed_transfer_file(
+        &self,
+        id: &str,
+        context: &RequestContext,
+    ) -> Result<(String, File, u64), ClientError> {
+        let task = self.store()?.get(id)?;
+        if task.state != TaskState::Completed
+            || task.simulated
+            || !matches!(task.kind, TaskKind::Download | TaskKind::SegmentDownload)
+        {
+            return Err(fault(ErrorCode::Conflict, "只能导出已完成的本地下载。"));
+        }
+        let directory = self.transfer_directory(id, context).await?;
+        let destination = task
+            .destination
+            .as_deref()
+            .map(Path::new)
+            .ok_or_else(|| fault(ErrorCode::IntegrityFailed, "下载路径记录缺失。"))?;
+        if destination.parent() != Some(directory.as_path()) {
+            return Err(fault(ErrorCode::IntegrityFailed, "下载路径记录不一致。"));
+        }
+        let file = crate::local::open_readonly(destination)?;
+        let length = file.metadata().map_err(io_fault)?.len();
+        if task.total_bytes != Some(DecimalU64(length)) || task.transferred_bytes.0 != length {
+            return Err(fault(
+                ErrorCode::IntegrityFailed,
+                "下载文件长度已改变，未导出。",
+            ));
+        }
+        let name = destination
+            .file_name()
+            .and_then(|v| v.to_str())
+            .ok_or_else(|| fault(ErrorCode::IntegrityFailed, "下载文件名无效。"))?;
+        Ok((name.into(), file, length))
+    }
     pub(super) async fn tick_native_download(&self) -> Result<(), ClientError> {
+        if !self.is_foreground() {
+            return Ok(());
+        }
         let active = self.store()?.active()?;
         let Some(task) = active
             .into_iter()
@@ -320,6 +417,13 @@ impl AppService {
             ));
         }
         if task.state == TaskState::Queued {
+            let _gate = self
+                .download_gate
+                .lock()
+                .map_err(|_| fault(ErrorCode::Internal, "下载队列暂不可用。"))?;
+            if !self.is_foreground() || self.store()?.get(&task.id)?.revision != task.revision {
+                return Ok(());
+            }
             let updated =
                 self.store()?
                     .update(task, TaskState::Running, task.transferred_bytes.0, None)?;
@@ -402,12 +506,11 @@ impl AppService {
             BLOCK
         };
         let bytes = if start < download.total {
-            let observer = self.download_rates.start(&task.id, task.revision.0, start);
             let context = RequestContext::new(std::time::Duration::from_secs(90));
-            self.download_cancellations
-                .lock()
-                .map_err(|_| fault(ErrorCode::Internal, "下载队列暂不可用。"))?
-                .insert(task.id.clone(), context.clone());
+            let Some(_registration) = self.register_transfer_request(task, &context)? else {
+                return Ok(());
+            };
+            let observer = self.download_rates.start(&task.id, task.revision.0, start);
             let result = context
                 .run(self.provider.download_chunk(
                     &task.remote_id,
@@ -418,10 +521,6 @@ impl AppService {
                     observer,
                 ))
                 .await;
-            self.download_cancellations
-                .lock()
-                .map_err(|_| fault(ErrorCode::Internal, "下载队列暂不可用。"))?
-                .remove(&task.id);
             let chunk = result?;
             if chunk.total != download.total || chunk.bytes.is_empty() {
                 return Err(fault(ErrorCode::IntegrityFailed, "下载长度发生变化。"));
@@ -681,7 +780,41 @@ pub(crate) fn publish(file: &File, part: &Path, destination: &Path) -> Result<()
         }
         Ok(())
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "android")]
+    {
+        // Android SELinux forbids hard links in app_data_file. renameat2's
+        // NOREPLACE flag gives atomic publication without ever overwriting an
+        // existing destination. syscall avoids a newer Bionic symbol on API24.
+        use std::os::unix::ffi::OsStrExt;
+        let source = std::ffi::CString::new(part.as_os_str().as_bytes())
+            .map_err(|_| fault(ErrorCode::Conflict, "下载路径无效。"))?;
+        let target = std::ffi::CString::new(destination.as_os_str().as_bytes())
+            .map_err(|_| fault(ErrorCode::Conflict, "下载路径无效。"))?;
+        file.sync_all().map_err(io_fault)?;
+        // SAFETY: both NUL-terminated paths live through the syscall; flags and
+        // directory descriptors are the platform's constants, no pointers escape.
+        let result = unsafe {
+            libc::syscall(
+                libc::SYS_renameat2,
+                libc::AT_FDCWD,
+                source.as_ptr(),
+                libc::AT_FDCWD,
+                target.as_ptr(),
+                libc::RENAME_NOREPLACE,
+            )
+        };
+        if result != 0 {
+            return Err(io_fault(std::io::Error::last_os_error()));
+        }
+        File::open(
+            destination
+                .parent()
+                .ok_or_else(|| fault(ErrorCode::Conflict, "下载路径无效。"))?,
+        )
+        .and_then(|directory| directory.sync_all())
+        .map_err(io_fault)
+    }
+    #[cfg(all(not(windows), not(target_os = "android")))]
     {
         let _ = file;
         std::fs::hard_link(part, destination).map_err(io_fault)?;
@@ -717,7 +850,10 @@ pub(crate) fn file_identity(file: &File) -> Result<String, ClientError> {
 }
 
 pub(crate) fn lock_parents(directory: &Path) -> Result<Vec<File>, ClientError> {
+    #[cfg(windows)]
     let mut parents = Vec::new();
+    #[cfg(not(windows))]
+    let parents = Vec::new();
     let mut current = PathBuf::new();
     for component in directory.components() {
         current.push(component);
@@ -878,6 +1014,51 @@ mod tests {
             app.tick().await.unwrap();
         }
         panic!("download did not finish: {:?}", app.task(id).unwrap());
+    }
+    #[tokio::test]
+    async fn completed_export_requires_finished_current_account_and_unchanged_length() {
+        let (directory, provider, app, task) = setup(127).await;
+        let context = RequestContext::default();
+        assert_eq!(
+            app.completed_transfer_file(&task.task_id, &context)
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::Conflict
+        );
+        finish(&app, &task.task_id).await;
+        let (name, mut handle, length) = app
+            .completed_transfer_file(&task.task_id, &context)
+            .await
+            .unwrap();
+        assert_eq!(name, "真实下载样本.bin");
+        assert_eq!(length, 127);
+        let mut bytes = vec![];
+        handle.read_to_end(&mut bytes).unwrap();
+        assert_eq!(bytes, provider.bytes);
+        drop(handle);
+        *provider.scope.lock().unwrap() = "account-b".into();
+        assert_eq!(
+            app.completed_transfer_file(&task.task_id, &context)
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::PermissionDenied
+        );
+        *provider.scope.lock().unwrap() = "account-a".into();
+        OpenOptions::new()
+            .append(true)
+            .open(directory.path().join(&name))
+            .unwrap()
+            .write_all(b"changed-after-download")
+            .unwrap();
+        assert_eq!(
+            app.completed_transfer_file(&task.task_id, &context)
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::IntegrityFailed
+        );
     }
     #[tokio::test]
     async fn real_bytes_survive_pause_network_failure_and_restart() {

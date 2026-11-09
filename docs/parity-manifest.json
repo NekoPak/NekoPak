@@ -293,15 +293,20 @@
     {
       "id": "other_platforms",
       "title": "Android/Windows ARM64/macOS/Linux",
-      "status": "planned",
+      "status": "partial",
       "mandatory_windows": false,
-      "acceptance": "各平台单独矩阵，未测试不宣称支持，不从长期范围删除",
-      "evidence": []
+      "acceptance": "Android独立宿主和APK、模拟器原生测试已落地；物理ARM64/真实账号及完整功能仍单独验收。Linux/macOS仅核心CI通过；Windows ARM64尚待适配。",
+      "evidence": [
+        "docs/ANDROID.md",
+        "docs/ANDROID_RESEARCH.md",
+        "docs/evidence/android-native-e2e.json",
+        "docs/evidence/android-vault-tests.json"
+      ]
     }
   ],
   "implementation_update": {
-    "date": "2026-11-08",
+    "date": "2026-11-09",
     "direction": "official CLI removed; rust_compat direct API + native sign-in",
-    "scope": "Integrated Rust native cloud/share/upload/media/sync/local and Windows mounts, five-language UI. Broad offline and isolated native verification, full service/upstream/platform acceptance still separate. Android explicitly follows desktop stabilization."
+    "scope": "Windows packaging/install/uninstall verified; Android native host, secure vault, responsive UI, SAF export and APK pipeline integrated. Android simulator synthetic lifecycle/download/export tests pass; live service, physical devices and all upstream parity remain incomplete."
   }
 }

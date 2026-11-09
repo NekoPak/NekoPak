@@ -8,7 +8,7 @@ import { ERROR_COPY, diagnosticsText } from "../lib/errors";
 import { formatBytes, formatDateTime, formatDuration, formatEta, formatRelative, formatSpeed, groupDigits, parseU64, percent } from "../lib/format";
 import { splitName } from "../lib/names";
 import { useStore } from "../lib/store";
-import { app, gate, updateSettings } from "../state/app";
+import { app, gate, hostSupports, isMobileHost, updateSettings } from "../state/app";
 import { navigate } from "../state/route";
 import { loadSnapshot, transfers } from "../state/transfers";
 import { openMenu, toast } from "../state/ui";
@@ -46,6 +46,16 @@ async function control(t: TransferTaskExt, action: TransferAction): Promise<void
 
 function TaskActions({ t }: { t: TransferTaskExt }) {
   const desktop = useStore(app, s => s.runtime === "tauri");
+  const canOpenDirectory = useStore(app, s => hostSupports("transfer_open_directory", s));
+  const canExport = useStore(app, s => s.app?.feature_flags.transfer_export === true);
+  const [exporting, setExporting] = useState(false);
+  const exportFile = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try { if (await api.transferExport(t.id)) toast(tr("文件已导出"), "success"); }
+    catch (error) { toast(errorOf(error).message, "error"); }
+    finally { setExporting(false); }
+  };
   const cloud = t.kind === "cloud_download";
   const active = ACTIVE_STATES.has(t.state);
   const g = gate(cloud ? "cloud_task" : t.kind === "upload" ? "upload" : "download");
@@ -64,7 +74,8 @@ function TaskActions({ t }: { t: TransferTaskExt }) {
           const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
           openMenu(r.right - 240, r.bottom + 4, [
             { id: "cancel", label: tr("取消任务"), icon: "x", disabled: !active, reason: tr("任务已结束"), run: () => void control(t, "cancel") },
-            { id: "open", label: cloud ? tr("在网盘中查看") : tr("打开所在文件夹"), icon: "folder", disabled: cloud ? t.state !== "completed" : !desktop || t.simulated || !t.destination, reason: cloud ? tr("完成后可查看") : tr("此任务没有本地下载目录"), run: () => cloud ? navigate({ page: "files", folder: ROOT_ID }) : void api.transferOpenDirectory(t.id).catch(e=>toast(errorOf(e).message,"error")) },
+            ...(canExport && (t.kind === "download" || t.kind === "segment_download") ? [{ id: "export", label: tr("导出文件"), icon: "download", disabled: exporting || t.state !== "completed" || !!t.simulated, reason: exporting ? tr("正在导出") : tr("下载完成后可导出"), run: () => void exportFile() }] : []),
+            { id: "open", label: cloud ? tr("在网盘中查看") : tr("打开所在文件夹"), icon: "folder", disabled: cloud ? t.state !== "completed" : !desktop || !canOpenDirectory || t.simulated || !t.destination, reason: cloud ? tr("完成后可查看") : !canOpenDirectory ? tr("请使用导出文件保存到手机") : tr("此任务没有本地下载目录"), run: () => cloud ? navigate({ page: "files", folder: ROOT_ID }) : void api.transferOpenDirectory(t.id).catch(e=>toast(errorOf(e).message,"error")) },
             { id: "diag", label: tr("复制诊断信息"), icon: "copy", separatorBefore: true, disabled: !t.error, reason: tr("任务没有错误"), run: () => t.error && void copyWithToast(diagnosticsText(t.error, `task=${t.id}`), tr("诊断信息")) },
           ], t.name ?? t.id);
         }} />
@@ -239,6 +250,7 @@ function TransfersFooter({ tasks }: { tasks: TransferTaskExt[] }) {
 }
 
 export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
+  const mobile = useStore(app, isMobileHost);
   const st = useStore(transfers, (s) => s);
   const jobMap = useStore(jobs, (j) => j.jobs);
   const jobRows = useMemo(() => [...jobMap.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)), [jobMap]);
@@ -303,6 +315,7 @@ export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
       </>}
       footer={<TransfersFooter tasks={all} />}
     >
+      {mobile ? <p class="mobile-transfer-note">{tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
       {st.phase === "error" && st.error ? (
         <div class="canvas-pad"><ErrorPanel error={st.error} onRetry={() => void loadSnapshot()} context="transfers_list" /></div>
       ) : st.phase === "loading" || st.phase === "idle" ? (

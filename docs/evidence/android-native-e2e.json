@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-09",
+  "platform": "Android15/API35 x86_64 isolated emulator",
+  "serial": "emulator-5580",
+  "checks": [
+    {
+      "name": "Rust JNI AndroidKeyStore synthetic roundtrip, accounts and auxiliary records",
+      "result": "passed"
+    },
+    {
+      "name": "Native sign-in, validation redaction and file list via loopback",
+      "result": "passed"
+    },
+    {
+      "name": "Activity background pauses local bytes; no further range requests",
+      "result": "passed"
+    },
+    {
+      "name": "Process restart preserves queue/bytes and explicit resume completes",
+      "result": "passed"
+    },
+    {
+      "name": "Downloaded bytes match original SHA256",
+      "result": "passed"
+    },
+    {
+      "name": "Real Android document picker cancellation preserves original",
+      "result": "passed"
+    },
+    {
+      "name": "Real SAF save exports matching bytes to shared Downloads",
+      "result": "passed"
+    },
+    {
+      "name": "Actual Android WebView has no horizontal page overflow",
+      "result": "passed"
+    }
+  ],
+  "network": "synthetic loopback only; no real account",
+  "pending": [
+    "physical ARM64",
+    "real login/CAPTCHA",
+    "arbitrary document providers"
+  ]
+}

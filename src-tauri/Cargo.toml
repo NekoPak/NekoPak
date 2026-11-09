@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 default-run = "nekopak"
 
+[lib]
+name = "nekopak_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [[bin]]
 name = "nekopak"
 path = "src/main.rs"
@@ -14,7 +18,7 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2.7"
 nekopak-core.workspace = true
 nekopak-domain.workspace = true
@@ -25,6 +29,12 @@ serde_json.workspace = true
 tokio.workspace = true
 zeroize.workspace = true
 tauri-plugin-dialog = "2"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-fs = "2.7"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_Registry", "Win32_Foundation", "Win32_Security"] }

@@ -187,6 +187,7 @@ export const api = {
   uploadDirectoryPickAndStart: (parent_id: string) => call("upload_directory_pick_and_start", { parent_id }),
   downloadDirectoryPick: () => call("download_directory_pick",undefined),
   transferOpenDirectory: (task_id:string) => call("transfer_open_directory",{task_id}),
+  transferExport: (task_id:string) => call("transfer_export",{task_id}),
   verificationStatus: (verification_id?: string) => call("verification_status", { verification_id }),
   verificationOpen: (verification_id: string) => call("verification_open", { verification_id }),
   verificationComplete: (verification_id: string) => call("verification_complete", { verification_id }),

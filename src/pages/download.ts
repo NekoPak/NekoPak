@@ -8,7 +8,7 @@ import type { QualityCap, TransferOptions } from "../lib/contract-proposals";
 import { api, errorOf, newIdempotencyKey } from "../lib/api";
 import { ERROR_COPY } from "../lib/errors";
 import { fileKind } from "../lib/names";
-import { app, fileGate } from "../state/app";
+import { app, fileGate, hostSupports } from "../state/app";
 import { navigate } from "../state/route";
 import { noteCreated } from "../state/transfers";
 import { toast } from "../state/ui";
@@ -44,7 +44,7 @@ export async function downloadWithOptions(entries: RemoteEntry[], options?: Tran
     return;
   }
   let dir = downloadDir();
-  if(app.get().runtime === "tauri" && app.get().settings?.ask_download_directory) {
+  if(app.get().runtime === "tauri" && hostSupports("directory_picker") && app.get().settings?.ask_download_directory) {
     try {const selected=await api.downloadDirectoryPick(); if(selected===null)return;dir=selected;}
     catch(e){toast(errorOf(e).message,"error");return;}
   }

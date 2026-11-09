@@ -417,3 +417,21 @@ root 与媒体/协议/前端代理按照 docs/09_AGENT_HANDOFF.md 协调本节�
 - autostart_get/set独立宿主命令，Windows仅当前用户Run值，默认不写，用户显式开关时修改。
 
 以上为产品集成契约，不代表真实用户账号、所有格式、所有平台或全部上游功能已验收。
+
+## 14. Android 宿主增量（2026-11-09）
+
+保留全部现有命令形状和 `contract_version`，只追加能力与导出命令。Android 使用同一个
+Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM 密钥封装，
+密文保存在不参与系统备份的私有目录；凭据接口不暴露给 WebView。
+
+- `app_status.features` 追加 `mobile`、`desktop_window`、`tray`、`directory_picker`、
+  `transfer_open_directory`、`transfer_export`、`media_external`、`player_config`、
+  `background_transfers`。Android 的 `mobile/transfer_export=true`，其余这些宿主能力为
+  false。未适配的目录上传、本地目录映射、同步、挂载与外部播放器明确禁用。
+- Android 下载写入应用私有 `Downloads`，不接受任意共享存储路径或 `content://` 假路径。
+  `transfer_export({task_id})->boolean` 只导出当前账号已完成且长度一致的普通/片段下载；
+  系统保存对话框返回的 SAF URI 只留宿主。取消返回 false，写入失败明确报错，原文件保留。
+- Android 暂停活动时阻止启动新的本地任务，并将活动本地任务持久暂停；回到前台后由用户
+  继续。云端任务不因应用切到后台而取消。尚未接入前台服务，不宣称锁屏持续下载。
+- 前端按 Rust 能力判断 Android，不凭窗口宽度推断平台。小屏布局也用于浏览器测试，
+  浏览器样例不能替代 Android APK/Keystore/设备验收。

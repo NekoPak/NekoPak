@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-09",
+  "result": "passed",
+  "passed_tests": 3,
+  "failed_tests": 0,
+  "duration_seconds": 2.844,
+  "environment": {
+    "serial": "emulator-5580",
+    "android_version": "15",
+    "api_level": "35",
+    "abi": "x86_64",
+    "image_revision": "google_apis API35 revision9",
+    "avd": "target/android-smoke-avd/nekopak-smoke-api35.avd",
+    "isolated": true,
+    "headless": true,
+    "hardware_acceleration": "Windows Hypervisor Platform"
+  },
+  "package": "io.nekopak.vaulttest",
+  "runner": "android.test.InstrumentationTestRunner",
+  "command": "adb -s emulator-5580 shell am instrument -w -e class io.nekopak.desktop.SessionVaultTest io.nekopak.vaulttest/android.test.InstrumentationTestRunner",
+  "tests": [
+    {
+      "name": "testRoundtripOverwriteAndDelete",
+      "result": "passed",
+      "checks": [
+        "missing entry returns null",
+        "AES-GCM save/load returns original bytes",
+        "input byte array cleared",
+        "ciphertext does not contain synthetic plaintext",
+        "overwrite creates distinct ciphertext",
+        "delete and repeated delete succeed"
+      ]
+    },
+    {
+      "name": "testCorruptionIsRejectedAndPreserved",
+      "result": "passed",
+      "checks": [
+        "modified ciphertext fails authentication",
+        "corrupt bytes preserved after failed read",
+        "save over corrupt entry rejected",
+        "failed save input cleared"
+      ]
+    },
+    {
+      "name": "testCiphertextCannotMoveToAnotherTarget",
+      "result": "passed",
+      "checks": [
+        "AAD prevents valid ciphertext moved to another hashed target",
+        "original entry remains readable"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "src-tauri/android/SessionVault.kt": "dec1a5a42bd3967df27c40c0e38ae84e76c0d3ecaa703aa6435e0bcc1d027122",
+    "src-tauri/androidTest/SessionVaultTest.kt": "3b63adb391dd5ad6867371d442bd750d4e858e4b1865ce79b90d84a4b1beefeb",
+    "target/android-vault-smoke/vault-test.apk": "ba38baabfd4d5835b5ebc9e34f00317f843dbf39111b5921acaf5968e91437e9"
+  },
+  "boundaries": [
+    "Synthetic unique records only; no real account credentials accessed",
+    "Kotlin Keystore implementation exercised on emulator; does not prove Rust JNI end-to-end through the complete APK",
+    "Self-targeting instrumentation harness isolated from NekoPak production package",
+    "Hardware-backed Keystore/StrongBox not claimed",
+    "No user device or existing emulator modified"
+  ],
+  "additional_checks": {
+    "provider_host_tests": "57 passed,2 ignored",
+    "windows_vault_opt_in": "1 passed; synthetic record cleanup",
+    "provider_host_clippy": "passed -D warnings",
+    "provider_android_arm64_clippy": "passed -D warnings, NDK27.2.12479018 API23",
+    "kotlin_compile": "passed API36, Kotlin2.2.10; deprecated built-in test API warning only"
+  },
+  "raw_result": "io.nekopak.desktop.SessionVaultTest:...\nTest results for InstrumentationTestRunner=...\nTime: 2.844\nOK (3 tests)"
+}

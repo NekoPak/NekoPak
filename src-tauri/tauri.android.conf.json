@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [{ "label": "main", "title": "NekoPak", "useHttpsScheme": false, "create": false }],
+    "security": { "capabilities": ["mobile"] }
+  },
+  "bundle": {
+    "android": { "minSdkVersion": 24, "versionCode": 100 }
+  }
+}

@@ -103,9 +103,16 @@ impl AppService {
             validate(&settings)?;
             settings
         } else {
+            #[cfg(target_os = "android")]
+            let base = self.data_root.clone();
+            #[cfg(not(target_os = "android"))]
             let base = std::env::var_os("USERPROFILE")
                 .map(std::path::PathBuf::from)
                 .unwrap_or_default();
+            #[cfg(target_os = "android")]
+            std::fs::create_dir_all(base.join("Downloads")).map_err(|_| {
+                ClientError::new(ErrorCode::PermissionDenied, "无法创建应用下载目录。")
+            })?;
             json!({"schema_version":1,"theme":"system","language":"system","ask_download_directory":false,"close_to_tray":false,"download_dir":base.join("Downloads").to_string_lossy(),"max_concurrent_transfers":1,"bandwidth_limit_kib_s":0,
                 "cache":{"dir":"","max_bytes":"536870912"},"experimental_network":{"enabled":false,"proxy_mode":"system","proxy_url":"","compatibility_mode":false,"block_access_domains":false,"user_proxy_configured":false,"custom_dns_mode":false,"connection_diagnostics":false},"telemetry":false,
                 "download":{"default_quality":"original","connections_per_task":1},"media":{"player_path":""}})
@@ -184,6 +191,19 @@ impl AppService {
             }
         }
         validate(&settings)?;
+        #[cfg(target_os = "android")]
+        if settings["close_to_tray"] == true
+            || settings["ask_download_directory"] == true
+            || settings["media"]["player_path"]
+                .as_str()
+                .is_some_and(|s| !s.is_empty())
+            || settings["download_dir"].as_str() != self.data_root.join("Downloads").to_str()
+        {
+            return Err(ClientError::new(
+                ErrorCode::Unsupported,
+                "Android 使用应用内下载目录，完成后可导出；桌面设置不可用。",
+            ));
+        }
         settings["experimental_network"]["user_proxy_configured"] = settings
             ["experimental_network"]["proxy_url"]
             .as_str()

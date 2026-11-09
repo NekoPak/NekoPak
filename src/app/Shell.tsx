@@ -2,7 +2,7 @@ import { tr, tx } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { ACTIVE_STATES, ROOT_ID } from "../lib/contract-proposals";
 import { formatBytes, formatSpeed } from "../lib/format";
-import { app, gate, signedIn } from "../state/app";
+import { app, gate, isMobileHost, signedIn } from "../state/app";
 import { dropTarget } from "../components/FileTable";
 import { sendTo } from "../pages/fileActions";
 import { requestRefresh } from "../pages/common";
@@ -108,7 +108,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
 
   return (
     <nav class={`sidebar${collapsed ? " collapsed" : ""}`} aria-label={tr("主导航")}>
-      <div class="sb-head" data-tauri-drag-region>
+      <div class="sb-head" data-tauri-drag-region={isMobileHost(s) ? undefined : true}>
         <LogoMark size={28} />
         <span class="sb-brand">NekoPak</span>
         {demo ? (

@@ -14,16 +14,18 @@
 Authenticode需要单独的受信任代码签名证书/服务。Tauri updater自己的签名、公钥和更新
 manifest也属于独立协议，在实际接入更新器时单独生成并配置，不能拿本清单冒充可自动更新。
 
-Android适配时生成独立keystore，后续同一应用更新必须保留原签名身份。建议Secrets名称：
+Android已生成独立keystore，后续同一应用更新必须保留原签名身份。已配置Secrets名称：
 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、
-`ANDROID_KEY_PASSWORD`。现在尚未初始化手机项目，因此不生成无用keystore或假Android构建。
+`ANDROID_KEY_PASSWORD`。2026-11-09 使用 `scripts/android_signing.py` 生成并配置；
+受保护的本机备份含PKCS12密钥与密码记录，不在仓库、不输出秘密。不可重新生成身份代替升级。
 
 ## Actions
 
 - `windows.yml`：日常Windows检查与预览产物，不使用签名秘密。
-- `release.yml`：手动或v*/parity-*标签触发Windows构建、测试、许可清单、签名及验证，
+- `release.yml`：手动或v*/parity-*标签分别触发Windows和Android构建、测试、许可清单、签名及验证，
   上传Actions artifact。不会自动创建公开Release。parity-*仍受严格功能门禁约束。
 - `portable-core.yml`：Linux/macOS核心测试和native provider编译，不能替代相应桌面真实验收。
+- `android.yml`：PR/main 日常 ARM64 debug APK，不使用发布私钥。debug 产物不可冒充正式签名。
 
 ### 实际产物约定（2026-11-09）
 
@@ -33,8 +35,9 @@ Android适配时生成独立keystore，后续同一应用更新必须保留原�
   开始菜单快捷方式、卸载入口和中繁英日韩安装语言。缺WebView2时下载安装微软引导器，
   不捆绑Chromium或完整WebView2运行时。安装器内容沿用便携目录的许可证资源。
 - `release-manifest.json`：对这两个产物的名称、版本、长度和SHA256签名；公钥单独附带。
-- Android APK在桌面稳定、Android宿主/凭据库/存储/后台任务实际适配后接入工作流，
-  使用独立keystore，不能把Windows EXE改扩展名或把无手机代码的流程说成APK已可用。
+- Android APK由独立宿主和Rust library生成，使用独立keystore。设备验收状态见
+  `ANDROID.md`；缺签名输入直接失败。检查包签名、SDK/ABI、ZIP和ELF16KiB对齐，
+  发布清单另以Ed25519签名，不能将二者混为同一种签名。
 
 Tauri前端资源目前嵌入原生EXE，不属于启动时自解压的打包器。发行目录包含多个文件，
 不代表必须人为拆分Rust/TLS/SQLite库。两种布局的性能要量测启动时间、WebView2整体内存、

@@ -7,6 +7,18 @@ pikpaktui, Bern, or other cloud client's source code was copied or adapted.
 
 ## Incorporated dependencies
 
+Android integration (2026-11-09) uses jni 0.21.1 and ndk-context 0.1.1
+(MIT OR Apache-2.0), the Tauri Android host and dialog/fs/opener Android components,
+Kotlin standard libraries and resolved AndroidX/Material libraries. The owned
+Keystore/JNI/lifecycle/SAF integration was written independently. Generated host
+templates originate from Tauri CLI 2.12.4 commit
+993038c49185307dfc895ab7657d77ca0d5ed7c7; original template paths and toolchain
+overrides are recorded in docs/ANDROID_RESEARCH.md and scripts/android_project.py.
+scripts/package_android.py includes actual Android runtime dependency coordinates,
+available POM/NOTICE/license files and upstream license supplements inside each APK
+and a companion licenses ZIP. Android uses the device WebView/runtime, not bundled
+Chromium or a desktop JVM. No Piko AGPL implementation is incorporated.
+
 The exact resolved versions and checksums are in Cargo.lock and package-lock.json.
 Rust runtime/build components include Tauri, Wry, Tao, serde, serde_json, Tokio,
 async-trait, rusqlite, SQLite (bundled by libsqlite3-sys), time, uuid, sha2, url,
