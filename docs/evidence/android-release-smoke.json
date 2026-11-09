@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-09",
+  "package": "io.nekopak.desktop",
+  "profile": "release",
+  "abi": "arm64-v8a",
+  "environment": "Android15 API35 isolated x86_64 emulator with native ARM64 bridge",
+  "apk_sha256": "059ec2c1397b1d92fa0abb212a7ac0bf90933605a56e31ac4b3d11c0ccb0fcb3",
+  "checks": [
+    "APK installed with preserved release signing identity",
+    "two cold boots",
+    "PID stable >30 seconds",
+    "no Java fatal exception",
+    "login UI visible and enabled with no vault error",
+    "system bar does not overlap brand/login UI"
+  ],
+  "regression_before": "R8 removed Jackson SerializationFeature.values; PluginManager ExceptionInInitializerError (PID8800)",
+  "fix": "Include Android default optimizing Proguard rules; minification remains enabled",
+  "limitations": [
+    "No real account input",
+    "No physical ARM64 device"
+  ]
+}

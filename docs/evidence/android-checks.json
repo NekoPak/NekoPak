@@ -22,7 +22,9 @@
     "native_e2e": "8/8 real WebView/Rust/JNI/lifecycle/download/SAF tests",
     "device": "Isolated Android15/API35 x86_64 emulator-5580; synthetic account and loopback server only",
     "debug_apk_sha256": "86882c74d165fb27dd9e2852502dfc438bb59b6a3bfb9b1bb798a075a0b2720f",
-    "release_startup": "Signed/minified ARM64 APK starts to enabled login page under Android15 emulator ARM translation bridge; no real account."
+    "release_startup": "Signed/minified ARM64 APK starts to enabled login page under Android15 emulator ARM translation bridge; no real account.",
+    "isolated_emulator_cleanup": "Stopped only dedicated NekoPak emulator-5580 after native and signed-release checks; no existing AVD or user device changed.",
+    "release_artifacts": "Local signed ARM64 APK16.53MiB; downloaded Linux CI APK16.52MiB. Both independently verified and launch-tested, distinct hashes recorded."
   },
   "packaging_tests": "12 Android packaging +1 Ed25519 signing +4 parity tests passed",
   "regressions_fixed": [
@@ -37,7 +39,25 @@
   "remaining": [
     "Real account login/CAPTCHA, physical ARM64 and weak networks",
     "Android upload/SAF directory sync and foreground service",
-    "All 24 mandatory Windows parity groups remain partial",
-    "GitHub Actions final run results recorded after remote completion"
-  ]
+    "All 24 mandatory Windows parity groups remain partial"
+  ],
+  "ci": {
+    "source_commit": "df2141c0443861a3c1fa5c282394c9c0245ed1eb",
+    "release_run": "https://github.com/NekoPak/NikoPak/actions/runs/42617478011",
+    "release_result": "success; Windows ZIP+NSIS and Android APK signed, verified and uploaded",
+    "android_preview_run": "https://github.com/NekoPak/NikoPak/actions/runs/42617477353",
+    "previous_windows_release": "https://github.com/NekoPak/NikoPak/actions/runs/42615214358",
+    "previous_windows_result": "signed ZIP/NSIS downloaded and signature+ZIP CRC+EXE digest verified locally",
+    "previous_installer_smoke": "https://github.com/NekoPak/NikoPak/actions/runs/42617082971",
+    "previous_installer_result": "success",
+    "android_result": "success; signed APK, licenses and report generated, verified and uploaded",
+    "android_preview_result": "success",
+    "portable_core": "https://github.com/NekoPak/NikoPak/actions/runs/42617477369",
+    "portable_core_result": "Ubuntu and macOS success",
+    "installer_smoke": "https://github.com/NekoPak/NikoPak/actions/runs/42619426755",
+    "installer_smoke_result": "success",
+    "final_windows_download": "Final Actions Windows ZIP/NSIS downloaded; repository Ed25519 public key verifies both, ZIP CRC and embedded EXE SHA256 verified.",
+    "windows_daily_checks": "https://github.com/NekoPak/NikoPak/actions/runs/42617477382",
+    "windows_daily_status": "Tests, fixture export and browser E2E passed; duplicate unsigned package build running at final evidence snapshot. Signed Windows release and independent installer smoke on same source both succeeded."
+  }
 }

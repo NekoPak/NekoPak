@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-09",
+  "source_commit": "df2141c0443861a3c1fa5c282394c9c0245ed1eb",
+  "run": "https://github.com/NekoPak/NikoPak/actions/runs/42617478011",
+  "job_id": 129160864694,
+  "job_result": "success",
+  "artifact_name": "NekoPak-signed-android-arm64",
+  "downloaded_to": "target/actions-final-android",
+  "verification": {
+    "ed25519_manifest": "passed using repository release/release-signing.pub; APK, report and licenses hashes all covered",
+    "android_apk_signature": "passed with expected existing release identity",
+    "package_identity_sdk_abi": "io.nekopak.desktop; min24,target36,arm64-v8a; non-debug",
+    "zip_crc_and_16k_alignment": "passed",
+    "all_elf_loads_16k": "passed",
+    "native_hash_matches_signed_ci_cargo_report": "passed",
+    "embedded_license_zip_matches_signed_sidecar": "passed"
+  },
+  "apk": {
+    "name": "NekoPak-0.1.0-android-arm64-v8a.apk",
+    "bytes": 17321753,
+    "sha256": "cc3a024fb046ad8f13d357b9134f01bb7fad010507468755e77393f9e5cefd25",
+    "certificate_sha256": [
+      "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
+    ]
+  },
+  "native_libraries": [
+    {
+      "path": "lib/arm64-v8a/libnekopak_app.so",
+      "bytes": 14003976,
+      "sha256": "78b05bca41d6a786006bb89f3b9904f558b8839140cda023d69715e303602cd5",
+      "elf_class": 64,
+      "load_alignments": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "page_size_16k": true
+    }
+  ],
+  "license_inventory": {
+    "scope": "Resolved Android Rust normal dependencies, bundled frontend/assets and Android JVM runtime artifacts; not a legal certification.",
+    "rust_packages": 265,
+    "frontend_packages": 4,
+    "android_packages": 69,
+    "files": 648,
+    "license_text_gaps": []
+  },
+  "build_host": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "device_acceptance": {
+    "result": "passed",
+    "environment": "Dedicated emulator-5580 Android15/API35 x86_64 with ARM64 native bridge",
+    "apk": "Downloaded final Actions APK itself, installed -r using the existing release certificate",
+    "checks": [
+      "cold launch completed",
+      "PID stable for more than 30 seconds",
+      "no AndroidRuntime fatal exception",
+      "actual screenshot visually inspected: login inputs/button enabled, no vault error, safe status/navigation insets"
+    ],
+    "screenshot": "target/android-actions-release-smoke.png",
+    "ui_automation_limit": "Android uiautomator exposed only the WebView container, so the login-text assertion could not be used; screenshot inspected directly instead.",
+    "credentials": "No email, password, token or live account entered",
+    "limitations": [
+      "No physical ARM64 hardware",
+      "No live service/CAPTCHA acceptance"
+    ]
+  },
+  "local_runtime_tested_package_preserved": true
+}

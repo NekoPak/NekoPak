@@ -68,3 +68,17 @@ Windows ACL仅当前用户和SYSTEM可读；保留备份，不要删掉或公开
 [独立安装/卸载检查](https://github.com/NekoPak/NikoPak/actions/runs/42571623607) 在干净Windows runner
 验证实际落盘文件与许可证、EXE哈希、开始菜单快捷方式和卸载清理，全部通过；没有在用户本机安装。
 `installer-smoke.yml` 可在签名发布成功后自动执行，也可指定历史run手动验证，使用独立临时目录。
+
+## Android签名与设备检查（2026-11-09）
+
+最终源提交 `df2141c` 的 [Android检查](https://github.com/NekoPak/NikoPak/actions/runs/42617477353) 和
+[签名发布Android job](https://github.com/NekoPak/NikoPak/actions/runs/42617478011) 已通过。
+从Actions下载实际APK后，使用仓库公钥验清单、Android证书、全部哈希／16KiB对齐／许可证。
+该远端APK以相同签名身份安装到隔离Android15模拟器，并通过冷启动与登录入口显示检查；
+没有输入真实凭据。完整证据 `evidence/android-actions-package.json`。
+Android证书SHA256为 `3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba`，
+用于核对升级身份，公示证书摘要不包含私钥。公开GitHub Release仍是独立发布步骤。
+
+最终 `df2141c` 的 [Windows+Android签名发布](https://github.com/NekoPak/NikoPak/actions/runs/42617478011)
+两个job均成功，ZIP、安装器与APK已上传；随后[最终安装卸载测试](https://github.com/NekoPak/NikoPak/actions/runs/42619426755)通过。
+这些是预览构建与打包验收，没有解除功能对齐门禁或替代真实账号测试。

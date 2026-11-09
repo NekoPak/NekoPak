@@ -1,0 +1,56 @@
+{
+  "application_id": "io.nekopak.desktop",
+  "version_code": "100",
+  "version": "0.1.0",
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "debuggable": false,
+  "certificate_sha256": [
+    "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
+  ],
+  "signature_verified": true,
+  "zip_alignment_16k": true,
+  "native_libraries": [
+    {
+      "path": "lib/arm64-v8a/libnekopak_app.so",
+      "bytes": 14009824,
+      "sha256": "93a079a03164604f31e47ee3c0565051b581e9948691553e526ed7b36e5ab78c",
+      "elf_class": 64,
+      "load_alignments": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "page_size_16k": true
+    }
+  ],
+  "license_inventory": {
+    "scope": "Resolved Android Rust normal dependencies, bundled frontend/assets and Android JVM runtime artifacts; not a legal certification.",
+    "rust_packages": 268,
+    "frontend_packages": 4,
+    "android_packages": 69,
+    "files": 655,
+    "license_text_gaps": []
+  },
+  "license_archive_sha256": "5f43afbd70e80079b8387dd4facb31f0aa8753847e9f000ccf06f20817dd0ca9",
+  "source_sha256": "b0cf8aca8e0bbb7f3bdd29da41cc1b68c887595be2e1196140fa4de474853045",
+  "cargo_native_sha256": "93a079a03164604f31e47ee3c0565051b581e9948691553e526ed7b36e5ab78c",
+  "freshness_checked": true,
+  "freshness_scope": "Native Rust/frontend build inputs and Android host inputs; no reproducible-build claim.",
+  "schema_version": 1,
+  "profile": "release",
+  "abi": "arm64-v8a",
+  "artifact": "NekoPak-0.1.0-android-arm64-v8a.apk",
+  "bytes": 17330797,
+  "sha256": "059ec2c1397b1d92fa0abb212a7ac0bf90933605a56e31ac4b3d11c0ccb0fcb3",
+  "licenses_artifact": "NekoPak-0.1.0-android-arm64-v8a-licenses.zip",
+  "commit": "df2141c0443861a3c1fa5c282394c9c0245ed1eb",
+  "git_worktree_dirty": false,
+  "cargo_lock_sha256": "04f62c740675a620f022b6e89aedc8de89b10977a9aa94c08553964498ea9b8a",
+  "npm_lock_sha256": "ebbd2bfd1b383a049fa1332461faf433f1ddb3965b138d0458ad2b5fdc34c1b3",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "source_apk": "src-tauri/gen/android/app/build/outputs/apk/arm64/release/app-arm64-release.apk",
+  "acceptance": "Build, package structure, licenses, signing and 16 KiB alignment only. Device, service and feature acceptance are recorded separately.",
+  "signing_scope": "Android APK certificate; distinct from Ed25519 release manifest and Windows Authenticode."
+}

@@ -123,3 +123,22 @@ page starts without a vault error. R8 initially removed Jackson enum methods use
 by Tauri; the build now includes Android default ProGuard rules and retains JNI
 classes. The corrected Release starts, remains alive and displays content below
 the status bar. This does not replace a physical ARM64 device test.
+
+## Release build evidence
+
+The runtime-tested local ARM64 APK is `dist/android/NekoPak-0.1.0-android-arm64-v8a.apk`
+(17,330,797 bytes, 16.53 MiB; SHA256 `059ec2c1397b1d92fa0abb212a7ac0bf90933605a56e31ac4b3d11c0ccb0fcb3`).
+Its independent Android certificate and Ed25519 manifest both verify. The package
+contains 268 Rust/69 JVM/4 frontend runtime license records with no text gaps.
+Evidence: `evidence/android-release-package.json`, `evidence/android-release-smoke.json`.
+
+Canonical source commit: `df2141c0443861a3c1fa5c282394c9c0245ed1eb`.
+The [Android preview workflow](https://github.com/NekoPak/NikoPak/actions/runs/42617477353)
+passed. The Android job in the [signed release workflow](https://github.com/NekoPak/NikoPak/actions/runs/42617478011)
+also passed. Its Linux-built APK has a distinct artifact hash; cross-host byte-identical
+reproducibility is not claimed. Release manifests identify exact artifacts.
+
+The downloaded GitHub ARM64 APK was also installed as a same-certificate update
+on the isolated emulator and started to the login page with correct system insets.
+Its exact digest and independent verification are in
+`evidence/android-actions-package.json`; no real credentials were entered.
