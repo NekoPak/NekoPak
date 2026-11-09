@@ -257,7 +257,7 @@ pub(crate) fn open_readonly(path: &Path) -> Result<std::fs::File, ClientError> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0o400000);
+        options.custom_flags(libc::O_NOFOLLOW);
     }
     options.open(path).map_err(|_| invalid())
 }

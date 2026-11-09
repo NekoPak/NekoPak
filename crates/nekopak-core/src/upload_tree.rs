@@ -89,7 +89,7 @@ fn directory_identity(path: &Path) -> Result<String, ClientError> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0o400000);
+        options.custom_flags(libc::O_NOFOLLOW);
     }
     let handle = options.open(path).map_err(|_| damaged())?;
     downloads::file_identity(&handle)

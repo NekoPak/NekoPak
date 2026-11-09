@@ -629,6 +629,7 @@ mod tests {
         }
     }
     #[test]
+    #[ignore = "requires a running Windows Cloud Files filter; run explicitly with native tests"]
     fn ordinary_directory_is_not_a_sync_root() {
         let temp = tempfile::tempdir().unwrap();
         let handle = open_metadata(temp.path(), true).unwrap();

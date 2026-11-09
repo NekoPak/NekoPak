@@ -57,3 +57,8 @@ Cloud Files API 是 Windows SDK API，按微软平台条款使用。本 crate �
 - `cargo test -p nekopak-core --locked mounts::tests --lib`：5 个通过；覆盖账户/版本、配置、并发提交、总取消、Weak 生命周期和 native dispatcher 状态映射。
 
 尚未验收：真实账户大目录与断网后的 CfAPI 错误展示、Explorer 外壳 SyncRootManager 注册/状态图标、手动注销/安全移除 UI、修改/删除条目的非破坏更新策略、脱水和 pin 控件、真实 WinFsp 驱动/播放器随机读取、Linux FUSE。当前实现和上述 smoke 不代表完整挂载/上游功能对齐完成。
+
+2026-11-09 Actions 首跑：Windows Server runner 的普通目录 `CfGetSyncRootInfoByHandle`
+调用返回平台错误，不能把可选过滤驱动当成所有Windows测试机的必备组件。
+`ordinary_directory_is_not_a_sync_root` 因此与注册/水合测试一样显式运行，不以ignore计入通过。
+普通路径/ABI/取消/边界测试继续默认执行，生产路径遇到驱动错误仍明确失败，不返回假“非同步根”。

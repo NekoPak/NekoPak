@@ -640,7 +640,7 @@ pub(crate) fn open_part(path: &Path, create: bool) -> Result<File, ClientError> 
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0o400000);
+        options.custom_flags(libc::O_NOFOLLOW);
     }
     let file = options.open(path).map_err(io_fault)?;
     file.try_lock()

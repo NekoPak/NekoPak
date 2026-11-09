@@ -12,5 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Use a real temporary directory for filesystem safety tests
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/nekopak-tests"
+          echo "TMPDIR=$(cd "$RUNNER_TEMP/nekopak-tests" && pwd -P)" >> "$GITHUB_ENV"
       - run: cargo test -p nekopak-domain -p nekopak-provider -p nekopak-provider-mock -p nekopak-media -p nekopak-core --locked
       - run: cargo check -p nekopak-provider-native --locked

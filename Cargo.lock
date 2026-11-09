@@ -2322,6 +2322,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
+ "libc",
  "nekopak-domain",
  "nekopak-media",
  "nekopak-mount",
