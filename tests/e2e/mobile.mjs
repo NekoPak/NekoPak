@@ -96,6 +96,25 @@ try {
       await row.waitFor();
       assert.equal(await page.locator(".win-controls").count(), 0);
       await assertFits(page, `${width} files`);
+      // A focused selection button owns Enter/Space. Grid keyboard navigation
+      // must not open the focused folder or suppress the button's native click.
+      const folderCheck = row.getByRole("button", { name: "选择 手机测试文件夹", exact: true });
+      await folderCheck.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await folderCheck.getAttribute("aria-pressed"), "true");
+      assert.match(page.url(), /#\/files$/);
+      await page.keyboard.press("Space");
+      assert.equal(await folderCheck.getAttribute("aria-pressed"), "false");
+      assert.match(page.url(), /#\/files$/);
+      await page.getByRole("button", { name: "网格视图", exact: true }).tap();
+      const cardCheck = page.locator('[data-id="folder-a"] .card-check');
+      await cardCheck.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await cardCheck.getAttribute("aria-pressed"), "true");
+      await page.keyboard.press("Space");
+      assert.equal(await cardCheck.getAttribute("aria-pressed"), "false");
+      assert.match(page.url(), /#\/files$/);
+      await page.getByRole("button", { name: "列表视图", exact: true }).tap();
       // Explicit selection never opens the folder; a tap on its name does.
       await row.getByRole("button", { name: "选择 手机测试文件夹", exact: true }).tap();
       assert.equal(await row.getAttribute("aria-selected"), "true");

@@ -178,6 +178,7 @@ function Lead({ entry, selected, onToggle }: { entry: RemoteEntry; selected: boo
         aria-label={tx("选择 {0}", entry.name)}
         aria-pressed={selected}
         onMouseDown={(ev) => ev.stopPropagation()}
+        onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") ev.stopPropagation(); }}
         onClick={(ev) => { ev.stopPropagation(); onToggle(); }}
       >
         <Icon name={selected ? "checkbox" : "checkboxOff"} filled={selected} size={22} />
@@ -470,7 +471,7 @@ export function FileTable(p: FileTableProps) {
             <div class="card-art">
               <KindTile entry={e} size="lg" />
               {isStarred(e) ? <span class="card-star" aria-label={tr("已加星标")}><Icon name="star" size={18} filled /></span> : null}
-              <button type="button" class={`card-check${selected ? " on" : ""}`} aria-label={tx("选择 {0}", e.name)} aria-pressed={selected} onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); toggle(i); }}>
+              <button type="button" class={`card-check${selected ? " on" : ""}`} aria-label={tx("选择 {0}", e.name)} aria-pressed={selected} onMouseDown={(ev) => ev.stopPropagation()} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") ev.stopPropagation(); }} onClick={(ev) => { ev.stopPropagation(); toggle(i); }}>
                 <Icon name={selected ? "checkbox" : "checkboxOff"} filled={selected} size={22} />
               </button>
             </div>
