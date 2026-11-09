@@ -57,3 +57,11 @@ EXE外部播放器不是Android可用功能，须按平台能力分别实现。
 写入NekoPak/NikoPak Actions Secret。本机备份位于用户主目录 `.nekopak-release/`，
 Windows ACL仅当前用户和SYSTEM可读；保留备份，不要删掉或公开。使用已有ZIP实际签名和验签
 通过，测试证明修改包字节或签名覆盖的版本会拒绝。没有创建Windows Authenticode证书。
+
+## 自动构建实测（2026-11-09）
+
+[签名发布工作流](https://github.com/NekoPak/NikoPak/actions/runs/42569659660) 已成功生成便携ZIP和NSIS安装器，
+对两者签名并上传artifact；下载后再次用仓库公钥验签、核对ZIP与内嵌EXE哈希通过。
+[独立安装/卸载检查](https://github.com/NekoPak/NikoPak/actions/runs/42571623607) 在干净Windows runner
+验证实际落盘文件与许可证、EXE哈希、开始菜单快捷方式和卸载清理，全部通过；没有在用户本机安装。
+`installer-smoke.yml` 可在签名发布成功后自动执行，也可指定历史run手动验证，使用独立临时目录。

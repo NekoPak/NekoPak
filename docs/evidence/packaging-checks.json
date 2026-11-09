@@ -57,5 +57,26 @@
   },
   "native_regression": "After Tauri2.12.4 upgrade: native-functional real WebView2/Rust/loopback extended3 flows passed.",
   "remote_run": "https://github.com/NekoPak/NikoPak/actions/runs/42569659660",
-  "remote_result": "Signed desktop release succeeded; ZIP+NSIS+sign+verify+artifact upload all passed."
+  "remote_result": "Signed desktop release succeeded; ZIP+NSIS+sign+verify+artifact upload all passed.",
+  "remote_download_verification": "Downloaded Actions artifact locally; Ed25519 signature verified with repository public key; ZIP CRC and embedded executable hash passed.",
+  "installer_smoke": {
+    "result": "passed",
+    "run": "https://github.com/NekoPak/NikoPak/actions/runs/42571623607",
+    "environment": "Disposable Windows Actions runner; no user-machine install",
+    "checks": [
+      "signed artifact verified before executing",
+      "installed executable SHA256 matches signed portable binary",
+      "license inventory and notices installed",
+      "Start menu shortcut created",
+      "uninstaller removed executable and shortcut after asynchronous completion"
+    ]
+  },
+  "ci": {
+    "signed_release": "https://github.com/NekoPak/NikoPak/actions/runs/42569659660",
+    "signed_result": "success",
+    "windows_checks": "https://github.com/NekoPak/NikoPak/actions/runs/42569636519",
+    "windows_result": "success",
+    "portable_core": "https://github.com/NekoPak/NikoPak/actions/runs/42569636832",
+    "portable_result": "Ubuntu and macOS success"
+  }
 }
