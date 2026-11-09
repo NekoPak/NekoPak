@@ -30,7 +30,7 @@ $uninstaller = Join-Path $installRoot 'uninstall.exe'
 $process = Start-Process -FilePath $uninstaller -ArgumentList '/S' -WindowStyle Hidden -PassThru
 try { if (-not $process.WaitForExit(120000)) { throw 'Uninstaller did not finish in two minutes.' } } finally { $process.Dispose() }
 $deadline = [DateTime]::UtcNow.AddSeconds(30)
-while ((Test-Path -LiteralPath $installedExe) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 250 }
+while (((Test-Path -LiteralPath $installedExe) -or (Test-Path -LiteralPath $shortcut)) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 250 }
 if (Test-Path -LiteralPath $installedExe) { throw 'Uninstaller left the installed executable behind.' }
 if (Test-Path -LiteralPath $shortcut) { throw 'Uninstaller left the Start menu shortcut behind.' }
 Write-Output 'Installer smoke passed: files and licenses, executable hash, shortcut, and uninstall.'
