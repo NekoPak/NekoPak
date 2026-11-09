@@ -31,13 +31,13 @@
   "portable": {
     "name": "NekoPak-0.1.0-windows-x64-portable.zip",
     "bytes": 6864466,
-    "sha256": "52ac3f33a5082aaf6f9b62a032bdd5ec5205d66361d5669f78f6861a73345e4b",
+    "sha256": "db57766fc596083f36847270e9b38d29e23749038a09d5d576929dfdf194ba23",
     "files": 916
   },
   "installer": {
     "name": "NekoPak-0.1.0-windows-x64-setup.exe",
-    "bytes": 4008800,
-    "sha256": "10f271ac57847707fccd28e6dc6ec4816d5c0522dfbfc05ff825022a734554a1",
+    "bytes": 4007669,
+    "sha256": "99fb41ca27c6081f36bf0a28f4aec4ca8dfe61bf65a7ab3094eb1f41c67cb817",
     "type": "NSIS, per-user install, shortcuts and uninstall support",
     "webview2": "Downloads Microsoft bootstrapper only if needed; runtime not bundled",
     "authenticode": false,
@@ -45,5 +45,17 @@
   },
   "runtime": "Embedded native frontend, no runtime self-extraction; WebView2 external; no measured single-file vs split-resource performance claim",
   "android": "APK after desktop stability/mobile adaptation; Android signing distinct",
-  "installation_validation": "NSIS built and generated install/shortcut/uninstall script reviewed; not installed on user machine"
+  "installation_validation": "NSIS built and generated install/shortcut/uninstall script reviewed; not installed on user machine",
+  "signatures": {
+    "manifest": "dist/release-manifest.json",
+    "verified": true,
+    "covered": [
+      "NekoPak-0.1.0-windows-x64-portable.zip",
+      "NekoPak-0.1.0-windows-x64-setup.exe"
+    ],
+    "authenticode": false
+  },
+  "native_regression": "After Tauri2.12.4 upgrade: native-functional real WebView2/Rust/loopback extended3 flows passed.",
+  "remote_run": "https://github.com/NekoPak/NikoPak/actions/runs/42569659660",
+  "remote_result": "Signed desktop release succeeded; ZIP+NSIS+sign+verify+artifact upload all passed."
 }
