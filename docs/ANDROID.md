@@ -60,6 +60,16 @@ Windows without symbolic-link privileges uses the explicit copy build path in
 `scripts/build-android.ps1`; it compiles the current Rust sources before copying
 the library. Do not disable Windows security or silently enable Developer Mode.
 
+```powershell
+./scripts/build-android.ps1 -BuildProfile debug -Target x86_64 -CopyNativeLibrary `
+  -JavaHome '<JDK21 directory>' -AndroidSdk '<Android SDK directory>'
+```
+
+Release uses `-BuildProfile release -Target aarch64` with the four signing inputs
+loaded into that process. Never put passwords in shell arguments or source. The
+Gradle configuration retains standard Android ProGuard rules as well as the native
+JNI keep rules; minification must be tested on an installed Release APK.
+
 ## Signing and Actions
 
 Android release identity is independent of Windows Authenticode, Tauri updater and
@@ -104,3 +114,12 @@ keeps the existing Windows vault namespace and Common Controls manifest intact.
 Mobile browser fixtures: 5/5; desktop browser regression: 57/57; native Windows
 startup: 4/4. Synthetic fixture screenshots are labeled separately from the Android
 WebView capture. Platform-wide production readiness is still not claimed.
+
+## Minified ARM64 release runtime check
+
+The signed, non-debuggable ARM64 APK was installed over the same signing identity
+on the isolated API35 x86_64 emulator using its ARM translation bridge. The login
+page starts without a vault error. R8 initially removed Jackson enum methods used
+by Tauri; the build now includes Android default ProGuard rules and retains JNI
+classes. The corrected Release starts, remains alive and displays content below
+the status bar. This does not replace a physical ARM64 device test.

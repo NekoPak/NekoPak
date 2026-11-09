@@ -21,14 +21,17 @@
     "keystore_instrumentation": "3/3 actual AndroidKeyStore tests",
     "native_e2e": "8/8 real WebView/Rust/JNI/lifecycle/download/SAF tests",
     "device": "Isolated Android15/API35 x86_64 emulator-5580; synthetic account and loopback server only",
-    "debug_apk_sha256": "86882c74d165fb27dd9e2852502dfc438bb59b6a3bfb9b1bb798a075a0b2720f"
+    "debug_apk_sha256": "86882c74d165fb27dd9e2852502dfc438bb59b6a3bfb9b1bb798a075a0b2720f",
+    "release_startup": "Signed/minified ARM64 APK starts to enabled login page under Android15 emulator ARM translation bridge; no real account."
   },
   "packaging_tests": "12 Android packaging +1 Ed25519 signing +4 parity tests passed",
   "regressions_fixed": [
     "Android SELinux denied hard-link publication: use renameat2 NOREPLACE + directory sync",
     "Activity suspension races around asynchronous worker/creation registration",
     "Android WebView starts after Rust managed state",
-    "Preserve Windows vault namespace; embed CommonControls v6 in lib test EXE"
+    "Preserve Windows vault namespace; embed CommonControls v6 in lib test EXE",
+    "R8 default Android keep rules retain Jackson reflected enum methods",
+    "Native content container respects status/navigation/IME insets"
   ],
   "license": "Independent MIT implementation; no AGPL client code; JNI/ndk-context and pinned Tauri-generated host; full runtime dependency notices packaged",
   "remaining": [

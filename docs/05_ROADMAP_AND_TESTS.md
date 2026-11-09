@@ -6,6 +6,11 @@
 和 `parity-manifest.json` 是产品验收基线；本页 M0–M5 是实施顺序。阶段预览可发布，
 但未通过 `scripts/check_parity.py --release` 不得标为功能对齐版。小包优化不能删功能。
 
+**2026-11-09 实际进展：** Windows多文件ZIP／NSIS安装器签名和安装卸载已验证；Android独立
+宿主、Keystore、手机交互、私有下载／SAF导出和签名APK已进入集成验收。模拟器的Rust/JNI/
+文件字节／暂停重启／系统导出检查见 `ANDROID.md`。真实账号、物理ARM64、手机上传／目录同步／
+前台服务仍未完成；原有Windows 24组对齐门禁没有因本轮平台工作而降低。
+
 ## Gate 0 — 来源、许可证、可行性（先于实际编码）
 
 - [ ] 选择路径 A（Piko AGPL Fork）或 B（Rust 独立仓 + 只读 Fork 参考）；以 `04_SOURCES_LICENSES.md` 为依据。

@@ -6,7 +6,8 @@ Windows packaging and installer lifecycle are verified. Android instructions and
 the user's proxy; absence of Hosts blocking is not evidence of proxy-free connectivity.
 
 2026-11-08: the official PikPak CLI adapter has been removed. Desktop uses the
-supplied v3 UI and the Rust `rust_compat` connection. This is an unsigned pre-alpha:
+supplied v3 UI and the Rust `rust_compat` connection. This is a pre-alpha (Windows
+has a signed release manifest, not an Authenticode certificate; Android has an APK certificate):
 real Free/Premium service acceptance is incomplete. DRIVE verification, native file
 operations, read-only share listing, account quota and original-file downloads are
 implemented and tested against an isolated HTTP service. Upload, cloud tasks, shares, archives, native media, safe sync and optional mounts are now wired;

@@ -94,6 +94,10 @@ def prepare(root: Path = ROOT) -> dict:
     }
     buildTypes.getByName("release") {
         signingConfig = signingConfigs.getByName("nekopakRelease")
+        // The upstream template supplies project rules only. Android's default
+        // rules preserve enum values()/valueOf(), runtime annotations and JNI
+        // semantics required by Jackson inside Tauri's PluginManager.
+        proguardFile(getDefaultProguardFile("proguard-android-optimize.txt"))
         // Cargo's release profile already strips symbols. Preserve those exact
         // bytes so packaging can reject a stale or substituted native library.
         packaging.jniLibs.keepDebugSymbols.add("**/libnekopak_app.so")
