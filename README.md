@@ -107,6 +107,8 @@ DRIVE_FILES_FIX_REPORT.md、LOGIN_FIX_REPORT.md 和 API_MIGRATION_REPORT.md。
 
 发布仓库：[NekoPak/NikoPak](https://github.com/NekoPak/NikoPak)。持续集成与发布签名方案见
 [RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md)。私钥只保存在受保护的本机备份和 GitHub Actions Secrets，源码只包含公钥和工作流。
+当前可下载的[0.1.3预览版](https://github.com/NekoPak/NikoPak/releases/tag/v0.1.3)提供Windows
+安装器／便携ZIP和Android ARM64 APK，已发布签名更新源。
 
 ## Android 构建与当前范围
 

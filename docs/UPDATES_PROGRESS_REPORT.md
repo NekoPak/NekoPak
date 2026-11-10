@@ -66,9 +66,50 @@ HEAD，发布工作区必须干净。已有版本／异commit同名tag不可覆�
   0.1.4／104仅存在隔离模拟器测试目录、沿用debug签名，绝不作为公开发行包。
 - `node tests/e2e/android-native.mjs`：17/17，含当前块进度、密码键盘底栏、真实种子SAF、
   JNI Keystore、实际速度、断线恢复、后台暂停、重启恢复、相同SHA256的下载及导出。
+- `node tests/e2e/download-throughput.mjs`：0.1.3本地16MiB样本1,078ms、14.84MiB/s，
+  4个Range复用1条CDN连接、SHA256一致；吞吐修复没有回退。这是本地延迟夹具，非真实网速。
 
 原生测试使用专属Android15/API35 x86_64模拟器和本地合成账号HTTP。release ARM64另通过
-相同签名升级、R8压缩后冷启动验收；最终产物与公开源测试结果在下节落地后记录。
+相同签名升级、R8压缩后冷启动验收，最终结果见下方发布记录。
+
+## 最终发布和公开源验证
+
+源码`f3c2cd840bb4f066ac023dee06b99452288d7c15`的
+[Windows＋Android签名发布](https://github.com/NekoPak/NikoPak/actions/runs/42836719725)全部成功。
+publish job在公开前通过Windows安装／卸载测试；后续
+[独立安装检查](https://github.com/NekoPak/NikoPak/actions/runs/42839794062)也成功。
+同源码的Windows日常检查、Android预览与Linux/macOS核心CI均成功。
+
+公开版本为[NekoPak0.1.3 Preview](https://github.com/NekoPak/NikoPak/releases/tag/v0.1.3)，
+含Windows便携ZIP7,343,623字节、安装器4,266,881字节、ARM64 APK17,653,545字节，
+以及更新签名封套、两平台签名清单、干净构建报告与许可包。tag指向同一源提交，不覆盖旧包。
+APK SHA256为`a4c5053e47dd7d65866e4b75888fa88f2eed482114c117c196996cc3a955917e`；
+安装器SHA256为`9cad4f7d8725d35b39d57519a7ab11fbac365c2ccf8d8e32564349874e594907`。
+Windows无Authenticode；Ed25519清单签名独立有效。
+
+从公开Release重新下载全部资产，无认证读取列表与更新封套，验证内置公钥签名、平台包长度／
+SHA256、ZIP CRC及内嵌EXE、APK原证书、16KiB对齐、图标和许可均通过。R8压缩后的实际
+APK保留UpdateInstaller／UpdateFileProvider类；按编译资源ID核对Provider实际只分享updates/。
+第一次本机GitHub连接超时，更新器如实返回错误且未安装；正常重试后完成，不更换来源或
+关闭任何证书／签名检查。生产Rust测试命令：
+
+```powershell
+cargo test -p nekopak-core --locked --offline --lib updates::tests::public_release_feed_and_package_verify_with_production_trust -- --ignored --nocapture
+```
+
+它只在测试内设置较旧客户端版本，使用真正生产URL与公钥发现0.1.3、下载4,266,881字节、
+再次验签／验哈希通过；不会运行安装器。CI主套件194通过／20 ignored，其中新增这项公开
+网络检查已在发布后单独通过，其余19项维持原环境约束。
+
+同一最终APK在隔离模拟器由0.1.2原地升级到103，保持原签名及中文配置，R8发行版两次冷启动
+稳定。`NEKOPAK_VERIFY_PUBLIC_UPDATE=1 node tests/e2e/android-release.mjs <0.1.3.apk> <0.1.2.apk>`
+还通过真实页面点击“先看看 → 我的 → 关于 → 检查更新”，显示“当前通道没有更高版本”，无需
+账号或debug覆盖。共4/4检查通过，物理ARM64与真实服务仍分开验收。
+
+结构化证据：`evidence/0.1.3-public-update.json`、`0.1.3-android-package.json`、
+`0.1.3-windows-package.json`、`0.1.3-android-release-runtime.json`、`updates-checks.json`。
+最终APK原生截图为`screenshots/android/release-public-update-0.1.3.png`，合成更新与进度
+截图明确标为fixture；原生系统安装确认是独立测试候选，未发布测试用0.1.4。
 
 ## 来源、文件与限制
 

@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-10T23:06:49.6023318+08:00",
+  "source_commit": "f3c2cd840bb4f066ac023dee06b99452288d7c15",
+  "release": "https://github.com/NekoPak/NikoPak/releases/tag/v0.1.3",
+  "release_workflow": "https://github.com/NekoPak/NikoPak/actions/runs/42836719725",
+  "installer_smoke": "https://github.com/NekoPak/NikoPak/actions/runs/42839794062",
+  "checks": {
+    "clippy": "passed",
+    "wire": 6,
+    "android_packaging": 20,
+    "update_manifest": 3,
+    "vitest": 118,
+    "signed_android_runtime": 4,
+    "production_rust_discovery_download_hash": "passed on retry after connection timeout",
+    "public_update_manifest_without_authentication": "passed",
+    "android_native": 17,
+    "mobile_browser": 12,
+    "public_package_signatures": "passed",
+    "rust": {
+      "public_network_ignored_test_run_after_publication": "passed",
+      "ignored": 20,
+      "failed": 0,
+      "passed": 194
+    },
+    "desktop_browser": 57,
+    "typescript_and_build": "passed",
+    "rustfmt": "passed",
+    "android_native_updater": 7,
+    "windows_native_updater": 7
+  },
+  "security_review": {
+    "scope": "Single read-only security-review subagent; updater and release publication",
+    "findings_fixed": [
+      "Windows source report included in signed artifact set",
+      "Reject dirty build reports and dirty publisher checkout"
+    ],
+    "unresolved_actionable_findings": 0,
+    "synthetic_publication_checks": 4
+  },
+  "pending": [
+    "physical ARM64 phone",
+    "real PikPak account and CAPTCHA",
+    "full upstream parity",
+    "Android foreground transfer service"
+  ]
+}

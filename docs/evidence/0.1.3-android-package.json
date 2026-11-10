@@ -1,0 +1,70 @@
+{
+  "application_id": "io.nekopak.desktop",
+  "version_code": "103",
+  "version": "0.1.3",
+  "launcher_icon": {
+    "brand": "NekoPak cat",
+    "manifest_icon": "@mipmap/ic_launcher",
+    "manifest_round_icon": "@mipmap/ic_launcher_round",
+    "png_variants_verified": 25,
+    "adaptive_variants_verified": [
+      "ic_launcher:api26",
+      "ic_launcher_round:api26",
+      "ic_launcher:api33",
+      "ic_launcher_round:api33"
+    ],
+    "pixel_set_sha256": "7a3128c6d5a9207ac9b361d95cc4e6e4ecd167b0c87becdab46f416aa4f6b86d",
+    "verification": "Compiled APK resource IDs, adaptive layer graph and decoded RGBA pixels match committed brand resources."
+  },
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "debuggable": false,
+  "certificate_sha256": [
+    "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
+  ],
+  "signature_verified": true,
+  "zip_alignment_16k": true,
+  "native_libraries": [
+    {
+      "path": "lib/arm64-v8a/libnekopak_app.so",
+      "bytes": 14478696,
+      "sha256": "aa4a15ec2cb69bc57c98b99aec2daaa9940d544b399a216a0e768c9bd6bfbbbf",
+      "elf_class": 64,
+      "load_alignments": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "page_size_16k": true
+    }
+  ],
+  "license_inventory": {
+    "scope": "Resolved Android Rust normal dependencies, bundled frontend/assets and Android JVM runtime artifacts; not a legal certification.",
+    "rust_packages": 265,
+    "frontend_packages": 4,
+    "android_packages": 69,
+    "files": 649,
+    "license_text_gaps": []
+  },
+  "license_archive_sha256": "c08ffc398f6acfe7fa64ae59e47db8709f491db200bba2f97857d26f2404b584",
+  "source_sha256": "60c6c6f3ee319bc3cb3a2ed06fd47f99bf8ae4831f991934fa0d986e8cf1f00b",
+  "cargo_native_sha256": "aa4a15ec2cb69bc57c98b99aec2daaa9940d544b399a216a0e768c9bd6bfbbbf",
+  "freshness_checked": true,
+  "freshness_scope": "Native Rust/frontend build inputs and Android host inputs; no reproducible-build claim.",
+  "schema_version": 1,
+  "profile": "release",
+  "abi": "arm64-v8a",
+  "artifact": "NekoPak-0.1.3-android-arm64-v8a.apk",
+  "bytes": 17653545,
+  "sha256": "a4c5053e47dd7d65866e4b75888fa88f2eed482114c117c196996cc3a955917e",
+  "licenses_artifact": "NekoPak-0.1.3-android-arm64-v8a-licenses.zip",
+  "commit": "f3c2cd840bb4f066ac023dee06b99452288d7c15",
+  "git_worktree_dirty": false,
+  "cargo_lock_sha256": "9408099e4b1d80bbd8b51c0906a612a5e285b3801e656403ee0eb2e902b0101a",
+  "npm_lock_sha256": "14c8dcdbbe3915b3ea492f5732fd34c36b548d5fce6cd05c0a10f3bf906085a0",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "source_apk": "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk",
+  "acceptance": "Build, package structure, licenses, signing and 16 KiB alignment only. Device, service and feature acceptance are recorded separately.",
+  "signing_scope": "Android APK certificate; distinct from Ed25519 release manifest and Windows Authenticode."
+}

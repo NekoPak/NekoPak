@@ -1,0 +1,16 @@
+{
+  "bytes": 16777216,
+  "direct_ms": 106,
+  "app_ms": 1078,
+  "app_mib_per_s": 14.84,
+  "metadata_requests": 2,
+  "range_requests": 4,
+  "cdn_connections": 1,
+  "range_intervals_ms": [
+    155,
+    148,
+    150
+  ],
+  "sha256": "4f9e5ff6d5a386025a4959399d74f4b790e356b1692a3bd1dd1724aedf7e9704",
+  "scope": "Synthetic local HTTP40ms latency, actual Rust and Windows WebView; not live-service speed"
+}

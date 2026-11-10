@@ -67,6 +67,13 @@ async function loginPage() {
   );
   assert(!/凭据库.{0,30}(失败|损坏|不可用)/.test(xml), "Release must not show a credential vault error.");
 }
+async function tapText(label) {
+  const xml = await waitForHierarchy(xml => xml.includes(`text="${label}"`) || xml.includes(`content-desc="${label}"`), label);
+  const node = [...xml.matchAll(/<node\b[^>]*>/g)].map(match => match[0]).find(node => node.includes(`text="${label}"`) || node.includes(`content-desc="${label}"`));
+  const rect = /bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(node);
+  assert(rect, `No bounds for ${label}`);
+  device("shell", "input", "tap", String(Math.round((Number(rect[1]) + Number(rect[3])) / 2)), String(Math.round((Number(rect[2]) + Number(rect[4])) / 2)));
+}
 
 try {
   const installed = device("shell", "pm", "path", pkg).trim();
@@ -100,6 +107,15 @@ try {
     const errors = device("shell", "logcat", "-d", `--pid=${pid}`, "-s", "AndroidRuntime:E");
     assert(!errors.includes("FATAL EXCEPTION"), "Android runtime reported a fatal exception.");
     pass(`Minified ARM64 release cold boot ${boot}: native Chinese login and stable process`);
+  }
+  if (process.env.NEKOPAK_VERIFY_PUBLIC_UPDATE === "1") {
+    await tapText("先看看");
+    await tapText("我的");
+    await tapText("关于");
+    await tapText("检查更新");
+    await waitForHierarchy(xml => xml.includes("当前通道没有更高版本。"), "production update source result in the minified APK");
+    screenshot("release-public-update.png");
+    pass("Minified ARM64 APK checks the public production preview source without an account");
   }
   device("shell", "am", "start", "-a", "android.settings.APPLICATION_DETAILS_SETTINGS", "-d", `package:${pkg}`);
   await waitForHierarchy(xml => xml.includes('text="NekoPak"') && xml.includes('package="com.android.settings"'), "NekoPak system app-info page");

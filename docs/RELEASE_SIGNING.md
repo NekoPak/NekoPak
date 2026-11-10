@@ -134,3 +134,8 @@ TLS证书检查保留，固定GitHub/Release CDN HTTPS白名单和有界响应�
 只读FileProvider范围为files/updates；缺权限时仅打开本应用的系统授权页。当前不支持APK
 签名轮换，不包含提权／静默安装／自动点击。便携版经向导安装新副本，原目录保留。
 0.1.2以前没有更新器，需手动安装0.1.3一次。实际验证和发布证据见UPDATES_PROGRESS_REPORT.md。
+
+0.1.3已由[签名工作流](https://github.com/NekoPak/NikoPak/actions/runs/42836719725)公开到
+[v0.1.3预览Release](https://github.com/NekoPak/NikoPak/releases/tag/v0.1.3)，源提交
+`f3c2cd840bb4f066ac023dee06b99452288d7c15`。公开资产全部重新下载验签；较旧版本号的生产
+更新服务测试发现并下载新包通过，最终手机APK访问公开源通过。无签名私钥变化。

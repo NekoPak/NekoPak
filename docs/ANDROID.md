@@ -200,3 +200,17 @@ with Chinese login and remembered-account controls. It ran through the emulator'
 ARM translation bridge; a physical ARM64 phone and real account remain user acceptance.
 Evidence: `evidence/mobile-recovery-actions-android.json` and
 `evidence/mobile-recovery-release-runtime.json`.
+
+## 0.1.3 signed update and progress acceptance
+
+The final public ARM64 APK is17,653,545 bytes, versionCode103, SHA256
+`a4c5053e47dd7d65866e4b75888fa88f2eed482114c117c196996cc3a955917e`.
+It retains the existing certificate and upgrades0.1.2 in place. The isolated API35
+emulator passed two cold boots and an account-free public update check through the
+actual minified release UI:4/4. Package validation verified both updater JNI classes
+and the FileProvider's compiled narrow path resource after R8 resource renaming.
+Debug native acceptance passed17/17; synthetic update handoff7/7 reaches the final
+system Update confirmation. The synthetic0.1.4 candidate is not a published build.
+See `evidence/0.1.3-android-release-runtime.json`, `0.1.3-public-update.json` and
+[UPDATES_PROGRESS_REPORT.md](UPDATES_PROGRESS_REPORT.md). Physical ARM64 and real
+account acceptance remain separate; no real credentials were used for these checks.
