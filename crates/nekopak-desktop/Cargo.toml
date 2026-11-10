@@ -17,7 +17,7 @@ default = ["gpu"]
 # driver exists (remote desktop, VMs, old integrated graphics).
 gpu = ["slint/renderer-femtovg"]
 # Scripted UI driver and PNG screenshots for headless end-to-end tests.
-automation = ["dep:png"]
+automation = []
 
 [dependencies]
 slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software", "accessibility"] }
@@ -34,7 +34,7 @@ uuid.workspace = true
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 open = "5"
 rfd = { version = "0.17", default-features = false, features = ["xdg-portal"] }
-png = { version = "0.18", optional = true }
+png = "0.18"
 
 [target.'cfg(windows)'.dependencies]
 tray-icon = { version = "0.25", default-features = false }

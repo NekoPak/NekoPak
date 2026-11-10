@@ -3,7 +3,7 @@
 use crate::{
     app::{error_text, request, App, Ctx},
     i18n::tr,
-    Choice, Crumb, DialogSpec, Dialogs, FileRow, KeyValue, Menu, MenuEntry, ToastEntry, Toasts,
+    Choice, Crumb, DialogSpec, Dialogs, FileRow, FormField, KeyValue, Menu, MenuEntry, ToastEntry, Toasts,
 };
 use nekopak_domain::*;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
@@ -65,6 +65,9 @@ pub enum DialogEvent {
     Row(usize),
     Crumb(String),
     Choice(String),
+    Field(String, String),
+    FieldToggle(String, bool),
+    FieldAction(String, f32, f32),
 }
 
 #[derive(Default)]
@@ -208,6 +211,30 @@ pub fn install(ctx: &Ctx) {
             }
         }
     });
+    dialogs.on_field_edited({
+        let weak = weak.clone();
+        move |id, field, value| {
+            if let Some(ctx) = weak.upgrade() {
+                send(&ctx, id, DialogEvent::Field(field.into(), value.into()));
+            }
+        }
+    });
+    dialogs.on_field_toggled({
+        let weak = weak.clone();
+        move |id, field, checked| {
+            if let Some(ctx) = weak.upgrade() {
+                send(&ctx, id, DialogEvent::FieldToggle(field.into(), checked));
+            }
+        }
+    });
+    dialogs.on_field_action({
+        let weak = weak.clone();
+        move |id, field, x, y| {
+            if let Some(ctx) = weak.upgrade() {
+                send(&ctx, id, DialogEvent::FieldAction(field.into(), x, y));
+            }
+        }
+    });
     let toasts = ctx.ui.global::<Toasts>();
     toasts.on_action({
         let weak = weak.clone();
@@ -326,7 +353,7 @@ impl App {
         (id, receiver)
     }
 
-    fn update_dialog(&self, id: i32, change: impl FnOnce(&mut DialogSpec)) {
+    pub(crate) fn update_dialog(&self, id: i32, change: impl FnOnce(&mut DialogSpec)) {
         let model = self.overlays.borrow().dialogs.clone();
         let Some(model) = model else { return };
         if let Some(row) = (0..model.row_count()).find(|row| model.row_data(*row).is_some_and(|spec| spec.id == id)) {
@@ -336,7 +363,7 @@ impl App {
         }
     }
 
-    fn close_dialog(&self, id: i32) {
+    pub(crate) fn close_dialog(&self, id: i32) {
         let model = {
             let mut overlays = self.overlays.borrow_mut();
             overlays.dialog_events.remove(&id);
@@ -739,5 +766,196 @@ impl App {
         if let Some(row) = (0..model.row_count()).find(|row| model.row_data(*row).is_some_and(|toast| toast.id == id)) {
             model.remove(row);
         }
+    }
+}
+
+/* -------------------------------- forms -------------------------------- */
+
+#[derive(Clone, Default)]
+pub struct Field {
+    pub id: &'static str,
+    pub kind: &'static str,
+    pub label: String,
+    pub value: String,
+    pub placeholder: String,
+    pub detail: String,
+    pub error: String,
+    pub checked: bool,
+    pub disabled: bool,
+    pub tone: &'static str,
+}
+
+impl Field {
+    fn of(id: &'static str, kind: &'static str, label: impl Into<String>) -> Self {
+        Self { id, kind, label: label.into(), ..Self::default() }
+    }
+    pub fn text(id: &'static str, label: impl Into<String>, value: impl Into<String>) -> Self {
+        Self { value: value.into(), ..Self::of(id, "text", label) }
+    }
+    pub fn password(id: &'static str, label: impl Into<String>) -> Self {
+        Self::of(id, "password", label)
+    }
+    pub fn multiline(id: &'static str, label: impl Into<String>, value: impl Into<String>) -> Self {
+        Self { value: value.into(), ..Self::of(id, "multiline", label) }
+    }
+    pub fn toggle(id: &'static str, label: impl Into<String>, checked: bool) -> Self {
+        Self { checked, ..Self::of(id, "toggle", label) }
+    }
+    pub fn select(id: &'static str, label: impl Into<String>, value: impl Into<String>) -> Self {
+        Self { value: value.into(), ..Self::of(id, "select", label) }
+    }
+    pub fn note(id: &'static str, text: impl Into<String>, tone: &'static str) -> Self {
+        Self { tone, ..Self::of(id, "note", text) }
+    }
+    pub fn placeholder(mut self, text: impl Into<String>) -> Self {
+        self.placeholder = text.into();
+        self
+    }
+    pub fn detail(mut self, text: impl Into<String>) -> Self {
+        self.detail = text.into();
+        self
+    }
+    pub fn focus(mut self) -> Self {
+        self.tone = "focus";
+        self
+    }
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
+}
+
+pub enum FormEvent {
+    /// A text field changed (already stored in the form).
+    Edited(String),
+    Toggled(String),
+    /// A select field was opened; show a menu at the given point.
+    Select(String, f32, f32),
+    Submit,
+    Alt,
+    Cancel,
+}
+
+/// A live form dialog. Dropping it without `close` leaves the dialog open,
+/// so every exit path calls `close`.
+pub struct Form {
+    ctx: Ctx,
+    id: i32,
+    events: mpsc::UnboundedReceiver<DialogEvent>,
+    pub fields: Vec<Field>,
+}
+
+impl Form {
+    fn push(&self) {
+        let rows: Vec<FormField> = self
+            .fields
+            .iter()
+            .map(|field| FormField {
+                id: field.id.into(),
+                kind: field.kind.into(),
+                label: field.label.as_str().into(),
+                value: field.value.as_str().into(),
+                placeholder: field.placeholder.as_str().into(),
+                detail: field.detail.as_str().into(),
+                error: field.error.as_str().into(),
+                checked: field.checked,
+                enabled: !field.disabled,
+                tone: field.tone.into(),
+            })
+            .collect();
+        self.ctx.update_dialog(self.id, |spec| spec.fields = ModelRc::new(VecModel::from(rows)));
+    }
+
+    pub async fn next(&mut self) -> FormEvent {
+        loop {
+            match self.events.recv().await {
+                Some(DialogEvent::Field(id, value)) => {
+                    // Typing only updates local state: re-pushing the model
+                    // would reset the caret of the input being edited.
+                    if let Some(field) = self.fields.iter_mut().find(|field| field.id == id) {
+                        field.value = value;
+                        if !field.error.is_empty() {
+                            field.error.clear();
+                            self.push();
+                        }
+                    }
+                    return FormEvent::Edited(id);
+                }
+                Some(DialogEvent::FieldToggle(id, checked)) => {
+                    if let Some(field) = self.fields.iter_mut().find(|field| field.id == id) {
+                        field.checked = checked;
+                    }
+                    self.push();
+                    return FormEvent::Toggled(id);
+                }
+                Some(DialogEvent::FieldAction(id, x, y)) => return FormEvent::Select(id, x, y),
+                Some(DialogEvent::Action(action, _)) if action == "confirm" => return FormEvent::Submit,
+                Some(DialogEvent::Action(action, _)) if action == "alt" => return FormEvent::Alt,
+                Some(DialogEvent::Action(..)) | None => return FormEvent::Cancel,
+                Some(_) => {}
+            }
+        }
+    }
+
+    pub fn value(&self, id: &str) -> String {
+        self.fields.iter().find(|field| field.id == id).map(|field| field.value.clone()).unwrap_or_default()
+    }
+
+    pub fn checked(&self, id: &str) -> bool {
+        self.fields.iter().any(|field| field.id == id && field.checked)
+    }
+
+    /// Changes one field and refreshes the dialog.
+    pub fn set(&mut self, id: &str, change: impl FnOnce(&mut Field)) {
+        if let Some(field) = self.fields.iter_mut().find(|field| field.id == id) {
+            change(field);
+        }
+        self.push();
+    }
+
+    pub fn replace_fields(&mut self, fields: Vec<Field>) {
+        self.fields = fields;
+        self.push();
+    }
+
+    pub fn set_busy(&self, busy: bool) {
+        self.ctx.update_dialog(self.id, |spec| spec.busy = busy);
+    }
+
+    pub fn set_error(&self, message: impl Into<String>) {
+        let message = message.into();
+        self.ctx.update_dialog(self.id, |spec| spec.error = message.into());
+    }
+
+    pub fn set_confirm(&self, label: &str, enabled: bool) {
+        self.ctx.update_dialog(self.id, |spec| {
+            spec.confirm = label.into();
+            spec.confirm_enabled = enabled;
+        });
+    }
+
+    pub fn set_text(&self, title: &str, body: &str) {
+        self.ctx.update_dialog(self.id, |spec| {
+            spec.title = title.into();
+            spec.body = body.into();
+        });
+    }
+
+    pub fn close(self) {
+        self.ctx.close_dialog(self.id);
+    }
+}
+
+impl App {
+    pub fn form(self: &Rc<Self>, title: &str, body: &str, confirm: &str, alt: &str, fields: Vec<Field>) -> Form {
+        let mut spec = Self::base_dialog("form", title);
+        spec.body = body.into();
+        spec.confirm = confirm.into();
+        spec.alt = alt.into();
+        spec.width = 480.0;
+        let (id, events) = self.push_dialog(spec);
+        let form = Form { ctx: self.clone(), id, events, fields };
+        form.push();
+        form
     }
 }

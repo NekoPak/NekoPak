@@ -7,10 +7,12 @@ slint::include_modules!();
 mod actions;
 mod app;
 mod auth;
+mod autostart;
 #[cfg(feature = "automation")]
 mod automation;
 mod cloud;
 mod collate;
+mod desktop;
 mod files;
 mod format;
 mod generated {
@@ -24,6 +26,7 @@ mod names;
 mod nav;
 mod overlay;
 mod pages;
+mod panel;
 mod platform;
 mod prefs;
 mod settings;
@@ -64,6 +67,9 @@ fn main() {
         Err(error) => fail(&format!("The window could not be created: {error}")),
     };
     let (events, mut inbox) = tokio::sync::mpsc::unbounded_channel::<HostEvent>();
+    if !host.mock && std::env::var_os("NEKOPAK_TEST_DATA_DIR").is_none() && !desktop::claim_single_instance(&events) {
+        return;
+    }
     host::spawn_workers(&host.service, events.clone());
     drop(guard);
 
@@ -75,6 +81,8 @@ fn main() {
     overlay::install(&ctx);
     nav::install(&ctx);
     files::install(&ctx);
+    panel::install(&ctx);
+    transfers::install(&ctx);
     shortcuts::install(&ctx);
     ctx.ui.on_scheme_changed({
         let weak = Rc::downgrade(&ctx);
@@ -109,17 +117,22 @@ fn main() {
                     HostEvent::Quit => {
                         let _ = slint::quit_event_loop();
                     }
-                    HostEvent::Activate(_) | HostEvent::ScanProgress(_) | HostEvent::SyncChanged(_) | HostEvent::SyncPlanReady(_) => {}
+                    HostEvent::Activate(target) => desktop::activate(&ctx, target),
+                    HostEvent::ScanProgress(event) => tools::on_scan_progress(&ctx, event),
+                    HostEvent::SyncChanged(event) => tools::on_sync_changed(&ctx, event, false),
+                    HostEvent::SyncPlanReady(event) => tools::on_sync_changed(&ctx, event, true),
                 }
             }
         }
     });
     #[cfg(feature = "automation")]
     automation::install(&ctx);
-    let _events = events;
-    if let Err(error) = ctx.ui.run() {
+    let tray = desktop::install_tray(&events);
+    desktop::install_close_handler(&ctx, tray.is_some());
+    if let Err(error) = ctx.ui.show().and_then(|_| slint::run_event_loop_until_quit()) {
         fail(&error.to_string());
     }
+    drop(tray);
     // Stop background workers without waiting on in-flight network calls.
     runtime.shutdown_background();
 }

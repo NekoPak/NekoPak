@@ -40,6 +40,8 @@ pub struct App {
     pub overlays: RefCell<Overlays>,
     pub undo: RefCell<Option<(String, Vec<FileMutation>)>>,
     pub transfers: RefCell<crate::transfers::TransfersState>,
+    pub panel: RefCell<crate::panel::PanelState>,
+    pub last_clipboard: RefCell<String>,
 }
 
 /// Default deadline for one backend request, matching the web host.
@@ -68,6 +70,8 @@ impl App {
             overlays: RefCell::new(Overlays::default()),
             undo: RefCell::new(None),
             transfers: RefCell::new(Default::default()),
+            panel: RefCell::new(Default::default()),
+            last_clipboard: RefCell::new(String::new()),
         })
     }
 

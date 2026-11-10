@@ -78,12 +78,49 @@ export struct Choice {
     enabled: bool,
 }
 
+// One input of a "form" dialog. kind: text | password | multiline | toggle | select | note
+export struct FormField {
+    id: string,
+    kind: string,
+    label: string,
+    value: string,
+    placeholder: string,
+    detail: string,
+    error: string,
+    checked: bool,
+    enabled: bool,
+    tone: string,
+}
+
+// One row of a generic panel page.
+// kind: header | note | info | toggle | select | button | item | progress | segment
+export struct PanelRow {
+    id: string,
+    kind: string,
+    title: string,
+    detail: string,
+    value: string,
+    icon: image,
+    file-kind: int,
+    tone: string,
+    checked: bool,
+    enabled: bool,
+    progress: float,
+    action: string,
+    action2: string,
+    danger: bool,
+    menu: bool,
+    selected: bool,
+    options: [Choice],
+}
+
 // One modal dialog. `kind` selects the body:
 //   confirm   title/body, optional checkbox `option`
 //   prompt    single text field with live validation (`error`, `hint`)
 //   details   key/value list
 //   picker    remote folder chooser (crumbs + rows)
 //   choice    radio list (`choices`)
+//   form      labelled inputs (`fields`)
 export struct DialogSpec {
     id: int,
     kind: string,
@@ -109,6 +146,7 @@ export struct DialogSpec {
     crumbs: [Crumb],
     rows: [FileRow],
     choices: [Choice],
+    fields: [FormField],
     phase: string,
     width: length,
 }
@@ -177,6 +215,9 @@ export global Dialogs {
     callback row-activated(int, int);
     callback crumb(int, string);
     callback choice(int, string);
+    callback field-edited(int, string, string);
+    callback field-toggled(int, string, bool);
+    callback field-action(int, string, length, length);
 }
 
 export global Toasts {
@@ -267,4 +308,81 @@ export global Files {
     callback state-action-clicked();
     callback state-action2-clicked();
     callback columns-changed(int);
+}
+
+export global Panel {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <image> icon;
+    in property <bool> can-back;
+    in property <[MenuEntry]> actions;
+    in property <[Choice]> tabs;
+    in property <[PanelRow]> rows;
+    // loading | ready | error | empty
+    in property <string> phase: "ready";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <string> state-action;
+    in property <image> state-icon;
+    in property <bool> state-error;
+    callback back();
+    callback action(string, length, length);
+    callback tab(string);
+    // row id, what (click | toggle | action | action2 | menu | option id), x, y
+    callback row(string, string, length, length);
+    callback state-action-clicked();
+}
+
+export struct TransferRow {
+    id: string,
+    header: bool,
+    title: string,
+    count: string,
+    collapsed: bool,
+    name: string,
+    kind-icon: image,
+    kind-tone: string,
+    state-text: string,
+    state-tone: string,
+    detail: string,
+    progress: float,
+    progress-tone: string,
+    percent: string,
+    size: string,
+    speed: string,
+    eta: string,
+    destination: string,
+    primary-icon: image,
+    primary-tip: string,
+    primary-action: string,
+}
+
+export global Transfers {
+    in property <[Choice]> tabs;
+    in property <[TransferRow]> rows;
+    in property <string> phase: "loading";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <bool> can-resume-all;
+    in property <bool> can-pause-all;
+    in property <bool> can-clear;
+    in property <string> down-speed;
+    in property <string> up-speed;
+    in property <string> limit-label;
+    in property <string> eta-label;
+    in property <string> quota-label;
+    in property <float> quota-value: -1;
+    in property <string> quota-text;
+    in property <bool> can-add-link;
+    callback tab(string);
+    callback resume-all();
+    callback pause-all();
+    callback clear-finished();
+    callback refresh();
+    callback add-link();
+    callback limit-menu(length, length);
+    callback toggle-group(string);
+    callback primary(string);
+    callback menu(string, length, length);
+    callback activated(string);
 }

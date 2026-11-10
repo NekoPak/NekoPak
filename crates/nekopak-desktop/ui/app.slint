@@ -4,12 +4,14 @@ import { Pal } from "generated/palette.slint";
 import { Icons } from "generated/icons.slint";
 import { Tk, Tr } from "tokens.slint";
 import { Btn, Busy, Banner, EmptyState, Tip } from "widgets.slint";
-import { Shell, Menu, Dialogs, Toasts, Files } from "state.slint";
+import { Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers } from "state.slint";
 import { Sidebar, TabStrip } from "shell.slint";
 import { MenuLayer, DialogLayer, ToastLayer, TipLayer } from "overlays.slint";
 import { FilesPage } from "pages/files.slint";
+import { PanelPage } from "pages/panel.slint";
+import { TransfersPage } from "pages/transfers.slint";
 
-export { Pal, Tk, Tr, Icons, Tip, Shell, Menu, Dialogs, Toasts, Files }
+export { Pal, Tk, Tr, Icons, Tip, Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers }
 
 export component AppWindow inherits Window {
     title: Shell.demo ? "NekoPak — Offline Mock" : "NekoPak";
@@ -104,6 +106,8 @@ export component AppWindow inherits Window {
                 Rectangle {
                     vertical-stretch: 1;
                     if Shell.page == "files": FilesPage { }
+                    if Shell.page == "transfers": TransfersPage { }
+                    if Shell.page != "files" && Shell.page != "transfers": PanelPage { }
                 }
             }
         }

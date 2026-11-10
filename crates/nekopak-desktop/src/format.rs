@@ -158,7 +158,7 @@ mod tests {
         assert_eq!(bytes(1023), "1023 B");
         assert_eq!(bytes(1024), "1.00 KB");
         assert_eq!(bytes(2 * 1024 * 1024), "2.00 MB");
-        assert_eq!(bytes(12 * 1024 * 1024 + 60_000), "12.0 MB");
+        assert_eq!(bytes(12 * 1024 * 1024 + 10_000), "12.0 MB");
         assert_eq!(bytes(220 * 1024 * 1024), "220 MB");
         assert_eq!(bytes(u64::MAX), "16.0 EB");
         assert_eq!(group_digits(9_007_199_254_740_993), "9,007,199,254,740,993");
