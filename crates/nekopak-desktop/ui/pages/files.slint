@@ -1,0 +1,1060 @@
+// File browser shared by the drive, search, recent, starred, trash, local
+// and shared-folder views. The list is virtualised: only visible rows exist.
+import { ListView } from "std-widgets.slint";
+import { Pal } from "../generated/palette.slint";
+import { Icons } from "../generated/icons.slint";
+import { Tk, Tr } from "../tokens.slint";
+import { Btn, IconBtn, Icon, Field, Check, Busy, KindIcon, EmptyState, Divider, Tip } from "../widgets.slint";
+import { Files, FileRow, GridRow, Crumb, MenuEntry } from "../state.slint";
+
+component HeaderCell inherits Rectangle {
+    in property <string> text;
+    in property <string> key;
+    in property <bool> right;
+    callback clicked();
+    property <bool> active: Files.sort-key == key;
+    border-radius: Tk.r-xs;
+    background: ta.has-hover ? Tk.hover : transparent;
+    accessible-role: button;
+    accessible-label: text;
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 2px;
+        alignment: root.right ? end : start;
+        Text {
+            text: root.text;
+            color: root.active ? Pal.primary : Pal.on-surface-variant;
+            font-size: Tk.fs-sm;
+            font-weight: root.active ? 600 : 400;
+            vertical-alignment: center;
+        }
+
+        if root.active: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: Files.sort-desc ? Icons.chevron-down : Icons.chevron-up;
+                tint: Pal.primary;
+                size: 16px;
+            }
+        }
+    }
+
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component Row inherits Rectangle {
+    in property <FileRow> item;
+    in property <bool> focused;
+    in property <bool> any-selected;
+    callback clicked(bool, bool);
+    callback toggled();
+    callback activated();
+    callback context(length, length);
+    property <bool> ctrl;
+    property <bool> shift;
+    height: Tk.row-h;
+    border-radius: Tk.r-sm;
+    background: item.selected ? Tk.selected : ta.has-hover ? Tk.hover : transparent;
+    border-width: focused ? 1px : 0px;
+    border-color: Pal.primary.with-alpha(0.55);
+    opacity: item.cut ? 0.5 : 1;
+    accessible-role: list-item;
+    accessible-label: item.name;
+    accessible-item-selected: item.selected;
+    accessible-item-selectable: true;
+    accessible-action-default => {
+        root.activated();
+    }
+    ta := TouchArea {
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                root.ctrl = event.modifiers.control || event.modifiers.meta;
+                root.shift = event.modifiers.shift;
+            }
+            if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
+                root.context(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+            }
+        }
+        clicked => {
+            root.clicked(root.ctrl, root.shift);
+        }
+        double-clicked => {
+            root.activated();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 12px;
+        spacing: 0px;
+        Rectangle {
+            width: 40px;
+            if root.item.selected || root.any-selected || ta.has-hover || check.has-hover: VerticalLayout {
+                alignment: center;
+                Check {
+                    state: root.item.selected ? 1 : 0;
+                    label: Tr.x("选择 {0}", root.item.name);
+                    toggled => {
+                        root.toggled();
+                    }
+                }
+            }
+            check := TouchArea {
+                width: 0px;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            KindIcon {
+                kind: root.item.kind;
+                size: Tk.compact ? 26px : 32px;
+            }
+        }
+
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            padding-left: 12px;
+            padding-right: 8px;
+            spacing: 8px;
+            alignment: start;
+            Text {
+                text: root.item.name;
+                color: Pal.on-surface;
+                font-size: Tk.fs-md;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            if root.item.starred: VerticalLayout {
+                alignment: center;
+                Icon {
+                    source: Icons.star-fill;
+                    tint: Pal.warn;
+                    size: 16px;
+                }
+            }
+            if root.item.note != "": VerticalLayout {
+                alignment: center;
+                Icon {
+                    source: Icons.alert;
+                    tint: Pal.warn;
+                    size: 16px;
+                }
+            }
+        }
+
+        if Files.show-location: Text {
+            width: 200px;
+            text: root.item.location;
+            color: Pal.on-surface-variant;
+            font-size: Tk.fs-sm;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        Text {
+            width: 96px;
+            text: root.item.size;
+            color: Pal.on-surface-variant;
+            font-size: Tk.fs-sm;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+
+        Text {
+            width: 164px;
+            text: root.item.modified;
+            color: Pal.on-surface-variant;
+            font-size: Tk.fs-sm;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+
+        Rectangle {
+            width: 124px;
+            Text {
+                x: 28px;
+                width: parent.width - 28px;
+                text: root.item.type-label;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-sm;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+component Cell inherits Rectangle {
+    in property <FileRow> item;
+    in property <bool> focused;
+    in property <length> icon-size;
+    callback clicked(bool, bool);
+    callback toggled();
+    callback activated();
+    callback context(length, length);
+    property <bool> ctrl;
+    property <bool> shift;
+    border-radius: Tk.r-md;
+    background: item.selected ? Tk.selected : ta.has-hover ? Tk.hover : transparent;
+    border-width: focused ? 1px : 0px;
+    border-color: Pal.primary.with-alpha(0.55);
+    opacity: item.cut ? 0.5 : 1;
+    accessible-role: list-item;
+    accessible-label: item.name;
+    accessible-item-selected: item.selected;
+    ta := TouchArea {
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                root.ctrl = event.modifiers.control || event.modifiers.meta;
+                root.shift = event.modifiers.shift;
+            }
+            if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
+                root.context(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+            }
+        }
+        clicked => {
+            root.clicked(root.ctrl, root.shift);
+        }
+        double-clicked => {
+            root.activated();
+        }
+    }
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 8px;
+        alignment: start;
+        HorizontalLayout {
+            alignment: center;
+            KindIcon {
+                kind: root.item.kind;
+                size: root.icon-size;
+            }
+        }
+
+        Text {
+            text: root.item.name;
+            color: Pal.on-surface;
+            font-size: Tk.fs-sm;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            overflow: elide;
+            max-height: 36px;
+        }
+
+        Text {
+            text: root.item.folder ? root.item.type-label : root.item.size;
+            color: Pal.on-surface-variant;
+            font-size: Tk.fs-xs;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+    }
+
+    if root.item.selected || ta.has-hover: Check {
+        x: 2px;
+        y: 2px;
+        state: root.item.selected ? 1 : 0;
+        label: Tr.x("选择 {0}", root.item.name);
+        toggled => {
+            root.toggled();
+        }
+    }
+    if root.item.starred: Icon {
+        x: root.width - 24px;
+        y: 8px;
+        source: Icons.star-fill;
+        tint: Pal.warn;
+        size: 16px;
+    }
+}
+
+component AddressBar inherits Rectangle {
+    height: 44px;
+    border-radius: 22px;
+    background: Tk.raised;
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 6px;
+        spacing: 2px;
+        if Files.mode == "files" || Files.mode == "local" || Files.mode == "shared": Rectangle {
+            horizontal-stretch: 1;
+            clip: true;
+            // Keep the current folder visible when the path is longer than the bar.
+            crumbs := HorizontalLayout {
+                x: Math.min(0px, parent.width - self.preferred-width);
+                width: self.preferred-width;
+                spacing: 0px;
+                for crumb[index] in Files.crumbs: HorizontalLayout {
+                    property <bool> last: index == Files.crumbs.length - 1;
+                    spacing: 0px;
+                    if index > 0: VerticalLayout {
+                        alignment: center;
+                        Icon {
+                            source: Icons.chevron-right;
+                            size: 18px;
+                        }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            height: 32px;
+                            border-radius: 16px;
+                            background: !last && crumb-ta.has-hover ? Tk.hover : transparent;
+                            accessible-role: button;
+                            accessible-label: crumb.name;
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                spacing: 6px;
+                                if index == 0: VerticalLayout {
+                                    alignment: center;
+                                    Icon {
+                                        source: Files.title-icon;
+                                        size: 18px;
+                                        tint: last ? Pal.on-surface : Pal.on-surface-variant;
+                                    }
+                                }
+                                Text {
+                                    text: crumb.name;
+                                    color: last ? Pal.on-surface : Pal.on-surface-variant;
+                                    font-size: Tk.fs-md;
+                                    font-weight: last ? 600 : 400;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            crumb-ta := TouchArea {
+                                enabled: !last;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    Files.crumb(crumb.id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if Files.mode != "files" && Files.mode != "local" && Files.mode != "shared": HorizontalLayout {
+            horizontal-stretch: 1;
+            padding-left: 10px;
+            spacing: 8px;
+            alignment: start;
+            VerticalLayout {
+                alignment: center;
+                Icon {
+                    source: Files.title-icon;
+                    size: 18px;
+                    tint: Pal.on-surface;
+                }
+            }
+
+            Text {
+                text: Files.title;
+                color: Pal.on-surface;
+                font-size: Tk.fs-md;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        if Files.mode == "files": VerticalLayout {
+            alignment: center;
+            recent := IconBtn {
+                height: 32px;
+                icon: Icons.chevron-down;
+                tip: Tr.t("最近访问的位置");
+                clicked => {
+                    Files.recent-menu(root.absolute-position.x + root.width - 290px, root.absolute-position.y + root.height + 4px);
+                }
+            }
+        }
+        if Files.mode == "files" || Files.mode == "search": VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 1px;
+                height: 20px;
+                background: Pal.outline-variant;
+            }
+        }
+        if Files.mode == "files" || Files.mode == "search": VerticalLayout {
+            alignment: center;
+            IconBtn {
+                height: 32px;
+                icon: Icons.search;
+                tip: Tr.t("搜索（Ctrl+F）");
+                clicked => {
+                    Files.open-search();
+                }
+            }
+        }
+    }
+}
+
+component SearchBar inherits Rectangle {
+    height: 44px;
+    border-radius: 22px;
+    background: Tk.raised;
+    border-width: 2px;
+    border-color: Pal.primary;
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 6px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                source: Icons.search;
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+            if input.text == "": Text {
+                x: 0;
+                width: parent.width;
+                text: Tr.t("搜索全部云盘文件");
+                color: Pal.on-surface-variant.with-alpha(0.72);
+                font-size: Tk.fs-md;
+                vertical-alignment: center;
+            }
+            input := TextInput {
+                x: 0;
+                width: parent.width;
+                height: parent.height;
+                text <=> Files.search-text;
+                font-size: Tk.fs-md;
+                color: Pal.on-surface;
+                single-line: true;
+                vertical-alignment: center;
+                selection-background-color: Pal.primary.with-alpha(0.35);
+                selection-foreground-color: Pal.on-surface;
+                accessible-label: Tr.t("搜索云盘文件");
+                accepted => {
+                    Files.submit-search(self.text);
+                }
+                key-pressed(event) => {
+                    if (event.text == Key.Escape) {
+                        Files.close-search();
+                        return accept;
+                    }
+                    return reject;
+                }
+                init => {
+                    self.focus();
+                    self.select-all();
+                }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                height: 32px;
+                icon: Icons.x;
+                tip: Files.search-text != "" ? Tr.t("清除") : Tr.t("关闭搜索（Esc）");
+                clicked => {
+                    if (Files.search-text != "") {
+                        Files.search-text = "";
+                        input.focus();
+                    } else {
+                        Files.close-search();
+                    }
+                }
+            }
+        }
+    }
+
+    property <int> focus-rev: Files.search-focus-rev;
+    changed focus-rev => {
+        input.focus();
+        input.select-all();
+    }
+}
+
+export component FilesPage inherits Rectangle {
+    property <length> cell-w: Files.grid-size == 0 ? 124px : Files.grid-size == 2 ? 196px : 156px;
+    property <length> cell-h: Files.grid-size == 0 ? 132px : Files.grid-size == 2 ? 196px : 160px;
+    property <int> wanted-columns: Math.max(1, Math.floor((island.width - 24px) / cell-w));
+    changed wanted-columns => {
+        Files.columns-changed(wanted-columns);
+    }
+    init => {
+        Files.columns-changed(wanted-columns);
+    }
+    VerticalLayout {
+        spacing: 0px;
+        // Caption: history and address / search
+        HorizontalLayout {
+            height: Tk.row-top;
+            padding-right: 8px;
+            spacing: 4px;
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: Icons.arrow-back;
+                    enabled: Files.can-back;
+                    tip: Tr.t("后退（Alt+←）");
+                    clicked => {
+                        Files.back();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: Icons.arrow-forward;
+                    enabled: Files.can-forward;
+                    tip: Tr.t("前进（Alt+→）");
+                    clicked => {
+                        Files.forward();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: Icons.arrow-up;
+                    enabled: Files.can-up;
+                    tip: Files.can-up ? Tr.t("上一级（Backspace）") : Tr.t("已在根目录");
+                    clicked => {
+                        Files.up();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                padding-left: 4px;
+                if !Files.searching: AddressBar { }
+                if Files.searching: SearchBar { }
+            }
+        }
+
+        // Command row, replaced by selection actions while items are selected
+        Rectangle {
+            height: Tk.row-cmd;
+            if Files.selected-count == 0: HorizontalLayout {
+                padding-right: 8px;
+                spacing: 4px;
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: Icons.home;
+                        tip: Tr.t("回到网盘根目录");
+                        clicked => {
+                            Files.home();
+                        }
+                    }
+                }
+
+                if Files.mode == "files": VerticalLayout {
+                    alignment: center;
+                    new-btn := Btn {
+                        text: Tr.t("新建");
+                        icon: Icons.plus;
+                        caret: true;
+                        enabled: Files.can-write || Files.can-upload;
+                        clicked => {
+                            Files.new-menu(self.abs-x, self.abs-y + self.height + 4px);
+                        }
+                    }
+                }
+                if Files.mode == "files": VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 1px;
+                        height: 22px;
+                        background: Pal.outline-variant;
+                    }
+                }
+                if Files.mode == "files" || Files.mode == "local": VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: Tr.t("媒体库");
+                        icon: Icons.library;
+                        enabled: Files.can-media;
+                        tip: Files.can-media ? "" : Tr.t("当前宿主未提供媒体播放");
+                        clicked => {
+                            Files.media-library();
+                        }
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: Files.sort-label;
+                        icon: Icons.sort;
+                        tip: Tr.t("排序方式");
+                        clicked => {
+                            Files.sort-menu(self.abs-x, self.abs-y + self.height + 4px);
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: Files.filter-label;
+                        icon: Files.filter-active ? Icons.filter-fill : Icons.filter;
+                        caret: true;
+                        active: Files.filter-active;
+                        tip: Tr.t("按类型筛选");
+                        clicked => {
+                            Files.filter-menu(self.abs-x, self.abs-y + self.height + 4px);
+                        }
+                    }
+                }
+
+                if Files.mode == "files": VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: Tr.t("整理");
+                        icon: Icons.space;
+                        caret: true;
+                        enabled: Files.can-organize;
+                        tip: Tr.t("查找重复、空间分布");
+                        clicked => {
+                            Files.organize-menu(self.abs-x, self.abs-y + self.height + 4px);
+                        }
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: Icons.select-all;
+                        enabled: Files.rows.length > 0;
+                        tip: Files.rows.length > 0 ? Tr.t("全选（Ctrl+A）") : Tr.t("没有可选择的项目");
+                        clicked => {
+                            Files.toggle-all();
+                        }
+                    }
+                }
+
+                if Files.paste-label != "": VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: Files.paste-label;
+                        icon: Icons.paste;
+                        kind: "tonal";
+                        clicked => {
+                            Files.paste();
+                        }
+                    }
+                }
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+
+                Text {
+                    text: Files.count-label;
+                    color: Pal.on-surface-variant;
+                    font-size: Tk.fs-sm;
+                    vertical-alignment: center;
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: Icons.refresh;
+                        enabled: !Files.refreshing;
+                        tip: Tr.t("刷新（F5）");
+                        clicked => {
+                            Files.refresh();
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 76px;
+                        height: 40px;
+                        border-radius: 20px;
+                        background: Pal.surface-high;
+                        accessible-role: none;
+                        HorizontalLayout {
+                            padding: 2px;
+                            spacing: 0px;
+                            IconBtn {
+                                icon: Files.view == "list" ? Icons.rows-fill : Icons.rows;
+                                active: Files.view == "list";
+                                tip: Tr.t("列表视图");
+                                clicked => {
+                                    Files.set-view("list");
+                                }
+                            }
+
+                            IconBtn {
+                                icon: Files.view == "grid" ? Icons.grid-fill : Icons.grid;
+                                active: Files.view == "grid";
+                                tip: Tr.t("网格视图");
+                                clicked => {
+                                    Files.set-view("grid");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if Files.can-add-link: VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        height: 40px;
+                        text: Tr.t("添加链接");
+                        icon: Icons.bolt;
+                        kind: "filled";
+                        clicked => {
+                            Files.add-link();
+                        }
+                    }
+                }
+            }
+            if Files.selected-count > 0: Rectangle {
+                border-radius: Tk.r-lg;
+                background: Pal.secondary-container;
+                y: 4px;
+                height: parent.height - 8px;
+                width: parent.width - 8px;
+                HorizontalLayout {
+                    padding-left: 4px;
+                    padding-right: 8px;
+                    spacing: 2px;
+                    VerticalLayout {
+                        alignment: center;
+                        IconBtn {
+                            icon: Icons.x;
+                            tip: Tr.t("退出多选（Esc）");
+                            clicked => {
+                                Files.clear-selection();
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: Tr.t("已选") + " " + Files.selected-count + " " + Tr.t("项") + (Files.selection-summary != "" ? " · " + Files.selection-summary : "");
+                        color: Pal.on-secondary-container;
+                        font-size: Tk.fs-md;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Rectangle {
+                        horizontal-stretch: 1;
+                    }
+
+                    for action in Files.selection-actions: VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            text: root.width > 1040px || action.danger ? action.label : "";
+                            width: root.width > 1040px || action.danger ? self.preferred-width : self.height;
+                            icon: action.icon;
+                            enabled: action.enabled;
+                            kind: action.danger ? "danger-quiet" : "quiet";
+                            tip: action.enabled ? (action.hint != "" ? action.label + "（" + action.hint + "）" : action.label) : action.reason;
+                            clicked => {
+                                Files.selection-action(action.id, self.abs-x, self.abs-y + self.height + 4px);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Content island
+        island := Rectangle {
+            vertical-stretch: 1;
+            border-radius: Tk.r-lg;
+            background: Tk.raised;
+            clip: true;
+            scope := FocusScope {
+                key-pressed(event) => {
+                    return Files.key(event.text, event.modifiers.control || event.modifiers.meta, event.modifiers.shift, event.modifiers.alt) ? accept : reject;
+                }
+                TouchArea {
+                    pointer-event(event) => {
+                        if (event.kind == PointerEventKind.down) {
+                            scope.focus();
+                        }
+                        if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
+                            Files.background-context(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                        }
+                    }
+                    clicked => {
+                        Files.clear-selection();
+                    }
+                }
+
+                if Files.phase == "loading": VerticalLayout {
+                    alignment: center;
+                    spacing: 12px;
+                    HorizontalLayout {
+                        alignment: center;
+                        Busy {
+                            size: 32px;
+                        }
+                    }
+
+                    Text {
+                        text: Tr.t("正在加载…");
+                        color: Pal.on-surface-variant;
+                        font-size: Tk.fs-md;
+                        horizontal-alignment: center;
+                    }
+                }
+                if Files.phase != "loading" && (Files.phase != "ready" || Files.rows.length == 0): EmptyState {
+                    icon: Files.state-icon;
+                    title: Files.state-title;
+                    body: Files.state-body;
+                    action: Files.state-action;
+                    action2: Files.state-action2;
+                    error: Files.state-error;
+                    action-clicked => {
+                        Files.state-action-clicked();
+                    }
+                    action2-clicked => {
+                        Files.state-action2-clicked();
+                    }
+                }
+                if Files.phase == "ready" && Files.rows.length > 0 && Files.view == "list": VerticalLayout {
+                    padding-left: 8px;
+                    padding-right: 4px;
+                    padding-top: 6px;
+                    spacing: 0px;
+                    HorizontalLayout {
+                        height: 36px;
+                        padding-left: 4px;
+                        padding-right: 28px;
+                        spacing: 0px;
+                        Rectangle {
+                            width: 40px;
+                            VerticalLayout {
+                                alignment: center;
+                                Check {
+                                    state: Files.selected-count == 0 ? 0 : Files.selected-count == Files.rows.length ? 1 : 2;
+                                    label: Files.selected-count > 0 ? Tr.t("取消全选") : Tr.t("全选（Ctrl+A）");
+                                    toggled => {
+                                        Files.toggle-all();
+                                    }
+                                }
+                            }
+                        }
+
+                        HeaderCell {
+                            horizontal-stretch: 1;
+                            text: Tr.t("名称");
+                            key: "name";
+                            clicked => {
+                                Files.header-sort("name");
+                            }
+                        }
+
+                        if Files.show-location: Rectangle {
+                            width: 200px;
+                            Text {
+                                x: 8px;
+                                text: Tr.t("位置");
+                                color: Pal.on-surface-variant;
+                                font-size: Tk.fs-sm;
+                                vertical-alignment: center;
+                            }
+                        }
+                        HeaderCell {
+                            width: 96px;
+                            text: Tr.t("大小");
+                            key: "size";
+                            right: true;
+                            clicked => {
+                                Files.header-sort("size");
+                            }
+                        }
+
+                        HeaderCell {
+                            width: 164px;
+                            text: Tr.t("修改时间");
+                            key: "modified";
+                            right: true;
+                            clicked => {
+                                Files.header-sort("modified");
+                            }
+                        }
+
+                        Rectangle {
+                            width: 124px;
+                            HeaderCell {
+                                x: 20px;
+                                width: parent.width - 20px;
+                                text: Tr.t("类型");
+                                key: "kind";
+                                clicked => {
+                                    Files.header-sort("kind");
+                                }
+                            }
+                        }
+                    }
+
+                    file-list := ListView {
+                        vertical-stretch: 1;
+                        content-y <=> Files.viewport-y;
+                        accessible-role: AccessibleRole.list;
+                        accessible-label: Files.title;
+                        for row[index] in Files.rows: Row {
+                            item: row;
+                            focused: scope.has-focus && index == Files.focus-index;
+                            any-selected: Files.selected-count > 0;
+                            clicked(ctrl, shift) => {
+                                scope.focus();
+                                Files.row-clicked(index, ctrl, shift);
+                            }
+                            toggled => {
+                                scope.focus();
+                                Files.row-toggled(index);
+                            }
+                            activated => {
+                                Files.row-activated(index);
+                            }
+                            context(x, y) => {
+                                scope.focus();
+                                Files.row-context(index, x, y);
+                            }
+                        }
+                        changed content-y => {
+                            if (Files.has-more && !Files.loading-more && -self.content-y + self.visible-height > self.content-height - 600px) {
+                                Files.near-end();
+                            }
+                        }
+                        changed visible-height => {
+                            Files.visible-height = self.visible-height;
+                        }
+                        init => {
+                            Files.visible-height = self.visible-height;
+                        }
+                    }
+                }
+                if Files.phase == "ready" && Files.rows.length > 0 && Files.view == "grid": VerticalLayout {
+                    padding: 8px;
+                    padding-right: 4px;
+                    grid-file-list := ListView {
+                        content-y <=> Files.viewport-y;
+                        accessible-role: AccessibleRole.list;
+                        accessible-label: Files.title;
+                        for line in Files.grid: HorizontalLayout {
+                            height: root.cell-h + 4px;
+                            alignment: start;
+                            spacing: 4px;
+                            padding-bottom: 4px;
+                            for cell[offset] in line.cells: Cell {
+                                width: root.cell-w;
+                                item: cell;
+                                icon-size: Files.grid-size == 0 ? 44px : Files.grid-size == 2 ? 88px : 64px;
+                                focused: scope.has-focus && line.first + offset == Files.focus-index;
+                                clicked(ctrl, shift) => {
+                                    scope.focus();
+                                    Files.row-clicked(line.first + offset, ctrl, shift);
+                                }
+                                toggled => {
+                                    scope.focus();
+                                    Files.row-toggled(line.first + offset);
+                                }
+                                activated => {
+                                    Files.row-activated(line.first + offset);
+                                }
+                                context(x, y) => {
+                                    scope.focus();
+                                    Files.row-context(line.first + offset, x, y);
+                                }
+                            }
+                        }
+                        changed content-y => {
+                            if (Files.has-more && !Files.loading-more && -self.content-y + self.visible-height > self.content-height - 600px) {
+                                Files.near-end();
+                            }
+                        }
+                        changed visible-height => {
+                            Files.visible-height = self.visible-height;
+                        }
+                        init => {
+                            Files.visible-height = self.visible-height;
+                        }
+                    }
+                }
+            }
+
+            // Pagination status pinned to the bottom of the island
+            if Files.phase == "ready" && (Files.has-more || Files.more-error != ""): Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: parent.height - self.height - 12px;
+                width: more.preferred-width;
+                height: 40px;
+                border-radius: 20px;
+                background: Pal.inverse-surface;
+                drop-shadow-blur: 12px;
+                drop-shadow-offset-y: 3px;
+                drop-shadow-color: Tk.shadow;
+                TouchArea { }
+
+                more := HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 6px;
+                    spacing: 10px;
+                    if Files.loading-more: VerticalLayout {
+                        alignment: center;
+                        Busy {
+                            size: 18px;
+                            tint: Pal.inverse-primary;
+                        }
+                    }
+                    Text {
+                        text: Files.more-error != "" ? Files.more-error : Files.loading-more ? Tr.t("正在加载更多") : Tr.t("继续滚动以加载更多");
+                        color: Pal.inverse-on-surface;
+                        font-size: Tk.fs-sm;
+                        vertical-alignment: center;
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            height: 28px;
+                            border-radius: 14px;
+                            background: all-ta.has-hover ? Pal.inverse-primary.with-alpha(0.16) : transparent;
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                Text {
+                                    text: Files.more-error != "" ? Tr.t("重试") : Tr.t("加载全部");
+                                    color: Pal.inverse-primary;
+                                    font-size: Tk.fs-sm;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            all-ta := TouchArea {
+                                enabled: !Files.loading-more;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (Files.more-error != "") {
+                                        Files.retry-more();
+                                    } else {
+                                        Files.load-all();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

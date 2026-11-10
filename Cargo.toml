@@ -8,6 +8,7 @@ members = [
   "crates/nekopak-media",
   "crates/nekopak-mount",
   "crates/nekopak-core",
+  "crates/nekopak-desktop",
   "src-tauri",
 ]
 default-members = [
