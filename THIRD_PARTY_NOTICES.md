@@ -19,6 +19,13 @@ available POM/NOTICE/license files and upstream license supplements inside each 
 and a companion licenses ZIP. Android uses the device WebView/runtime, not bundled
 Chromium or a desktop JVM. No Piko AGPL implementation is incorporated.
 
+The Android license inventory also carries the original Maven Central POMs for
+com.google.guava:listenablefuture:1.0 and its guava-parent:26.0-android parent.
+They establish the inherited Apache-2.0 declaration even on a clean Gradle runner.
+Exact URLs, SHA256 values and unchanged metadata paths are recorded in
+licenses/maven-sources.json and bundled as MAVEN_SOURCES.json. Only license/build
+metadata is retained; no additional Guava implementation is copied into this repository.
+
 The exact resolved versions and checksums are in Cargo.lock and package-lock.json.
 Rust runtime/build components include Tauri, Wry, Tao, serde, serde_json, Tokio,
 async-trait, rusqlite, SQLite (bundled by libsqlite3-sys), time, uuid, sha2, url,

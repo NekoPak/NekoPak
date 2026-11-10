@@ -162,7 +162,8 @@ loopback traffic with an in-memory provider vault; the separate JNI Keystore che
 exercise actual Android secure storage. See `evidence/mobile-recovery-android-native.json`.
 
 Browser phone fixtures passed 12/12 across 360/390/412px and both themes. Packaging
-and launcher tests passed 18/18 with actual AAPT2 resources. The APK checker verifies
+and launcher tests passed 20/20 with actual AAPT2 resources, clean-cache Maven
+license inheritance and tampered-metadata rejection. The APK checker verifies
 25 PNG variants and four adaptive resource graphs, including round and themed icons.
 Screenshots from the installed WebView are named `screenshots/android/phone-*.png`;
 browser fixture screenshots are labeled separately. Signed release artifacts and

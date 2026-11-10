@@ -45,8 +45,9 @@
   切画质及账号重置释放流；本地HTTP Range与合成IPC，不含真实账号或捆绑解码器。
 - `node tests/e2e/native-startup.mjs`：4/4；`node tests/e2e/native-functional.mjs`：3/3。
   使用实际Windows WebView2、Rust、SQLite和本地HTTP，未操作真实账号。
-- 配置现有SDK后，`python -m unittest discover -s tests -p 'test_android*.py'`：18/18，
-  包括实际AAPT2编译图标、错误像素／资源图拒绝、签名和16KiB校验逻辑。
+- 配置现有SDK后，`python -m unittest discover -s tests -p 'test_android*.py'`：20/20，
+  包含补充的干净缓存与许可证元数据篡改测试、实际AAPT2编译图标、
+  错误像素／资源图拒绝、签名和16KiB校验逻辑。
 - `node tests/e2e/android-native.mjs`：隔离Android15/API35 x86_64模拟器14/14。
   实际安装debug APK，检查原生中文语言、手机组件树、真实速度、HTTP503自动恢复、后台暂停、
   重启续传、SAF取消／保存与SHA256、清理记录持久化且字节保留。登录provider使用内存
@@ -66,6 +67,11 @@
 真实登录／CAPTCHA／四域名服务能力、Free/Premium权限及实际网络由用户在应用内验收。
 物理ARM64手机、Android上传／共享目录同步及前台持续下载服务尚未完成；切后台仍暂停。
 Windows／Android预览包与发布链路检查不解除现有上游功能对齐门禁。
+
+首次GitHub发布检查发现两个环境差异：新版Rust弃用了测试使用的fetch_update；干净Gradle
+缓存缺少Guava父POM，许可证门禁正确阻止打包。测试改用兼容的新旧编译器写法，许可证使用
+从Maven Central重新取得并核对SHA256的原始POM（licenses/maven-sources.json），不按包名
+猜测许可。故障及最终工作流结果分别保留，不把首次失败记为通过。
 
 下一可执行事项：用户用同签名0.1.1 APK验证原手机上的图标、中文、代理先断后恢复、
 账号自动恢复及下载重连；提供脱敏错误后继续修正真实服务差异，不交接密码或token。

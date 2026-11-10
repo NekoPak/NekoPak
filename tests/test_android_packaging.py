@@ -3,6 +3,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import struct
 import subprocess
 import tempfile
@@ -136,6 +137,22 @@ class AndroidPackageValidation(unittest.TestCase):
             parent.write_text("<project><parent><groupId>example</groupId><artifactId>child</artifactId><version>1</version></parent></project>")
             with self.assertRaisesRegex(ValueError, "Cyclic"):
                 packaging._pom_licenses({"group": "example", "name": "child", "version": "1"})
+
+    def test_maven_license_inheritance_works_without_a_warm_gradle_cache(self):
+        with patch.dict(os.environ, {"GRADLE_USER_HOME": self.temp.name}):
+            licenses, poms = packaging._pom_licenses({"group": "com.google.guava", "name": "listenablefuture", "version": "1.0"})
+            self.assertTrue(any("Apache" in item["name"] and "2.0" in item["name"] for item in licenses))
+            self.assertEqual({file.name for file in poms}, {"listenablefuture-1.0.pom", "guava-parent-26.0-android.pom"})
+
+    def test_pinned_maven_license_metadata_rejects_tampering(self):
+        root = Path(self.temp.name)
+        (root / "licenses").mkdir()
+        shutil.copyfile(ROOT / "licenses/maven-sources.json", root / "licenses/maven-sources.json")
+        shutil.copytree(ROOT / "licenses/upstream/guava-26.0-android", root / "licenses/upstream/guava-26.0-android")
+        parent = root / "licenses/upstream/guava-26.0-android/guava-parent-26.0-android.pom"
+        parent.write_bytes(parent.read_bytes() + b"tampered")
+        with patch.dict(os.environ, {"GRADLE_USER_HOME": self.temp.name}), self.assertRaisesRegex(ValueError, "checksum mismatch"):
+            packaging._pom_licenses({"group": "com.google.guava", "name": "listenablefuture", "version": "1.0"}, root)
 
     def test_native_freshness_rejects_newer_rust_input(self):
         root = Path(self.temp.name)

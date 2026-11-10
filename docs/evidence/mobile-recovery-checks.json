@@ -33,7 +33,7 @@
     "icons": "25 PNG variants and 4 adaptive resource graphs verified in actual APK"
   },
   "python": {
-    "android_packaging_and_icons": 18,
+    "android_packaging_and_icons": 20,
     "parity": 4,
     "signing": 1
   },
@@ -45,5 +45,13 @@
   ],
   "license": "Independent MIT; no AGPL implementation or added runtime; fixed-domain source provenance in NETWORK_RECOVERY_RESEARCH.md",
   "source_logs": "target/continuation-*.log (local, ignored)",
-  "build_environment_note": "First Rust build ran out of disk space; scoped Cargo cache clean then full successful rerun. CARGO_INCREMENTAL=0 used locally."
+  "build_environment_note": "First Rust build ran out of disk space; scoped Cargo cache clean then full successful rerun. CARGO_INCREMENTAL=0 used locally.",
+  "ci_regressions": {
+    "first_release_run": "https://github.com/NekoPak/NikoPak/actions/runs/42765763453",
+    "result": "failed: newer Rust deprecated a test API; clean Gradle cache lacked inherited Guava license metadata",
+    "fixes": [
+      "Use a mutex countdown compatible with the minimum and latest Rust versions",
+      "Hash-verified Maven Central child and parent POMs; missing/tampered license inputs still fail closed"
+    ]
+  }
 }

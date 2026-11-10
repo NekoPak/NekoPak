@@ -919,7 +919,7 @@ mod tests {
         scope: std::sync::Mutex<String>,
         fail_at: AtomicUsize,
         changed: std::sync::atomic::AtomicBool,
-        switch_on_status: AtomicUsize,
+        switch_on_status: std::sync::Mutex<usize>,
     }
     #[async_trait]
     impl ProviderPort for ByteProvider {
@@ -947,13 +947,13 @@ mod tests {
             unreachable!()
         }
         async fn auth_status(&self) -> Result<AuthState, ClientError> {
-            if self
-                .switch_on_status
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
-                    remaining.checked_sub(1)
-                })
-                .is_ok_and(|remaining| remaining == 1)
-            {
+            let switch_now = {
+                let mut remaining = self.switch_on_status.lock().unwrap();
+                let switch_now = *remaining == 1;
+                *remaining = remaining.saturating_sub(1);
+                switch_now
+            };
+            if switch_now {
                 *self.scope.lock().unwrap() = "account-b".into();
             }
             Ok(AuthState {
@@ -1018,7 +1018,7 @@ mod tests {
             scope: std::sync::Mutex::new("account-a".into()),
             fail_at: AtomicUsize::new(usize::MAX),
             changed: std::sync::atomic::AtomicBool::new(false),
-            switch_on_status: AtomicUsize::new(0),
+            switch_on_status: std::sync::Mutex::new(0),
         })
     }
     async fn setup(size: usize) -> (tempfile::TempDir, Arc<ByteProvider>, AppService, TaskRef) {
@@ -1141,7 +1141,7 @@ mod tests {
         other.state = TaskState::Cancelled;
         app.save_download(&other.id, &download).unwrap();
         let other = app.store().unwrap().insert(other, None).unwrap();
-        provider.switch_on_status.store(2, Ordering::SeqCst);
+        *provider.switch_on_status.lock().unwrap() = 2;
         assert_eq!(
             app.transfer_clear_finished(&RequestContext::default())
                 .await

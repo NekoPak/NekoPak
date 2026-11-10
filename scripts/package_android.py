@@ -73,8 +73,11 @@ def _license_files(base: Path) -> list[Path]:
                    for path in base.glob(pattern) if path.is_file()})
 
 
-def _pom_licenses(record: dict) -> tuple[list[dict], list[Path]]:
+def _pom_licenses(record: dict, root: Path = ROOT) -> tuple[list[dict], list[Path]]:
     cache = Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle")) / "caches/modules-2/files-2.1"
+    root = root.resolve()
+    source_index = root / "licenses/maven-sources.json"
+    sources = json.loads(source_index.read_text(encoding="utf-8")) if source_index.is_file() else []
     pending = [(record["group"], record["name"], record["version"])]
     seen = set()
     poms = []
@@ -85,19 +88,33 @@ def _pom_licenses(record: dict) -> tuple[list[dict], list[Path]]:
         if coordinates in seen or len(seen) >= 12:
             raise ValueError("Cyclic or excessively deep Maven license inheritance.")
         seen.add(coordinates)
-        for pom in sorted(cache.joinpath(*coordinates).glob("*/*.pom")):
+        pinned = [item for item in sources if (item["group"], item["name"], item["version"]) == coordinates]
+        candidates = sorted(cache.joinpath(*coordinates).glob("*/*.pom"))
+        if pinned:
+            # Gradle may resolve module metadata without caching parent POMs.
+            # Audited, exact-version POMs make inheritance independent of a warm
+            # workstation cache, without guessing a dependency's license.
+            candidates = []
+            for item in pinned:
+                pom = (root / item["file"]).resolve()
+                if not pom.is_relative_to(root / "licenses") or pom.suffix != ".pom":
+                    raise ValueError("Pinned Maven POM must stay inside repository licenses.")
+                if digest(pom) != item["sha256"]:
+                    raise ValueError(f"Pinned Maven POM checksum mismatch: {pom.name}")
+                candidates.append(pom)
+        for pom in candidates:
             poms.append(pom)
-            root = ET.parse(pom).getroot()
-            declarations = root.findall("m:licenses/m:license", namespace) + root.findall("licenses/license")
+            xml_root = ET.parse(pom).getroot()
+            declarations = xml_root.findall("m:licenses/m:license", namespace) + xml_root.findall("licenses/license")
             for item in declarations:
                 name = item.findtext("m:name", namespaces=namespace) or item.findtext("name") or ""
                 url = item.findtext("m:url", namespaces=namespace) or item.findtext("url") or ""
                 if name or url:
                     licenses.append({"name": name, "url": url})
             if not declarations:
-                parent = root.find("m:parent", namespace)
+                parent = xml_root.find("m:parent", namespace)
                 if parent is None:
-                    parent = root.find("parent")
+                    parent = xml_root.find("parent")
                 if parent is not None:
                     fields = tuple(parent.findtext(f"m:{name}", namespaces=namespace) or parent.findtext(name) or "" for name in ["groupId", "artifactId", "version"])
                     if all(re.fullmatch(r"[A-Za-z0-9_.+-]+", value) for value in fields):
@@ -127,6 +144,8 @@ def licenses(gradle_inventory: Path, assets_dir: Path, root: Path = ROOT) -> dic
     if not assets_dir.is_relative_to(generated) or assets_dir.name != "nekopak-licenses":
         raise ValueError("License assets must be inside the generated Android project.")
     files = {name: (root / name).read_bytes() for name in ["LICENSE", "THIRD_PARTY_NOTICES.md"]}
+    if (root / "licenses/maven-sources.json").is_file():
+        files["MAVEN_SOURCES.json"] = (root / "licenses/maven-sources.json").read_bytes()
     supplemental = json.loads((root / "licenses/sources.json").read_text(encoding="utf-8"))
     metadata = json.loads(run("cargo", "metadata", "--locked", "--offline", "--format-version", "1", cwd=root))
     tree = run("cargo", "tree", "--locked", "--offline", "-p", "nekopak-app", "--target", "aarch64-linux-android", "--edges", "normal", "--prefix", "none", cwd=root)
@@ -167,7 +186,7 @@ def licenses(gradle_inventory: Path, assets_dir: Path, root: Path = ROOT) -> dic
     for record in json.loads(gradle_inventory.read_text(encoding="utf-8")):
         if record.get("project"):
             continue  # Tauri and its plugins are covered by the Rust crate inventory.
-        declaration, poms = _pom_licenses(record)
+        declaration, poms = _pom_licenses(record, root)
         artifact = Path(record["file"])
         notices = _artifact_notices(artifact)
         prefix = f"android/{record['group']}/{record['name']}-{record['version']}"
