@@ -211,8 +211,21 @@ impl AppService {
         key: &str,
         ctx: &RequestContext,
     ) -> Result<TaskRef, ClientError> {
-        validate_source(source)?;
         let scope = ctx.run(self.provider.account_scope()).await?;
+        self.create_native_cloud_at(source, parent, key, &scope, ctx)
+            .await
+    }
+    pub(crate) async fn create_native_cloud_at(
+        &self,
+        source: &str,
+        parent: &str,
+        key: &str,
+        expected_scope: &str,
+        ctx: &RequestContext,
+    ) -> Result<TaskRef, ClientError> {
+        validate_source(source)?;
+        self.check_scope(expected_scope, ctx).await?;
+        let scope = expected_scope.to_owned();
         let key = scoped_key("cloud", key)?;
         let fp = fingerprint(&[source, parent]);
         let replay = self.records()?.begin_value(&scope, &key, &fp)?;

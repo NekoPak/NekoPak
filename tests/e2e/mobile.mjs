@@ -33,7 +33,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
   let task = { id: "completed-a", remote_id: "file-a", backend: "rust_compat", name: file.name, kind: "download", state: "completed", destination: "/data/user/0/io.nekopak.desktop/files/Downloads/示例文件.txt", transferred_bytes: "12", total_bytes: "12", revision: "1", simulated: false, created_at: now, updated_at: now };
   let tasks=[task,{...task,id:"running-a",name:"旅行视频.mp4",state:"running",transferred_bytes:"4194304",total_bytes:"41943040",speed_bytes_per_sec:2097152},{...task,id:"cancelled-a",name:"已取消的备份.zip",state:"cancelled",transferred_bytes:"0"}];
   const settings = { schema_version: 1, theme, language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
-  window.__mobileFixture = { calls: [], exportResult: false };
+  window.__mobileFixture = { calls: [], exportResult: false, torrentResult: null };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
@@ -45,8 +45,11 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
       if (command === "plugin:event|listen") return ++id;
       if (command === "plugin:event|unlisten") return;
       if (command.startsWith("plugin:window|")) return false;
-      if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: !mobile, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
+      if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, torrent_import: true, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: !mobile, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
       if(command === "auth_preferences_get")return authPrefs;
+      if(command === "cloud_torrent_pick")return window.__mobileFixture.torrentResult;
+      if(command === "cloud_torrent_create")return {task_id:"torrent-cloud-a"};
+      if(command === "cloud_torrent_release")return;
       if(command === "auth_preferences_update"){authPrefs=args.preferences;return authPrefs;}
       if(command === "network_reconnect")return;
       if(command === "network_domains_probe"){const selected=settings.experimental_network.server_domain??"auto";return {selected_domain:selected,active_domain:selected==="auto"?"mypikpak.com":selected,checked_at:now,results:["mypikpak.com","mypikpak.net","pikpak.me","pikpakdrive.com"].map((domain,index)=>({domain,usable:true,latency_ms:42+index*10,warm_latency_ms:12+index*5}))};}
@@ -136,7 +139,16 @@ try {
       await page.getByRole('button',{name:'新建',exact:true}).tap();await page.getByRole('button',{name:'添加链接',exact:true}).tap();
       await page.getByRole('dialog',{name:'添加链接',exact:true}).waitFor();
       await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`cloud-dialog-${width}-${theme}.png`)});
-      await page.evaluate(()=>window.dispatchEvent(new CustomEvent('nekopak:back',{cancelable:true})));
+      await page.getByRole('tab',{name:'种子文件',exact:true}).tap();
+      await page.getByRole('button',{name:'选择种子文件',exact:true}).tap();
+      assert.equal(await page.getByRole('button',{name:'提交云下载',exact:true}).isDisabled(),true);
+      await page.evaluate(()=>{window.__mobileFixture.torrentResult={import_id:'fixture-torrent',title:'test.bin',info_hash:'a'.repeat(40),total_bytes:'3',file_count:1,files:[{path:'test.bin',size_bytes:'3'}],private:false,expires_at:'2099-01-01T00:00:00Z'};});
+      await page.getByRole('button',{name:'选择种子文件',exact:true}).tap();
+      await page.getByText('将提交整个种子中的文件。',{exact:true}).waitFor();
+      await page.screenshot({path:resolve(output,`torrent-${width}-${theme}.png`)});
+      await page.getByRole('button',{name:'提交云下载',exact:true}).tap();
+      await page.getByRole('dialog',{name:'添加链接',exact:true}).waitFor({state:'detached'});
+      assert(await page.evaluate(()=>window.__mobileFixture.calls.some(call=>call.command==='cloud_torrent_create'&&call.args.import_id==='fixture-torrent')));
       await page.getByRole('button',{name:'传输',exact:true}).tap();
       await page.locator('[data-task="running-a"]').waitFor();
       assert((await page.locator('[data-task="running-a"] .phone-task-stats strong').textContent()).includes('/s'),"measured speed is visible");

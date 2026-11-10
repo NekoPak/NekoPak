@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-10",
+  "command": "node tests/e2e/download-throughput.mjs",
+  "baseline_version": "0.1.1",
+  "candidate_version": "0.1.2",
+  "before": {
+    "bytes": 16777216,
+    "direct_ms": 89,
+    "app_ms": 9263,
+    "app_mib_per_s": 1.73,
+    "metadata_requests": 17,
+    "range_requests": 16,
+    "cdn_connections": 16,
+    "range_intervals_ms": [
+      498,
+      497,
+      513,
+      501,
+      497,
+      501,
+      501,
+      498,
+      499,
+      502,
+      497,
+      502,
+      494,
+      502,
+      498
+    ],
+    "sha256": "4f9e5ff6d5a386025a4959399d74f4b790e356b1692a3bd1dd1724aedf7e9704",
+    "scope": "Synthetic local HTTP40ms latency, actual Rust and Windows WebView; not live-service speed"
+  },
+  "after": {
+    "bytes": 16777216,
+    "direct_ms": 109,
+    "app_ms": 1085,
+    "app_mib_per_s": 14.74,
+    "metadata_requests": 2,
+    "range_requests": 4,
+    "cdn_connections": 1,
+    "range_intervals_ms": [
+      147,
+      151,
+      139
+    ],
+    "sha256": "4f9e5ff6d5a386025a4959399d74f4b790e356b1692a3bd1dd1724aedf7e9704",
+    "scope": "Synthetic local HTTP40ms latency, actual Rust and Windows WebView; not live-service speed"
+  },
+  "speedup": 8.54,
+  "scope": "Controlled localhost synthetic benchmark, not a live-account or ISP speed claim"
+}

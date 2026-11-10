@@ -197,6 +197,16 @@ docs/NETWORK_RECOVERY_RESEARCH.md. This is protocol/behavior reference; Rust rou
 anonymous measurements, reconnect, credential preferences and retry scheduling were
 written independently. Public client domains do not imply an official public API.
 
+Version0.1.2 adds an independently written bounded bencode parser and torrent-file
+import from the system picker. The original info bytes are hashed according to
+BEP3 (https://www.bittorrent.org/beps/bep_0003.html); public Web file-import behavior
+was researched without copying its implementation. Exact source hashes and the
+fixed cached Web build limitation are in docs/TORRENT_IMPORT_RESEARCH.md.
+No additional parser/runtime, BT peer engine or AGPL source was incorporated.
+The existing SHA1 dependency supplies BT protocol identity; downloaded bytes still
+use SHA256 verification. The download-worker, connection-reuse and Android IME
+changes use existing Rust/Tauri/AndroidX APIs.
+
 The optional Windows Setup.exe is produced by Tauri's NSIS bundler (build-time tooling).
 It installs the same executable, notices and dependency license files as the portable ZIP.
 NSIS is not launched as part of normal application operation. WebView2's Microsoft

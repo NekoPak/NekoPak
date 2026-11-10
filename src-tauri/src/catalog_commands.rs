@@ -1,5 +1,86 @@
 use crate::*;
 
+#[tauri::command]
+pub async fn cloud_torrent_pick<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    window: tauri::WebviewWindow<R>,
+    service: State<'_, Service>,
+) -> Result<Option<nekopak_core::TorrentPreview>, ClientError> {
+    let context = RequestContext::new(Duration::from_secs(45));
+    let scope = service.account_scope(&context).await?;
+    let (send, receive) = tokio::sync::oneshot::channel();
+    let dialog = app
+        .dialog()
+        .file()
+        .set_title("选择种子文件 / Select torrent")
+        .add_filter("BitTorrent", &["torrent"]);
+    #[cfg(desktop)]
+    let dialog = dialog.set_parent(&window);
+    #[cfg(mobile)]
+    let _ = window;
+    dialog.pick_file(move |file| {
+        let _ = send.send(file);
+    });
+    let Some(selected) = receive.await.map_err(|_| internal())? else {
+        return Ok(None);
+    };
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, ClientError> {
+        use std::io::Read;
+        #[cfg(target_os = "android")]
+        let source = {
+            use tauri_plugin_fs::{FsExt, OpenOptions};
+            let mut options = OpenOptions::new();
+            options.read(true);
+            app.fs().open(selected, options).map_err(|_| {
+                ClientError::new(ErrorCode::PermissionDenied, "无法读取所选种子文件。")
+            })?
+        };
+        #[cfg(not(target_os = "android"))]
+        let source = {
+            let _ = app;
+            std::fs::File::open(selected.into_path().map_err(|_| internal())?).map_err(|_| {
+                ClientError::new(ErrorCode::PermissionDenied, "无法读取所选种子文件。")
+            })?
+        };
+        let mut bytes = Vec::new();
+        source
+            .take(nekopak_core::MAX_TORRENT_BYTES as u64 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| ClientError::new(ErrorCode::PermissionDenied, "无法完整读取种子文件。"))?;
+        Ok(bytes)
+    })
+    .await
+    .map_err(|_| internal())??;
+    service
+        .torrent_import(&bytes, &scope, &context)
+        .await
+        .map(Some)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn cloud_torrent_create(
+    service: State<'_, Service>,
+    import_id: String,
+    parent_id: String,
+    idempotency_key: String,
+) -> Result<TaskRef, ClientError> {
+    service
+        .torrent_create(
+            &import_id,
+            &parent_id,
+            &idempotency_key,
+            &RequestContext::new(Duration::from_secs(45)),
+        )
+        .await
+}
+#[tauri::command(rename_all = "snake_case")]
+pub fn cloud_torrent_release(
+    service: State<'_, Service>,
+    import_id: String,
+) -> Result<(), ClientError> {
+    service.torrent_release(&import_id)
+}
+
 #[tauri::command(rename_all = "snake_case")]
 pub async fn transfer_forget(
     service: State<'_, Service>,

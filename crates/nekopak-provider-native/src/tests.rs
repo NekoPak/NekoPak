@@ -194,6 +194,7 @@ impl Server {
         let (auth_events, _) = broadcast::channel(32);
         (
             Arc::new(NativeProvider {
+                read_cache: Default::default(),
                 profile: Some(ClientProfile {
                     id: profile::WEB_CLIENT_ID.into(),
                     secret: None,
@@ -1429,6 +1430,120 @@ async fn native_download_rejects_bad_ranges_and_sends_no_api_credentials_to_cdn(
         } else {
             assert_eq!(result.err().unwrap().code, ErrorCode::IntegrityFailed);
         }
+    }
+}
+
+#[tokio::test]
+async fn download_source_reuse_requires_strong_etags_and_reconnect_invalidates_the_lease() {
+    for validator in [Some("\"stable\""), Some("W/\"weak\""), None] {
+        let origin = Arc::new(StdMutex::new(String::new()));
+        let endpoint = origin.clone();
+        let reject = Arc::new(AtomicBool::new(false));
+        let rejected = reject.clone();
+        let server = Server::new(move |request| {
+            if request.path.starts_with("/drive/v1/files/file-1") {
+                let mut entry = file("file-1");
+                entry["size"] = "6".into();
+                entry["hash"] = "stable-content".into();
+                entry["web_content_link"] = format!("{}/content", endpoint.lock().unwrap()).into();
+                return reply(200, entry);
+            }
+            if request.path == "/content" {
+                if rejected.load(Ordering::SeqCst) {
+                    return reply(412, json!({}));
+                }
+                let range = request.headers["range"].strip_prefix("bytes=").unwrap();
+                if range == "2-3" && validator == Some("\"stable\"") {
+                    assert_eq!(request.headers["if-match"], "\"stable\"");
+                } else {
+                    assert!(!request.headers.contains_key("if-match"));
+                }
+                return Reply {
+                    status: 206,
+                    body: "ab".into(),
+                    headers: format!(
+                        "Content-Range: bytes {range}/6\r\n{}",
+                        validator
+                            .map(|v| format!("ETag: {v}\r\n"))
+                            .unwrap_or_default()
+                    ),
+                    delay: Duration::ZERO,
+                };
+            }
+            standard(request)
+        })
+        .await;
+        *origin.lock().unwrap() = server.origin.clone();
+        let (provider, _) = server.provider();
+        login(&provider).await;
+        let info = provider.download_info("file-1").await.unwrap();
+        for offset in [0, 2] {
+            provider
+                .download_chunk(
+                    "file-1",
+                    &info.identity,
+                    &info.account_scope,
+                    offset,
+                    2,
+                    Default::default(),
+                )
+                .await
+                .unwrap();
+        }
+        let count = server
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|r| r.path.starts_with("/drive/v1/files/file-1"))
+            .count();
+        assert_eq!(
+            count,
+            if validator == Some("\"stable\"") {
+                2
+            } else {
+                3
+            }
+        );
+        provider.network_reconnect().unwrap();
+        provider
+            .download_chunk(
+                "file-1",
+                &info.identity,
+                &info.account_scope,
+                4,
+                2,
+                Default::default(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            server
+                .requests
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|r| r.path.starts_with("/drive/v1/files/file-1"))
+                .count(),
+            count + 1
+        );
+        reject.store(true, Ordering::SeqCst);
+        assert_eq!(
+            provider
+                .download_chunk(
+                    "file-1",
+                    &info.identity,
+                    &info.account_scope,
+                    0,
+                    2,
+                    Default::default()
+                )
+                .await
+                .err()
+                .unwrap()
+                .code,
+            ErrorCode::IntegrityFailed
+        );
     }
 }
 

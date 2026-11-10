@@ -8,15 +8,17 @@ import { prefs } from "../state/prefs";
 import { formatBytes } from "../lib/format";
 import { dialogs, menu } from "../state/ui";
 import { palette } from "../state/palette";
+import { useKeyboardVisible } from "../lib/mobile";
 
 export function MobileShell({ children }: { children: ComponentChildren }) {
+  const keyboard = useKeyboardVisible();
   const menuOpen=useStore(menu,s=>s.open), dialogOpen=useStore(dialogs,s=>s.stack.length>0), paletteOpen=useStore(palette,s=>s.open);
   const blocked=menuOpen||dialogOpen||paletteOpen;
   const page = useStore(route, s => s.current.page);
   const active = page === "transfers" || page === "cloud" ? "transfers" : ["me", "settings", "about", "recent", "starred", "shares", "trash", "references"].includes(page) ? "me" : "files";
   return <div class="mobile-app">
     <main id="main" class="mobile-workspace" inert={blocked||undefined}>{children}</main>
-    <nav class="mobile-bottom-nav" aria-label={tr("主导航")} inert={blocked||undefined}>
+    <nav class="mobile-bottom-nav" aria-label={tr("主导航")} hidden={keyboard} inert={blocked||keyboard||undefined}>
       {[
         { id: "files", label: tr("文件"), icon: "folder", to: { page: "files", folder: "root" } as Route },
         { id: "transfers", label: tr("传输"), icon: "transfer", to: { page: "transfers", tab: "active" } as Route },

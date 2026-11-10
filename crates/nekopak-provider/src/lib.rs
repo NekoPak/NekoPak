@@ -47,6 +47,7 @@ pub struct SimulationStep {
     pub error: Option<ClientError>,
 }
 
+#[derive(Clone)]
 pub struct DownloadInfo {
     pub entry: RemoteEntry,
     pub identity: String,
@@ -86,6 +87,9 @@ impl Default for DownloadObserver {
 
 #[async_trait]
 pub trait ProviderPort: Send + Sync {
+    fn preferred_download_chunk_size(&self) -> u64 {
+        1024 * 1024
+    }
     fn id(&self) -> BackendId;
     fn configure_server_domain(&self, _domain: &str) -> Result<(), ClientError> {
         Ok(())

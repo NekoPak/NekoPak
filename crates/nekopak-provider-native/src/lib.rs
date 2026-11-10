@@ -172,6 +172,7 @@ struct Snapshot {
 }
 
 pub struct NativeProvider {
+    read_cache: std::sync::Mutex<download::ReadCache>,
     profile: Option<ClientProfile>,
     http: HttpApi,
     vault: Arc<dyn SessionVault>,
@@ -282,6 +283,7 @@ impl NativeProvider {
         }
         let (auth_events, _) = broadcast::channel(32);
         Ok(Self {
+            read_cache: Default::default(),
             profile: Some(ClientProfile {
                 id: profile::WEB_CLIENT_ID.into(),
                 secret: None,
@@ -346,6 +348,7 @@ impl NativeProvider {
         let (auth_events, _) = broadcast::channel(32);
         let http = HttpApi::production(identity)?;
         Ok(Self {
+            read_cache: Default::default(),
             profile,
             http,
             vault: Arc::new(OsVault { target }),
@@ -361,6 +364,9 @@ impl NativeProvider {
         self.profile.as_ref().ok_or_else(configuration)
     }
     fn emit(&self, state: AuthStatus, error: Option<ClientError>) {
+        if let Ok(mut cache) = self.read_cache.lock() {
+            cache.clear_sources();
+        }
         let _ = self.auth_events.send(AuthChangedEvent { state, error });
     }
     fn load(&self, session: &mut Session) -> Result<(), ClientError> {
@@ -780,6 +786,9 @@ fn validate_challenge_url(value: &str) -> Result<(), ClientError> {
 
 #[async_trait]
 impl ProviderPort for NativeProvider {
+    fn preferred_download_chunk_size(&self) -> u64 {
+        4 * 1024 * 1024
+    }
     fn id(&self) -> BackendId {
         BackendId::RustCompat
     }

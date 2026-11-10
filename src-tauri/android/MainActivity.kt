@@ -7,6 +7,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : TauriActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,11 +27,20 @@ class MainActivity : TauriActivity() {
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime())
             view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, keyboard.bottom))
+            val visible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            webView.evaluateJavascript(
+                "window.__NEKOPAK_KEYBOARD_VISIBLE__=$visible;window.dispatchEvent(new CustomEvent('nekopak:keyboard',{detail:{visible:$visible}}));",
+                null,
+            )
             insets
         }
         ViewCompat.requestApplyInsets(content)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (ViewCompat.getRootWindowInsets(content)?.isVisible(WindowInsetsCompat.Type.ime()) == true) {
+                    WindowInsetsControllerCompat(window, content).hide(WindowInsetsCompat.Type.ime())
+                    return
+                }
                 webView.evaluateJavascript(
                     "(function(){const e=new CustomEvent('nekopak:back',{cancelable:true});return !window.dispatchEvent(e);})()",
                 ) { handled ->

@@ -1,11 +1,11 @@
 import { tr, tx } from "../lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ClientError, RemoteEntry } from "../lib/contract";
-import { ROOT_ID, type LinkPreview } from "../lib/contract-proposals";
+import { ROOT_ID, type LinkPreview, type TorrentPreview } from "../lib/contract-proposals";
 import { api, errorOf, newIdempotencyKey } from "../lib/api";
 import { formatBytes, formatBytesExact, formatDateTime } from "../lib/format";
 import { fileKind, KIND_LABEL, validateName, windowsIssues } from "../lib/names";
-import { fileGate, gate } from "../state/app";
+import { app, fileGate, gate } from "../state/app";
 import { playExternal } from "../pages/lazy";
 import { navigate } from "../state/route";
 import { noteCreated } from "../state/transfers";
@@ -344,6 +344,17 @@ function LinkPick({ preview, picked, setPicked }: { preview: LinkPreview; picked
 }
 
 function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: { initialParent: string; initialPath: string; initialText?: string; close: () => void }) {
+  const [sourceMode, setSourceMode] = useState<"link" | "torrent">("link");
+  const [torrent, setTorrent] = useState<TorrentPreview | null>(null);
+  const [torrentError, setTorrentError] = useState<ClientError>();
+  const torrentKey = useRef(newIdempotencyKey());
+  const torrentRef = useRef<TorrentPreview | null>(null);
+  const alive = useRef(true);
+  const torrentSupported = app.get().runtime === "tauri" && app.get().app?.feature_flags.torrent_import === true;
+  useEffect(() => () => {
+    alive.current = false;
+    if (torrentRef.current) void api.cloudTorrentRelease(torrentRef.current.import_id).catch(() => {});
+  }, []);
   const [raw, setRaw] = useState(initialText);
   const [target, setTarget] = useState<{ id: string; path: string }>({ id: initialParent, path: initialPath });
   const [lines, setLines] = useState<LineState[]>([]);
@@ -354,6 +365,27 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const g = fileGate("cloud_task", target.id);
   const lp = gate("link_preview");
+  const chooseTorrent = async () => {
+    setBusy(true); setTorrentError(undefined);
+    try {
+      const next = await api.cloudTorrentPick();
+      if (!alive.current) { if(next) await api.cloudTorrentRelease(next.import_id); return; }
+      if (next) {
+        if (torrentRef.current) await api.cloudTorrentRelease(torrentRef.current.import_id);
+        torrentRef.current = next; setTorrent(next); torrentKey.current = newIdempotencyKey();
+      }
+    } catch (error) { if(alive.current) setTorrentError(errorOf(error)); }
+    finally { if(alive.current) setBusy(false); }
+  };
+  const submitTorrent = async () => {
+    if(!torrent || !g.ok || busy) return;
+    setBusy(true); setTorrentError(undefined);
+    try {
+      await api.cloudTorrentCreate(torrent.import_id, target.id, torrentKey.current);
+      noteCreated();toast(tx("已提交 {0} 个云下载任务。提交成功不代表下载完成", 1),"success");close();
+    } catch(error) { setTorrentError(errorOf(error)); }
+    finally { if(alive.current) setBusy(false); }
+  };
 
   const parsed = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const kinds = parsed.map(classifySource);
@@ -364,7 +396,7 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
   useEffect(() => {
     setPreview(null);
     setPreviewErr(null);
-    if (!single || !lp.ok) return;
+    if (!single || !lp.ok || sourceMode !== "link") return;
     let alive = true;
     const t = setTimeout(() => {
       setPreviewing(true);
@@ -377,7 +409,7 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
       alive = false;
       clearTimeout(t);
     };
-  }, [single]);
+  }, [single, sourceMode]);
 
   const submit = async () => {
     // Keep each line's idempotency key across retries: re-submitting after a
@@ -414,8 +446,24 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
   const done = lines.filter((l) => l.status === "submitted").length;
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (g.ok && parsed.length && !invalid && !busy) void submit(); }}>
+    <form onSubmit={(e) => { e.preventDefault(); if(sourceMode === "torrent") { void submitTorrent(); return; } if (g.ok && parsed.length && !invalid && !busy) void submit(); }}>
       {!g.ok ? <div class="inline-note warn"><Icon name="alert" size={14} />{g.reason}</div> : null}
+      <div class="chip-row" role="tablist" aria-label={tr("云下载来源")}>
+        <button type="button" role="tab" class={`chip${sourceMode === "link" ? " on" : ""}`} aria-selected={sourceMode === "link"} disabled={busy} onClick={() => setSourceMode("link")}>{tr("链接")}</button>
+        <button type="button" role="tab" class={`chip${sourceMode === "torrent" ? " on" : ""}`} aria-selected={sourceMode === "torrent"} disabled={busy || !torrentSupported} title={!torrentSupported ? tr("请在桌面或手机应用中选择种子文件") : undefined} onClick={() => setSourceMode("torrent")}>{tr("种子文件")}</button>
+      </div>
+      {sourceMode === "torrent" ? <>
+        <p class="dim">{tr("选择 .torrent 文件，预览后提交云下载。最大 10 MiB。")}</p>
+        <Btn label={torrent ? tr("重新选择种子文件") : tr("选择种子文件")} icon="folder" busy={busy} disabled={!g.ok} onClick={() => void chooseTorrent()}/>
+        {torrent ? <div class="link-pick">
+          <div class="link-pick-head"><strong dir="auto">{torrent.title}</strong><span>{torrent.file_count} {tr("个文件")} · {formatBytes(torrent.total_bytes)}</span></div>
+          <p class="dim">{tr("将提交整个种子中的文件。")}</p>
+          {torrent.private ? <p class="inline-note warn">{tr("这是私有种子，服务端可能需要对应站点权限。")}</p> : null}
+          <ul class="link-files">{torrent.files.map(file => <li key={file.path}><span dir="auto" class="ellipsis">{file.path}</span><span class="dim">{formatBytes(file.size_bytes)}</span></li>)}</ul>
+          {torrent.file_count > torrent.files.length ? <p class="dim">{tr("仅展示前 200 个文件，提交包含全部文件。")}</p> : null}
+        </div> : null}
+        {torrentError ? <ErrorPanel error={torrentError} compact/> : null}
+      </> : <>
       <Field label={tr("链接")} htmlFor="cloud-src" hint={tr("每行一个 magnet: 或 http(s) 链接。")}
         error={invalid ? tx("有 {0} 行不是可识别的 magnet 或 http(s) 链接", invalid) : undefined}>
         <textarea id="cloud-src" class="input mono" rows={4} value={raw} spellcheck={false} data-autofocus
@@ -429,6 +477,7 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
               ? <div class="inline-note"><strong dir="auto">{preview.title}</strong><p>{tr("此资源将完整保存，服务暂不支持选择其中的文件。")}</p>{preview.total_bytes ? <span>{formatBytes(preview.total_bytes)}</span> : null}</div>
               : <LinkPick preview={preview} picked={picked} setPicked={setPicked} /> : null
       ) : null}
+      </>}
       <Field label={tr("保存到云盘")}>
         <div class="row-gap">
           <span class="path-pill" dir="auto" title={target.path}><Icon name="folder" />{target.path}</span>
@@ -448,13 +497,13 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
       ) : null}
       {lines.find((l) => l.error?.code === "QUOTA_EXCEEDED")?.error ? <ErrorPanel error={lines.find((l) => l.error?.code === "QUOTA_EXCEEDED")!.error!} compact /> : null}
       <div class="side-actions">
-        <span class="muted">{parsed.length ? tx("{0} 个链接{1}", parsed.length, done ? `，已提交 ${done}` : "") : tr("提交后由服务端下载到云盘")}</span>
+        <span class="muted">{sourceMode === "link" && parsed.length ? tx("{0} 个链接{1}", parsed.length, done ? `，已提交 ${done}` : "") : tr("提交后由服务端下载到云盘")}</span>
         <div class="row-gap">
           <Btn tone="ghost" label={done ? tr("关闭") : tr("取消")} onClick={close} />
           <Btn type="submit" tone="primary" icon="cloudDown" busy={busy}
             label={lines.some((l) => l.status === "failed") ? tr("重试失败项") : tr("提交云下载")}
-            disabled={!g.ok || parsed.length === 0 || invalid > 0 || (!!preview && preview.selection_supported !== false && picked.size === 0)}
-            reason={!g.ok ? g.reason : parsed.length === 0 ? tr("请先粘贴链接") : invalid ? tr("请修正无法识别的链接") : tr("至少选择一个文件")} />
+            disabled={!g.ok || (sourceMode === "torrent" ? !torrent : parsed.length === 0 || invalid > 0 || (!!preview && preview.selection_supported !== false && picked.size === 0))}
+            reason={!g.ok ? g.reason : sourceMode === "torrent" ? tr("请先选择种子文件") : parsed.length === 0 ? tr("请先粘贴链接") : invalid ? tr("请修正无法识别的链接") : tr("至少选择一个文件")} />
         </div>
       </div>
     </form>

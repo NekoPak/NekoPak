@@ -15,6 +15,7 @@ mod reference_archive;
 pub mod store;
 mod streams;
 mod sync;
+mod torrent;
 mod upload_tree;
 mod uploads;
 pub use mounts::MountConfig;
@@ -25,6 +26,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, path::Path, sync::Arc};
 use store::Store;
 use tokio::sync::broadcast;
+pub use torrent::{TorrentPreview, MAX_TORRENT_BYTES};
 
 pub fn now() -> String {
     time::OffsetDateTime::now_utc()
@@ -33,6 +35,7 @@ pub fn now() -> String {
 }
 
 pub struct AppService {
+    torrent_imports: std::sync::Mutex<std::collections::HashMap<String, torrent::PendingTorrent>>,
     foreground: std::sync::atomic::AtomicBool,
     store: Option<Store>,
     intents: Option<intents::IntentStore>,
@@ -116,6 +119,7 @@ impl AppService {
         let (events, _) = broadcast::channel(256);
         let (scan_events, _) = broadcast::channel(64);
         Self {
+            torrent_imports: Default::default(),
             foreground: std::sync::atomic::AtomicBool::new(true),
             store,
             intents,
@@ -210,6 +214,10 @@ impl AppService {
                 ("telemetry".into(), false),
                 ("local_sources".into(), !cfg!(target_os = "android")),
                 ("media_session".into(), true),
+                (
+                    "torrent_import".into(),
+                    self.provider.id() == BackendId::RustCompat,
+                ),
                 ("local_media_probe".into(), true),
                 ("local_clip".into(), true),
                 ("ui_prefs".into(), true),
@@ -747,6 +755,16 @@ impl AppService {
         Ok(())
     }
     /// Called by the host worker. Never holds the database mutex across provider work.
+    pub async fn tick_periodic(&self) -> Result<(), ClientError> {
+        if self.provider.id() == BackendId::Mock {
+            self.tick().await
+        } else if self.is_foreground() {
+            self.tick_cloud().await
+        } else {
+            Ok(())
+        }
+    }
+
     pub async fn tick(&self) -> Result<(), ClientError> {
         if !self.is_foreground() {
             return Ok(());

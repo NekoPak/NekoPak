@@ -3,6 +3,7 @@
 .mobile-app { height:100%; display:flex; flex-direction:column; background:var(--surface); padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px); }
 .mobile-workspace { flex:1; min-height:0; min-width:0; overflow:hidden; }
 .mobile-bottom-nav { display:grid; grid-template-columns:repeat(3,1fr); flex:none; padding:6px 12px calc(8px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--outline-variant); background:var(--surface-low); }
+.mobile-bottom-nav[hidden] { display:none; }
 .mobile-bottom-nav button { border:0; background:none; display:grid; justify-items:center; gap:3px; min-height:54px; color:var(--on-surface-variant); font-size:12px; font-weight:600; }
 .mobile-nav-icon { display:grid; place-items:center; width:60px; height:30px; border-radius:18px; }
 .mobile-bottom-nav .active { color:var(--on-surface); }

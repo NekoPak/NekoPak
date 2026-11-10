@@ -436,6 +436,17 @@ export interface LinkPreview {
   expires_at: string;
 }
 
+export interface TorrentPreview {
+  import_id: string;
+  title: string;
+  info_hash: string;
+  total_bytes: string;
+  file_count: number;
+  files: { path: string; size_bytes: string }[];
+  private: boolean;
+  expires_at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* §P21 External player                                                */
 /* ------------------------------------------------------------------ */
@@ -663,6 +674,9 @@ export interface NetworkDomainReport {
 
 /** Full command map: name -> [args, result]. Frozen names from §3 + §P commands. */
 export interface CommandMap {
+  cloud_torrent_pick: [undefined, TorrentPreview | null];
+  cloud_torrent_create: [{ import_id: string; parent_id: string; idempotency_key: string }, TaskRef];
+  cloud_torrent_release: [{ import_id: string }, void];
   transfer_forget: [{ task_id: string }, void];
   transfer_clear_finished: [undefined, { removed: number }];
   auth_preferences_get: [undefined, AuthPreferences];

@@ -41,6 +41,7 @@ export function unsupported(command: string): Wire.ClientError {
 }
 
 export const RUST_COMMANDS = new Set([
+  "cloud_torrent_pick", "cloud_torrent_create", "cloud_torrent_release",
   "transfer_forget", "transfer_clear_finished", "auth_preferences_get", "auth_preferences_update", "network_reconnect", "network_domains_probe",
   "app_status", "backend_discover", "auth_status", "files_list", "files_stat", "files_path",
   "auth_sign_in", "auth_verify", "auth_logout",

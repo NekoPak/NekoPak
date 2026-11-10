@@ -15,9 +15,9 @@ see the integration report for source/format/runtime limitations.
 
 ## Run the provided Windows application
 
-Extract `NekoPak-0.1.1-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
+Extract `NekoPak-0.1.2-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
 Keep the directory's notices and licenses alongside the executable. Alternatively, run
-`NekoPak-0.1.1-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
+`NekoPak-0.1.2-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
 The native application embeds its frontend resources and does not self-extract them on startup.
 The required runtime is Windows x64 with Microsoft Edge WebView2 Evergreen.
 No compiler, terminal command, CLI installation, client registration or environment
@@ -33,6 +33,13 @@ Click the download path or **选择文件夹** to open the Windows directory pic
 keeps the previous folder. **下载时询问保存位置** enables a per-download picker. The task
 menu opens the containing folder recorded for that task, including after changing the default.
 Task rows, the footer and sidebar show measured download throughput.
+
+In version 0.1.2, **添加链接 → 种子文件 → 选择种子文件** opens the system file
+picker on Windows and Android. Previewing is local; **提交云下载** explicitly creates
+the task. v1 and v1-compatible hybrid torrents up to10MiB are supported. Pure v2
+and invalid metadata are rejected. The download worker no longer waits500ms after
+each block; verified ETag/Range checks and durable SHA256 receipts remain enabled.
+On Android, the software keyboard temporarily hides the bottom navigation.
 
 Version 0.1.1 adds remembered usernames and automatic session restoration preferences in
 the OS credential vault. Passwords remain request-only. After bringing a proxy online,
@@ -136,7 +143,7 @@ credential only; it never enumerates or reads user credentials:
 cargo test -p nekopak-provider-native windows_vault_roundtrip_and_delete -- --ignored
 ```
 
-Portable package: `dist/NekoPak-0.1.1-windows-x64-portable.zip`. It includes the binary,
+Portable package: `dist/NekoPak-0.1.2-windows-x64-portable.zip`. It includes the binary,
 notices, full dependency license inventory and current usage notes, not historical
 CLI installation instructions. `dist/size-report.json` records build/source hashes,
 bytes, runtime requirements and license gaps. No driver, media runtime, browser,

@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-10",
+  "version": "0.1.2",
+  "scope": "Speed, torrent import and mobile IME preview fixes",
+  "rust": {
+    "command": "cargo test --workspace --locked --offline -j 2",
+    "passed": 188,
+    "failed": 0,
+    "ignored": 19
+  },
+  "clippy": "passed, all targets with -D warnings",
+  "frontend": {
+    "unit": 117,
+    "wire": 6,
+    "typecheck": "passed",
+    "build": "passed",
+    "desktop_browser": 57,
+    "mobile_browser": 12,
+    "windows_native_functional": 3
+  },
+  "android_native": {
+    "passed": 16,
+    "device": "dedicated API35 x86_64 emulator",
+    "account": "synthetic loopback only",
+    "new_checks": [
+      "native IME hides bottom navigation, Back dismisses keyboard",
+      "actual SAF torrent choose and cancel, Rust hash/preview, one create request despite repeat confirmation"
+    ]
+  },
+  "benchmark": "download-throughput.json",
+  "license": "MIT independent implementation; existing dependencies only; no AGPL/client parser code copied",
+  "remaining": [
+    "Live account throughput and real torrent service acceptance",
+    "Physical ARM64 phone",
+    "Android foreground transfer service and regular upload/directory sync",
+    "Full upstream parity remains incomplete"
+  ]
+}

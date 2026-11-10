@@ -12,6 +12,13 @@ preferences, connection recovery, bounded download retries and terminal-history
 removal are described in [MOBILE_RECOVERY_REPORT.md](MOBILE_RECOVERY_REPORT.md).
 The 0.1.0 checks below remain historical evidence, not verification of the corrected icon.
 
+Version 0.1.2 adds native `.torrent` selection (SAF content URI stays in Rust/native
+code), preview and explicit cloud submission. It fixes bottom navigation moving
+above the software keyboard: native IME visibility hides the navigation until the
+keyboard closes, and Back dismisses the keyboard first. The byte download worker
+now runs continuously instead of waiting for every 500ms UI/cloud poll. Current
+evidence and constraints are in [SPEED_TORRENT_IME_REPORT.md](SPEED_TORRENT_IME_REPORT.md).
+
 ## Implemented host
 
 - Tauri mobile library entry shares the Rust Core/native API provider with desktop.

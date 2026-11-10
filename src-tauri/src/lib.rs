@@ -743,6 +743,13 @@ pub fn run() {
                 }
             });
             let handle = app.handle().clone();
+            let download_service = service.clone();
+            let download_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = download_service.run_download_queue().await {
+                    let _ = download_handle.emit("nekopak://storage/error", error);
+                }
+            });
             let media_service = service.clone();
             tauri::async_runtime::spawn(async move {
                 let mut timer = tokio::time::interval(Duration::from_millis(500));
@@ -802,7 +809,7 @@ pub fn run() {
                 let mut timer = tokio::time::interval(Duration::from_millis(500));
                 loop {
                     timer.tick().await;
-                    if let Err(error) = service.tick().await {
+                    if let Err(error) = service.tick_periodic().await {
                         // Fail closed; do not keep writing to an inaccessible or damaged store.
                         let _ = handle.emit("nekopak://storage/error", error);
                         break;
@@ -812,6 +819,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            catalog_commands::cloud_torrent_pick,
+            catalog_commands::cloud_torrent_create,
+            catalog_commands::cloud_torrent_release,
             catalog_commands::transfer_forget,
             catalog_commands::transfer_clear_finished,
             catalog_commands::auth_preferences_get,

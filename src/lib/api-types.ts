@@ -60,6 +60,9 @@ export interface SyncPlan {
   warnings: string[]; has_unresolved_conflicts: boolean; has_deletes: boolean;
 }
 export interface CommandMap {
+  cloud_torrent_pick: { args: Record<string, never>; result: import('./contract-proposals').TorrentPreview | null };
+  cloud_torrent_create: { args: { import_id: string; parent_id: string; idempotency_key: string }; result: TaskRef };
+  cloud_torrent_release: { args: { import_id: string }; result: void };
   transfer_forget: { args: { task_id: string }; result: void };
   transfer_clear_finished: { args: Record<string, never>; result: { removed: number } };
   auth_preferences_get: { args: Record<string, never>; result: import('./contract-proposals').AuthPreferences };

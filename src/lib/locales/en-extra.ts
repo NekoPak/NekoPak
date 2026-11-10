@@ -1,5 +1,15 @@
 /** Product copy; values are independently translated, no upstream language pack reused. */
 export const EN_EXTRA: Record<string, string> = {
+  "云下载来源": "Cloud download source",
+  "种子文件": "Torrent file",
+  "请在桌面或手机应用中选择种子文件": "Select a torrent in the desktop or mobile app",
+  "选择 .torrent 文件，预览后提交云下载。最大 10 MiB。": "Select a .torrent file, preview it, then submit. Maximum 10 MiB.",
+  "重新选择种子文件": "Choose another torrent",
+  "选择种子文件": "Select torrent file",
+  "将提交整个种子中的文件。": "All files in this torrent will be submitted.",
+  "这是私有种子，服务端可能需要对应站点权限。": "This is a private torrent; the service may require tracker access.",
+  "仅展示前 200 个文件，提交包含全部文件。": "Showing the first 200 files; submission includes all files.",
+  "请先选择种子文件": "Choose a torrent file first",
   "播放预览": "Preview selection",
   "记住账号": "Remember account",
   "保持登录": "Stay signed in",

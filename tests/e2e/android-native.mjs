@@ -17,6 +17,10 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(action,check,timeout=20000){const end=Date.now()+timeout;let last;while(Date.now()<end){try{last=await action();if(check(last))return last;}catch{}await delay(150);}throw new Error(`Timed out: ${JSON.stringify(last)?.slice(0,2000)}`);}
 const filename=`nekopak-android-${Date.now()}.bin`;
 const bytes=Buffer.alloc(8*1024*1024+137);for(let i=0;i<bytes.length;i++)bytes[i]=i%251;
+const torrentName=`nekopak-${Date.now()}.torrent`;
+const torrentInfo=Buffer.concat([Buffer.from('d6:lengthi3e4:name8:test.bin12:piece lengthi16384e6:pieces20:'),Buffer.alloc(20,9),Buffer.from('e')]);
+const torrentBytes=Buffer.concat([Buffer.from('d4:info'),torrentInfo,Buffer.from('e')]);
+const torrentHash=createHash('sha1').update(torrentInfo).digest('hex');let cloudCreates=0;
 let origin, cdnCalls=0, interruptNextRange=false, injectedFailures=0;const violations=[];
 const server=createServer(async(req,res)=>{
   try{
@@ -34,6 +38,11 @@ const server=createServer(async(req,res)=>{
     }
     assert.equal(req.headers.authorization,'Bearer android-fixture-access',`Unexpected authorization on ${req.method} ${u.pathname}`);
     const file={id:'file-1',parent_id:'',name:filename,kind:'drive#file',size:String(bytes.length),modified_time:'2026-11-09T00:00:00Z',phase:'PHASE_TYPE_COMPLETE',trashed:false,tags:[]};
+    if(u.pathname==='/drive/v1/files'&&req.method==='POST'){
+      assert.equal(body.upload_type,'UPLOAD_TYPE_URL');assert.equal(new URL(body.url.url).searchParams.get('xt'),`urn:btih:${torrentHash}`);
+      cloudCreates++;return json({task:{id:'torrent-cloud',name:'test.bin',phase:'PHASE_TYPE_PENDING',progress:0}});
+    }
+    if(u.pathname==='/drive/v1/tasks/torrent-cloud')return json({id:'torrent-cloud',name:'test.bin',phase:'PHASE_TYPE_COMPLETE',progress:100});
     if(u.pathname==='/drive/v1/files')return json({files:[file]});
     if(u.pathname==='/drive/v1/files/file-1')return json({...file,web_content_link:`${origin}/cdn/original`});
     if(u.pathname==='/drive/v1/files/file-2')return json({...file,id:'file-2',name:`${filename}.cancelled`,web_content_link:`${origin}/cdn/original`});
@@ -65,6 +74,12 @@ async function screenshot(name){const image=await cdp('Page.captureScreenshot',{
 const checks=[];const record=name=>{checks.push({name,result:'passed'});console.log(`PASS ${name}`);};
 function pickerReady(){return device('shell','dumpsys','activity','activities').split('\n').some(l=>l.includes('topResumedActivity=')&&l.includes('com.android.documentsui.picker.PickActivity'));}
 function nativeUi(){device('shell','uiautomator','dump','/data/local/tmp/nekopak-window.xml');return device('shell','cat','/data/local/tmp/nekopak-window.xml');}
+function tapNative(xml, attribute, value){
+  const node=[...xml.matchAll(/<node\b[^>]*>/g)].map(match=>match[0]).find(node=>node.includes(`${attribute}="${value}"`));
+  assert(node,`Missing native ${attribute}=${value}`);
+  const rect=/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(node);assert(rect);
+  device('shell','input','tap',String(Math.round((+rect[1]+ +rect[3])/2)),String(Math.round((+rect[2]+ +rect[4])/2)));
+}
 const previousLocales=device('shell','cmd','locale','get-app-locales',pkg).match(/\[([^\]]*)\]/)?.[1]??'';
 try{
   assert.match(device('emu','avd','name'),/nekopak-smoke-api35/);
@@ -81,13 +96,51 @@ try{
   await until(()=>evaluate('document.documentElement.lang'),language=>language==='zh-CN');
   record('Android application locale is read natively and system language resolves to Chinese');
   const vault=JSON.parse(device('shell','run-as',pkg,'cat','android-vault-selftest.json'));assert.equal(vault.rust_jni_keystore,'passed');record('Rust JNI AndroidKeyStore synthetic roundtrip, accounts and auxiliary records');
+  await until(()=>evaluate('!!document.querySelector(".phone-login .signin")'),Boolean);
   await screenshot('login.png');
+  await evaluate('[...document.querySelectorAll("button")].find(button=>button.textContent.trim()==="先看看")?.click()');
+  await until(()=>evaluate('!document.querySelector(".phone-login")'),Boolean);
+  await evaluate('location.hash="#/settings/account"');
+  await until(()=>evaluate('!!document.querySelector(".phone-settings input[name=password]")'),Boolean);
+  await evaluate('document.querySelector(".phone-settings input[name=password]").scrollIntoView({block:"center",behavior:"instant"})');
+  await delay(150);
+  const passwordBox=await evaluate('(()=>{const input=document.querySelector(".phone-settings input[name=password]");const box=input.getBoundingClientRect();return {x:box.x+box.width/2,y:box.y+box.height/2};})()');
+  assert.equal(await evaluate(`document.elementFromPoint(${passwordBox.x},${passwordBox.y})?.name`),'password');
+  const heightBeforeKeyboard=await evaluate('innerHeight');
+  await cdp('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[passwordBox]});
+  await cdp('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await until(()=>evaluate('innerHeight'),height=>height<heightBeforeKeyboard-100);
+  await screenshot('password-keyboard.png');
+  writeFileSync(join(out,'password-keyboard-device.png'),execFileSync(adb,['-s',serial,'exec-out','screencap','-p'],{windowsHide:true,maxBuffer:12*1024*1024}));
+  assert.equal(await evaluate('!!document.querySelector(".mobile-bottom-nav")?.getClientRects().length'),false,'phone navigation must not rise above the software keyboard');
+  device('shell','input','keyevent','KEYCODE_BACK');
+  await until(()=>evaluate('!!document.querySelector(".mobile-bottom-nav")?.getClientRects().length'),Boolean);
+  assert.equal(await evaluate('location.hash'),'#/settings/account','back closes the keyboard before navigating');
+  record('Password keyboard hides bottom navigation; Android Back dismisses keyboard and restores navigation');
+  await evaluate('location.hash="#/files/root"');
   const invalid=await evaluate(`window.__TAURI__.core.invoke('auth_sign_in',{username:'',password:'synthetic-not-sent'}).catch(e=>e)`);assert.equal(invalid.code,'CONFLICT');assert.ok(!JSON.stringify(invalid).includes('synthetic-not-sent'));
   await invoke('auth_preferences_update',{preferences:{remember_account:true,restore_session:true,username:'fixture@example.test'}});
   assert.deepEqual(await invoke('auth_preferences_get'),{remember_account:true,restore_session:true,username:'fixture@example.test'});
   await invoke('auth_sign_in',{username:'fixture@example.test',password:'synthetic-not-an-account'});
   assert.equal((await invoke('auth_status')).authenticated,true);
   assert.equal((await invoke('files_list',{parent_id:'root'})).items[0].name,filename);record('Native sign-in, validation redaction and file list via loopback');
+  writeFileSync(join(out,torrentName),torrentBytes);device('push',join(out,torrentName),`/sdcard/Download/${torrentName}`);
+  const cancelledPicker=invoke('cloud_torrent_pick');await until(pickerReady,Boolean);
+  device('shell','input','keyevent','KEYCODE_BACK');await delay(300);if(pickerReady())device('shell','input','keyevent','KEYCODE_BACK');assert.equal(await cancelledPicker,null);
+  const picking=invoke('cloud_torrent_pick');await until(pickerReady,Boolean);
+  let pickerXml=await until(nativeUi,xml=>xml.includes('documentsui'));
+  if(!pickerXml.includes(`text="${torrentName}"`)){
+    if(pickerXml.includes('content-desc="Show roots"'))tapNative(pickerXml,'content-desc','Show roots');
+    pickerXml=await until(nativeUi,xml=>xml.includes('text="Downloads"'));
+    tapNative(pickerXml,'text','Downloads');
+    pickerXml=await until(nativeUi,xml=>xml.includes(`text="${torrentName}"`));
+  }
+  tapNative(pickerXml,'text',torrentName);
+  const torrent=await picking;assert.equal(torrent.info_hash,torrentHash);assert.equal(torrent.total_bytes,'3');assert.equal(torrent.file_count,1);assert.equal(cloudCreates,0);
+  const torrentArgs={import_id:torrent.import_id,parent_id:'root',idempotency_key:`torrent-${Date.now()}`};
+  const cloud=await invoke('cloud_torrent_create',torrentArgs);assert.deepEqual(await invoke('cloud_torrent_create',torrentArgs),cloud);assert.equal(cloudCreates,1);
+  await invoke('cloud_torrent_release',{import_id:torrent.import_id});
+  record('Actual Android torrent picker cancels safely, parses .torrent bytes and submits exactly one cloud task on confirmation');
   await until(()=>evaluate('document.querySelectorAll(".mobile-bottom-nav button").length'),count=>count===3);
   assert.equal(await evaluate('document.querySelectorAll(".sidebar,.workspace-tabs,.pf-commands,.address-drop").length'),0);
   await until(()=>evaluate('document.querySelectorAll(".mobile-file-row").length'),count=>count>0);
@@ -147,6 +200,7 @@ try{
   socket?.close();
   device('shell','am','force-stop',pkg);
   device('shell','run-as',pkg,'rm','-f','android-offline-smoke.json');
+  device('shell','rm','-f',`/sdcard/Download/${torrentName}`);
   device('shell','cmd','locale','set-app-locales',pkg,...(previousLocales?['--locales',previousLocales]:[]));
   device('reverse','--remove',`tcp:${port}`);
   server.closeAllConnections();await new Promise(r=>server.close(r));

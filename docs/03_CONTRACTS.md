@@ -462,3 +462,23 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
   不自动继续用户手动暂停的任务。网络和服务错误不一律标成密码错误。
 - 原生视频选段预览使用可撤销本机媒体会话与系统WebView视频解码，跟随选段起终点seek；
   关闭、切画质和切账号会撤销会话。Mock示意帧与实际视频不混称，不保证系统支持所有编码。
+
+## 16. 下载吞吐、种子导入与输入法（实施中）
+
+- 普通下载由独立持续worker读取就绪块，云任务轮询与UI刷新不再限制下载块频率。Native块
+  最大4MiB；每块仍同步落盘并记录SHA256，重启／源变化／账号切换规则保持。仅对实际返回
+  强ETag的来源短期复用元数据，后续每次Range携带If-Match并核对ETag；弱／缺ETag继续刷新。
+  CDN连接最多8个origin、30秒复用，DNS仍只允许公共地址并固定解析结果，网络重连代次改变失效。
+- `cloud_torrent_pick()->TorrentPreview|null`仅由系统选择器读取用户指定的.torrent，最多10MiB。
+  Rust校验bencode并对原始info字典计算SHA1，生成磁力资源；这与已核查Web客户端的种子导入行为
+  一致，不把普通文件上传当作提交成功。v1／含v1信息的hybrid可解析，纯v2明确不支持。
+- `TorrentPreview={import_id,title,info_hash,total_bytes,file_count,files:[{path,size_bytes}],private,expires_at}`。
+  字节数为十进制u64，files最多200个预览条目；完整任务导入不按该预览长度截断。本地绝对路径和tracker
+  授权不进IPC，Android content URI留在宿主，导入引用在Rust内存按账号隔离，5分钟过期。
+- `cloud_torrent_create({import_id,parent_id,idempotency_key})->TaskRef`在用户确认后提交整个种子
+  资源，通过既有云下载意图／回执防止重复创建。取消选择返回null；无效文件／过期／切账号
+  均在发远端写请求前拒绝。`cloud_torrent_release({import_id})->void`清除未使用的临时引用。
+- Android宿主发`nekopak:keyboard {visible:boolean}`本地显示事件；软键盘打开时隐藏底部主导航，
+  收起恢复，返回键先关闭输入法。WebView保持对键盘避让，输入与提交控件可滚动到可见区域。
+
+以上为本轮实现目标，最终状态以本轮测试和发行证据为准，不代表真实账号或功能对齐验收。

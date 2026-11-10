@@ -28,6 +28,7 @@
       "sync": false,
       "sync_bidirectional": false,
       "telemetry": false,
+      "torrent_import": false,
       "transfer_export": false,
       "transfer_open_directory": true,
       "tray": true,
@@ -40,7 +41,7 @@
       "schema_version": 1,
       "status": "ready"
     },
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "backend_discover": [
     {

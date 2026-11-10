@@ -1,7 +1,35 @@
 //! Original-file bytes only. CDN requests never carry API authorization or CAPTCHA headers.
 use super::*;
 use nekopak_provider::{DownloadChunk, DownloadInfo, DownloadObserver};
+use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
+use std::time::Instant;
+
+#[derive(Default)]
+pub(super) struct ReadCache {
+    sources: HashMap<String, SourceLease>,
+    clients: HashMap<String, ClientLease>,
+}
+impl ReadCache {
+    pub(super) fn clear_sources(&mut self) {
+        self.sources.clear();
+    }
+}
+#[derive(Clone)]
+struct SourceLease {
+    info: DownloadInfo,
+    location: Zeroizing<String>,
+    created: Instant,
+    epoch: u64,
+    generation: u64,
+}
+#[derive(Clone)]
+struct ClientLease {
+    client: reqwest::Client,
+    created: Instant,
+    generation: u64,
+}
 
 impl NativeProvider {
     async fn download_metadata(&self, id: &str) -> Result<(DownloadInfo, String), ClientError> {
@@ -132,7 +160,29 @@ impl NativeProvider {
         if self.account_scope().await? != scope {
             return Err(expired());
         }
-        let (info, location) = self.representation_metadata(id, quality).await?;
+        let epoch = self.snapshot().await?.epoch;
+        let generation = self.http.network_generation.load(Ordering::Acquire);
+        let key = format!("{id}\0{quality}");
+        let cached = self
+            .read_cache
+            .lock()
+            .map_err(|_| wire::invalid())?
+            .sources
+            .get(&key)
+            .filter(|entry| {
+                entry.epoch == epoch
+                    && entry.generation == generation
+                    && entry.created.elapsed() < Duration::from_secs(30)
+                    && entry.info.account_scope == scope
+                    && entry.info.identity == identity
+            })
+            .cloned();
+        let (mut info, location, created) = if let Some(entry) = cached {
+            (entry.info, entry.location, entry.created)
+        } else {
+            let (info, location) = self.representation_metadata(id, quality).await?;
+            (info, Zeroizing::new(location), Instant::now())
+        };
         if info.identity != identity || info.account_scope != scope {
             return Err(error(
                 ErrorCode::IntegrityFailed,
@@ -145,7 +195,7 @@ impl NativeProvider {
         let end = start
             .saturating_add(length - 1)
             .min(info.entry.size_bytes.0 - 1);
-        let (result, _) = self
+        let response = self
             .fetch_range(
                 &location,
                 Some(info.entry.size_bytes.0),
@@ -154,9 +204,44 @@ impl NativeProvider {
                 info.entry.etag.as_deref(),
                 observer,
             )
-            .await?;
-        if self.account_scope().await? != scope {
+            .await;
+        let (result, etag) = match response {
+            Ok(value) => value,
+            Err(error) => {
+                self.read_cache
+                    .lock()
+                    .map_err(|_| wire::invalid())?
+                    .sources
+                    .remove(&key);
+                return Err(error);
+            }
+        };
+        if self.account_scope().await? != scope || self.snapshot().await?.epoch != epoch {
             return Err(expired());
+        }
+        // Reuse only a representation with a strong validator. Every reused
+        // Range carries If-Match and verifies the returned ETag and exact range.
+        if let Some(etag) = etag.filter(|value| value.starts_with('"') && value.ends_with('"')) {
+            info.entry.etag = Some(etag);
+            let mut cache = self.read_cache.lock().map_err(|_| wire::invalid())?;
+            cache.sources.retain(|_, value| {
+                value.created.elapsed() < Duration::from_secs(30)
+                    && value.epoch == epoch
+                    && value.generation == generation
+            });
+            if cache.sources.len() >= 8 && !cache.sources.contains_key(&key) {
+                cache.sources.clear();
+            }
+            cache.sources.insert(
+                key,
+                SourceLease {
+                    info,
+                    location,
+                    created,
+                    epoch,
+                    generation,
+                },
+            );
         }
         Ok(result)
     }
@@ -254,26 +339,60 @@ impl NativeProvider {
             if !test_loopback && port != 443 {
                 return Err(wire::invalid());
             }
-            let addresses: Vec<_> = tokio::net::lookup_host((host, port))
-                .await
-                .map_err(|_| network())?
-                .collect();
-            if addresses.is_empty()
-                || (!test_loopback && addresses.iter().any(|a| !public_ip(a.ip())))
-            {
-                return Err(error(
-                    ErrorCode::PermissionDenied,
-                    "下载地址不是可用的公共 HTTPS 地址。",
-                ));
-            }
-            let builder = download_client_builder()?.resolve_to_addrs(host, &addresses);
-            let client = if test_loopback {
-                builder.no_proxy()
+            let origin = url.origin().ascii_serialization();
+            let generation = self.http.network_generation.load(Ordering::Acquire);
+            let cached = self
+                .read_cache
+                .lock()
+                .map_err(|_| wire::invalid())?
+                .clients
+                .get(&origin)
+                .filter(|entry| {
+                    entry.generation == generation
+                        && entry.created.elapsed() < Duration::from_secs(30)
+                })
+                .cloned();
+            let client = if let Some(entry) = cached {
+                entry.client
             } else {
-                self.http.cdn_proxy(builder)?
-            }
-            .build()
-            .map_err(|_| network())?;
+                let addresses: Vec<_> = tokio::net::lookup_host((host, port))
+                    .await
+                    .map_err(|_| network())?
+                    .collect();
+                if addresses.is_empty()
+                    || (!test_loopback && addresses.iter().any(|a| !public_ip(a.ip())))
+                {
+                    return Err(error(
+                        ErrorCode::PermissionDenied,
+                        "下载地址不是可用的公共 HTTPS 地址。",
+                    ));
+                }
+                let builder = download_client_builder()?.resolve_to_addrs(host, &addresses);
+                let client = if test_loopback {
+                    builder.no_proxy()
+                } else {
+                    self.http.cdn_proxy(builder)?
+                }
+                .build()
+                .map_err(|_| network())?;
+                let mut cache = self.read_cache.lock().map_err(|_| wire::invalid())?;
+                cache.clients.retain(|_, value| {
+                    value.generation == generation
+                        && value.created.elapsed() < Duration::from_secs(30)
+                });
+                if cache.clients.len() >= 8 {
+                    cache.clients.clear();
+                }
+                cache.clients.insert(
+                    origin.clone(),
+                    ClientLease {
+                        client: client.clone(),
+                        created: Instant::now(),
+                        generation,
+                    },
+                );
+                client
+            };
             let mut request = client
                 .get(url.clone())
                 .header("range", format!("bytes={start}-{end}"))
@@ -281,7 +400,17 @@ impl NativeProvider {
             if let Some(etag) = expected_etag {
                 request = request.header("if-match", etag);
             }
-            let mut response = request.send().await.map_err(|_| network())?;
+            let mut response = match request.send().await {
+                Ok(response) => response,
+                Err(_) => {
+                    self.read_cache
+                        .lock()
+                        .map_err(|_| wire::invalid())?
+                        .clients
+                        .remove(&origin);
+                    return Err(network());
+                }
+            };
             if response.status().is_redirection() {
                 let redirect = response
                     .headers()

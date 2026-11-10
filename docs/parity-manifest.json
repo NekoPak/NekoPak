@@ -109,7 +109,8 @@
       "mandatory_windows": true,
       "acceptance": "预览选择、创建/进度/取消重试，防重复副作用",
       "evidence": [
-        "docs/DESKTOP_INTEGRATION_REPORT.md"
+        "docs/DESKTOP_INTEGRATION_REPORT.md",
+        "docs/SPEED_TORRENT_IME_REPORT.md"
       ]
     },
     {

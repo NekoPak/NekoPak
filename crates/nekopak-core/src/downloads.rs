@@ -56,6 +56,41 @@ impl Drop for TransferRequest<'_> {
 }
 
 impl AppService {
+    /// Drive ready byte reads continuously. The periodic UI/cloud polling clock
+    /// must not impose a half-second pause between individual download blocks.
+    pub async fn run_download_queue(&self) -> Result<(), ClientError> {
+        if self.provider.id() == BackendId::Mock {
+            return Ok(());
+        }
+        let mut changed = self.subscribe();
+        loop {
+            if self.is_foreground() {
+                self.recover_transfer_retries()?;
+                let ready = self
+                    .store()?
+                    .active()?
+                    .iter()
+                    .filter(|task| {
+                        task.backend == BackendId::RustCompat && task.kind == TaskKind::Download
+                    })
+                    .try_fold(false, |ready, task| {
+                        Ok::<_, ClientError>(ready || self.retry_ready(task)?)
+                    })?;
+                if ready {
+                    self.tick_native_download().await?;
+                    tokio::task::yield_now().await;
+                    continue;
+                }
+            }
+            // Notifications accelerate new user work; the timer also wakes due
+            // retries and observes foreground changes without busy polling.
+            tokio::select! {
+                _ = changed.recv() => {},
+                _ = tokio::time::sleep(std::time::Duration::from_millis(250)) => {},
+            }
+        }
+    }
+
     pub(crate) fn register_transfer_request(
         &self,
         task: &TransferTask,
@@ -511,12 +546,17 @@ impl AppService {
         }
         let settings = self.settings_get()?;
         let rate = settings["bandwidth_limit_kib_s"].as_u64().unwrap_or(0);
+        let preferred = self
+            .provider
+            .preferred_download_chunk_size()
+            .clamp(BLOCK, 4 * BLOCK);
         let block = if rate > 0 {
-            (rate * 512).clamp(1024, BLOCK)
+            (rate * 512).clamp(1024, preferred)
         } else {
-            BLOCK
+            preferred
         };
         let bytes = if start < download.total {
+            let started = tokio::time::Instant::now();
             let context = RequestContext::new(std::time::Duration::from_secs(90));
             let Some(_registration) = self.register_transfer_request(task, &context)? else {
                 return Ok(());
@@ -533,19 +573,29 @@ impl AppService {
                 ))
                 .await;
             let chunk = result?;
-            if chunk.total != download.total || chunk.bytes.is_empty() {
+            if chunk.total != download.total
+                || chunk.bytes.is_empty()
+                || chunk.bytes.len() as u64 > block
+            {
                 return Err(fault(ErrorCode::IntegrityFailed, "下载长度发生变化。"));
+            }
+            if rate > 0 {
+                let duration = std::time::Duration::from_secs_f64(
+                    chunk.bytes.len() as f64 / (rate as f64 * 1024.0),
+                );
+                if let Some(remaining) = duration.checked_sub(started.elapsed()) {
+                    context
+                        .run(async {
+                            tokio::time::sleep(remaining).await;
+                            Ok(())
+                        })
+                        .await?;
+                }
             }
             chunk.bytes
         } else {
             vec![]
         };
-        if rate > 0 {
-            tokio::time::sleep(std::time::Duration::from_secs_f64(
-                bytes.len() as f64 / (rate as f64 * 1024.0),
-            ))
-            .await;
-        }
         if self.store()?.get(&task.id)?.revision != task.revision {
             return Ok(());
         }
@@ -606,10 +656,12 @@ impl AppService {
         file.seek(SeekFrom::Start(start)).map_err(io_fault)?;
         file.write_all(&bytes).map_err(io_fault)?;
         file.sync_all().map_err(io_fault)?;
-        if !bytes.is_empty() {
+        // Network requests can be larger without changing the established
+        // 1 MiB durable receipt format or allocating unbounded verification buffers.
+        for piece in bytes.chunks(BLOCK as usize) {
             download.receipts.push(Receipt {
-                length: bytes.len() as u64,
-                sha256: format!("{:x}", Sha256::digest(&bytes)),
+                length: piece.len() as u64,
+                sha256: format!("{:x}", Sha256::digest(piece)),
             });
         }
         self.save_download(&task.id, &download)?;
@@ -920,9 +972,13 @@ mod tests {
         fail_at: AtomicUsize,
         changed: std::sync::atomic::AtomicBool,
         switch_on_status: std::sync::Mutex<usize>,
+        chunk_size: AtomicUsize,
     }
     #[async_trait]
     impl ProviderPort for ByteProvider {
+        fn preferred_download_chunk_size(&self) -> u64 {
+            self.chunk_size.load(Ordering::Relaxed) as u64
+        }
         fn id(&self) -> BackendId {
             BackendId::RustCompat
         }
@@ -1019,6 +1075,7 @@ mod tests {
             fail_at: AtomicUsize::new(usize::MAX),
             changed: std::sync::atomic::AtomicBool::new(false),
             switch_on_status: std::sync::Mutex::new(0),
+            chunk_size: AtomicUsize::new(BLOCK as usize),
         })
     }
     async fn setup(size: usize) -> (tempfile::TempDir, Arc<ByteProvider>, AppService, TaskRef) {
@@ -1045,6 +1102,34 @@ mod tests {
         }
         panic!("download did not finish: {:?}", app.task(id).unwrap());
     }
+    #[tokio::test]
+    async fn larger_network_reads_keep_compatible_receipts_and_resume_after_restart() {
+        let (directory, provider, app, task) = setup(5 * BLOCK as usize + 31).await;
+        provider
+            .chunk_size
+            .store(4 * BLOCK as usize, Ordering::Relaxed);
+        app.tick().await.unwrap();
+        app.tick().await.unwrap();
+        assert_eq!(
+            app.task(&task.task_id).unwrap().transferred_bytes.0,
+            4 * BLOCK
+        );
+        let record = app.download_record(&task.task_id).unwrap();
+        assert_eq!(record.receipts.len(), 4);
+        assert!(record.receipts.iter().all(|r| r.length <= BLOCK));
+        app.transfer_control(&task.task_id, TransferAction::Pause)
+            .unwrap();
+        drop(app);
+        let app = AppService::with_provider(&directory.path().join("tasks.db"), provider.clone());
+        app.transfer_control(&task.task_id, TransferAction::Resume)
+            .unwrap();
+        finish(&app, &task.task_id).await;
+        assert_eq!(
+            std::fs::read(directory.path().join("真实下载样本.bin")).unwrap(),
+            provider.bytes
+        );
+    }
+
     #[tokio::test]
     async fn native_history_removal_preserves_completed_bytes_receipts_and_account_ownership() {
         let (directory, provider, app, task) = setup(127).await;
