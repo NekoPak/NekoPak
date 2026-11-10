@@ -49,3 +49,22 @@ dialogs.tsx，以及对应Rust与端到端测试。MIT主仓许可保持，没�
 
 真实用户网络速度、真实种子服务结果及物理手机输入法仍需用户在应用内验收。Android后台
 持续下载、普通上传／目录同步和整体功能对齐仍未完成；本次修复不降低既有门槛。
+
+## 最终构建与运行证据
+
+Rust工作区188通过、19明确ignored；Clippy与格式检查通过。前端117单元＋6wire，桌面
+浏览器57/57，手机布局与种子交互12/12，Windows原生功能3/3，Android原生16/16。
+后者包括真正的系统键盘和SAF种子选择器，确认前无云请求、重复确认只创建一次。
+失败测试原始记录与最终输出保存在本机target下；结构化证据纳入docs/evidence。
+
+源码`919c4907b79cbea947469b758bdfdb2a0394eb65`的
+[Windows／Android签名发布](https://github.com/NekoPak/NikoPak/actions/runs/42799710084)和
+[Windows安装卸载](https://github.com/NekoPak/NikoPak/actions/runs/42802008148)均成功。
+Android预览及Linux/macOS核心检查也成功。下载实际产物后再次验证Ed25519清单、全部哈希、
+APK原证书、原生库16KiB与图标。该远端APK实际从0.1.1覆盖升级并通过两次冷启动，
+保持中文与登录入口；运行在隔离模拟器ARM翻译桥上，未使用真实账号。
+
+当前dist产物：Android ARM64 APK17,445,137字节（16.64MiB），Windows ZIP7,209,938字节
+（6.88MiB），NSIS安装器4,163,593字节（3.97MiB）。APK SHA256：
+`6ccd851bf88d5e56d08394373fda9afacccce73303cd4310d41d84ee265d3553`。
+版本号0.1.2／Android versionCode102，证书身份沿用旧版。Windows清单签名不等于Authenticode。

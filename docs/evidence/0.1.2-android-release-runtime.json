@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-10T10:46:05.591Z",
+  "scope": "Signed ARM64 APK on isolated API35 x86_64 emulator with ARM translation; no physical-device or account claim",
+  "version": "0.1.2",
+  "previous_version_code": 101,
+  "version_code": "102",
+  "apk_sha256": "6ccd851bf88d5e56d08394373fda9afacccce73303cd4310d41d84ee265d3553",
+  "certificate_sha256": [
+    "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
+  ],
+  "checks": [
+    {
+      "name": "Signed baseline upgrades in place with the same identity and preserves app locale",
+      "passed": true
+    },
+    {
+      "name": "Minified ARM64 release cold boot 1: native Chinese login and stable process",
+      "passed": true
+    },
+    {
+      "name": "Minified ARM64 release cold boot 2: native Chinese login and stable process",
+      "passed": true
+    }
+  ],
+  "accessibility_bridge_retries": 1,
+  "pending": [
+    "physical ARM64 phone",
+    "real account and CAPTCHA"
+  ]
+}

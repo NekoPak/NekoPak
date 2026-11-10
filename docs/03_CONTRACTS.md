@@ -463,7 +463,7 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
 - 原生视频选段预览使用可撤销本机媒体会话与系统WebView视频解码，跟随选段起终点seek；
   关闭、切画质和切账号会撤销会话。Mock示意帧与实际视频不混称，不保证系统支持所有编码。
 
-## 16. 下载吞吐、种子导入与输入法（实施中）
+## 16. 下载吞吐、种子导入与输入法（0.1.2）
 
 - 普通下载由独立持续worker读取就绪块，云任务轮询与UI刷新不再限制下载块频率。Native块
   最大4MiB；每块仍同步落盘并记录SHA256，重启／源变化／账号切换规则保持。仅对实际返回
@@ -481,4 +481,5 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
 - Android宿主发`nekopak:keyboard {visible:boolean}`本地显示事件；软键盘打开时隐藏底部主导航，
   收起恢复，返回键先关闭输入法。WebView保持对键盘避让，输入与提交控件可滚动到可见区域。
 
-以上为本轮实现目标，最终状态以本轮测试和发行证据为准，不代表真实账号或功能对齐验收。
+以上已接入并通过本轮离线、原生Android与发行构建验证，见SPEED_TORRENT_IME_REPORT.md。
+这不代表真实账号、实际网络吞吐或功能对齐验收。

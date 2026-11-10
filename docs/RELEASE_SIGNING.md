@@ -97,3 +97,12 @@ Android沿用原证书，versionCode由100升为101。实际从0.1.0覆盖安装
 Maven POM许可证元数据的固定URL和哈希随包附带；原始文件与Git中一致，无新增运行时。
 证据为`evidence/mobile-recovery-actions-android.json`、`mobile-recovery-actions-windows.json`
 及`mobile-recovery-release-runtime.json`。Windows仍为清单签名，未宣称Authenticode。
+
+## 0.1.2发布验证（2026-11-10）
+
+[签名发布](https://github.com/NekoPak/NikoPak/actions/runs/42799710084)在
+`919c4907b79cbea947469b758bdfdb2a0394eb65`通过；
+[安装卸载](https://github.com/NekoPak/NikoPak/actions/runs/42802008148)通过。
+最终ZIP／NSIS／APK均已下载复验并置于dist。APK沿用原证书，versionCode102，实际从101
+覆盖升级及两次冷启动通过。具体文件摘要、大小与证据见SPEED_TORRENT_IME_REPORT.md及
+`evidence/0.1.2-android-package.json`、`0.1.2-windows-package.json`。

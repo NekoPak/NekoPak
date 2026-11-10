@@ -34,5 +34,40 @@
     "Physical ARM64 phone",
     "Android foreground transfer service and regular upload/directory sync",
     "Full upstream parity remains incomplete"
-  ]
+  ],
+  "source_commit": "919c4907b79cbea947469b758bdfdb2a0394eb65",
+  "release": {
+    "run": "https://github.com/NekoPak/NikoPak/actions/runs/42799710084",
+    "result": "success; Windows and Android",
+    "installer_smoke": "https://github.com/NekoPak/NikoPak/actions/runs/42802008148",
+    "installer_result": "success",
+    "android_preview": "https://github.com/NekoPak/NikoPak/actions/runs/42799708485",
+    "android_preview_result": "success",
+    "linux_macos_core": "https://github.com/NekoPak/NikoPak/actions/runs/42799708547",
+    "linux_macos_result": "success"
+  },
+  "artifacts": [
+    {
+      "name": "NekoPak-0.1.2-android-arm64-v8a.apk",
+      "bytes": 17445137,
+      "sha256": "6ccd851bf88d5e56d08394373fda9afacccce73303cd4310d41d84ee265d3553"
+    },
+    {
+      "name": "NekoPak-0.1.2-windows-x64-portable.zip",
+      "bytes": 7209938
+    },
+    {
+      "name": "NekoPak-0.1.2-windows-x64-setup.exe",
+      "bytes": 4163593,
+      "sha256": "bfad3f2456c28c7bf7cb252e6ee1154e922389461d0cbbdb079339990708f284"
+    }
+  ],
+  "android_release": {
+    "checks": 3,
+    "source": "Downloaded GitHub APK",
+    "upgrade": "Same certificate; 0.1.1/versionCode101 to0.1.2/102",
+    "runtime": "Two minified cold starts on isolated API35 emulator with ARM translation",
+    "evidence": "0.1.2-android-release-runtime.json"
+  },
+  "cleanup": "Stopped only dedicated NekoPak test emulator after all checks"
 }
