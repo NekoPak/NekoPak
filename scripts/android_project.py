@@ -274,6 +274,12 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
     application.set(f"{{{ANDROID_NS}}}allowBackup", "false")
     application.set(f"{{{ANDROID_NS}}}fullBackupContent", "false")
     application.set(f"{{{ANDROID_NS}}}networkSecurityConfig", "@xml/nekopak_network_security")
+    if not any(node.get(f"{{{ANDROID_NS}}}name") == "android.permission.REQUEST_INSTALL_PACKAGES" for node in tree.getroot().findall("uses-permission")):
+        ET.SubElement(tree.getroot(), "uses-permission", {f"{{{ANDROID_NS}}}name": "android.permission.REQUEST_INSTALL_PACKAGES"})
+    provider = next((node for node in application.findall("provider") if node.get(f"{{{ANDROID_NS}}}authorities") == "${applicationId}.updates"), None)
+    if provider is None:
+        provider = ET.SubElement(application, "provider", {f"{{{ANDROID_NS}}}name": "io.nekopak.desktop.UpdateFileProvider", f"{{{ANDROID_NS}}}authorities": "${applicationId}.updates", f"{{{ANDROID_NS}}}exported": "false", f"{{{ANDROID_NS}}}grantUriPermissions": "true"})
+        ET.SubElement(provider, "meta-data", {f"{{{ANDROID_NS}}}name": "android.support.FILE_PROVIDER_PATHS", f"{{{ANDROID_NS}}}resource": "@xml/nekopak_update_paths"})
     activity = application.find("activity")
     if activity is not None:
         activity.set(f"{{{ANDROID_NS}}}windowSoftInputMode", "adjustResize")
@@ -302,6 +308,8 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
     proguard.write_text('''# Native Rust JNI looks up these application-owned classes by name.
 -keep class io.nekopak.desktop.SessionVault { *; }
 -keep class io.nekopak.desktop.AndroidFiles { *; }
+-keep class io.nekopak.desktop.UpdateInstaller { *; }
+-keep class io.nekopak.desktop.UpdateFileProvider { *; }
 ''', encoding="utf-8", newline="\n")
     report = {"schema_version": 1, "toolchain": VERSIONS, "host_sources": copied,
               "launcher_icons": launcher,

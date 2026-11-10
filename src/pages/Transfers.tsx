@@ -31,6 +31,11 @@ const KIND_LABEL = { get download() { return tr("下载"); }, get upload() { ret
 type Kind = TransferTaskExt["kind"];
 type Category = "all" | Kind;
 
+function displayedBytes(task: TransferTaskExt): string {
+  return task.state === "running" && task.kind === "download" && task.received_bytes !== undefined
+    ? task.received_bytes : task.transferred_bytes;
+}
+
 function stateText(t: TransferTaskExt): string {
   if (t.state !== "running") return STATE_LABEL[t.state];
   return t.kind === "download" ? tr("下载中") : t.kind === "upload" ? tr("上传中") : t.kind === "segment_download" ? tr("正在转封装") : tr("云端下载中");
@@ -97,8 +102,9 @@ function TaskActions({ t }: { t: TransferTaskExt }) {
 }
 
 export function TaskRow({ t, now }: { t: TransferTaskExt; now: number }) {
-  const pct = t.kind === "cloud_download" && t.progress_percent !== undefined ? Math.max(0, Math.min(100, t.progress_percent)) : percent(t.transferred_bytes, t.total_bytes);
-  const eta = t.state === "running" ? formatEta(t.transferred_bytes, t.total_bytes, t.speed_bytes_per_sec) : null;
+  const bytes = displayedBytes(t);
+  const pct = t.kind === "cloud_download" && t.progress_percent !== undefined ? Math.max(0, Math.min(100, t.progress_percent)) : percent(bytes, t.total_bytes);
+  const eta = t.state === "running" ? formatEta(bytes, t.total_bytes, t.speed_bytes_per_sec) : null;
   const name = t.name ?? t.remote_id;
   const { base, ext } = splitName(name);
   const tone = t.state === "failed" ? "error" : t.state === "retrying" ? "warn" : t.state === "completed" ? "ok" : t.state === "paused" || t.state === "cancelled" || t.state === "queued" ? "muted" : undefined;
@@ -135,7 +141,7 @@ export function TaskRow({ t, now }: { t: TransferTaskExt; now: number }) {
         <span class="tabular">{t.state === "completed" ? "100%" : pct !== null ? `${pct.toFixed(1)}%` : "—"}</span>
       </div>
       <span class="task-size tabular">
-        {t.kind === "cloud_download" && !t.total_bytes ? tr("大小未知") : <>{formatBytes(t.transferred_bytes)} / {t.total_bytes ? formatBytes(t.total_bytes) : tr("大小未知")}</>}
+        {t.kind === "cloud_download" && !t.total_bytes ? tr("大小未知") : <>{formatBytes(bytes)} / {t.total_bytes ? formatBytes(t.total_bytes) : tr("大小未知")}</>}
       </span>
       <span class="task-speed tabular">
         {t.state === "running" && t.kind !== "cloud_download" ? formatSpeed(t.speed_bytes_per_sec) : ""}
@@ -370,7 +376,8 @@ function PhoneTaskCard({task:t}:{task:TransferTaskExt}) {
   const [exporting,setExporting]=useState(false);
   const exportable=useStore(app,s=>s.app?.feature_flags.transfer_export===true);
   const cloud=t.kind==="cloud_download";
-  const pct=cloud&&t.progress_percent!==undefined?t.progress_percent:percent(t.transferred_bytes,t.total_bytes);
+  const bytes=displayedBytes(t);
+  const pct=cloud&&t.progress_percent!==undefined?t.progress_percent:percent(bytes,t.total_bytes);
   const exportFile=async()=>{setExporting(true);try{if(await api.transferExport(t.id))toast(tr("文件已导出"),"success");}catch(e){toast(errorOf(e).message,"error");}finally{setExporting(false);}};
   return <article class={`phone-task-card state-${t.state}`} data-task={t.id} aria-label={t.name??t.remote_id}>
     <div class="phone-task-title"><span class="phone-task-icon"><Icon name={cloud?"cloudDown":t.kind==="upload"?"upload":"download"} size={24}/></span><span><strong dir="auto">{t.name??t.remote_id}</strong><small>{KIND_LABEL[t.kind]} · {stateText(t)}</small></span><button type="button" class="mobile-icon-button" aria-label={tx("{0}的更多操作",t.name??t.remote_id)} onClick={()=>openMenu(0,0,[
@@ -378,7 +385,7 @@ function PhoneTaskCard({task:t}:{task:TransferTaskExt}) {
       ...(t.error?[{id:"diagnostics",label:tr("复制诊断信息"),icon:"copy",run:()=>void copyWithToast(diagnosticsText(t.error!,`task=${t.id}`),tr("诊断信息"))}]:[]),
     ],t.name??t.remote_id)}><Icon name="more"/></button></div>
     <Progress value={t.state==="completed"?100:pct} label={tx("{0} 进度",t.name??t.remote_id)} tone={t.state==="failed"?"error":t.state==="completed"?"ok":undefined}/>
-    <div class="phone-task-stats"><span>{formatBytes(t.transferred_bytes)}{t.total_bytes?` / ${formatBytes(t.total_bytes)}`:""}</span><strong>{t.state==="running"&&!cloud?formatSpeed(t.speed_bytes_per_sec):pct!==null?`${Math.round(pct)}%`:""}</strong></div>
+    <div class="phone-task-stats"><span>{formatBytes(bytes)}{t.total_bytes?` / ${formatBytes(t.total_bytes)}`:""}</span><strong>{pct!==null?`${pct.toFixed(1)}%`:""}{t.state==="running"&&!cloud?` · ${formatSpeed(t.speed_bytes_per_sec)}`:""}</strong></div>
     {t.error?<p class="phone-task-error">{t.error.message}</p>:null}
     <div class="phone-task-actions">
       {!cloud&&["queued","running","retrying"].includes(t.state)?<Btn label={tr("暂停")} icon="pause" tone="ghost" onClick={()=>void control(t,"pause")}/>:null}

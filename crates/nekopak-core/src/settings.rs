@@ -81,6 +81,9 @@ impl AppService {
             if settings.get("media").is_none() {
                 settings["media"] = json!({"player_path":""});
             }
+            if settings.get("updates").is_none() {
+                settings["updates"] = json!({"auto_check":false});
+            }
             if settings.get("download").is_none() {
                 settings["download"] =
                     json!({"default_quality":"original","connections_per_task":1});
@@ -121,7 +124,7 @@ impl AppService {
             })?;
             json!({"schema_version":1,"theme":"system","language":"system","ask_download_directory":false,"close_to_tray":false,"download_dir":base.join("Downloads").to_string_lossy(),"max_concurrent_transfers":1,"bandwidth_limit_kib_s":0,
                 "cache":{"dir":"","max_bytes":"536870912"},"experimental_network":{"server_domain":"auto","enabled":false,"proxy_mode":"system","proxy_url":"","compatibility_mode":false,"block_access_domains":false,"user_proxy_configured":false,"custom_dns_mode":false,"connection_diagnostics":false},"telemetry":false,
-                "download":{"default_quality":"original","connections_per_task":1},"media":{"player_path":""}})
+                "download":{"default_quality":"original","connections_per_task":1},"media":{"player_path":""},"updates":{"auto_check":false}})
         };
         self.apply_network(&settings)?;
         Ok(settings)
@@ -134,6 +137,16 @@ impl AppService {
             .ok_or_else(|| ClientError::new(ErrorCode::Conflict, "设置格式无效。"))?;
         for (key, value) in object {
             match key.as_str() {
+                "updates" => {
+                    let options = value
+                        .as_object()
+                        .filter(|o| {
+                            o.len() == 1 && o.get("auto_check").is_some_and(Value::is_boolean)
+                        })
+                        .ok_or_else(|| ClientError::new(ErrorCode::Conflict, "更新选项无效。"))?;
+                    settings["updates"] = serde_json::to_value(options)
+                        .map_err(|_| ClientError::new(ErrorCode::Internal, "无法保存更新设置。"))?;
+                }
                 "theme"
                 | "download_dir"
                 | "bandwidth_limit_kib_s"
@@ -260,6 +273,12 @@ impl AppService {
     }
 }
 fn validate(settings: &Value) -> Result<(), ClientError> {
+    if settings["updates"]["auto_check"].as_bool().is_none() {
+        return Err(ClientError::new(
+            ErrorCode::Conflict,
+            "更新设置损坏，未覆盖。",
+        ));
+    }
     if !matches!(
         settings["experimental_network"]["server_domain"].as_str(),
         Some("auto" | "mypikpak.com" | "mypikpak.net" | "pikpak.me" | "pikpakdrive.com")

@@ -19,6 +19,17 @@ keyboard closes, and Back dismisses the keyboard first. The byte download worker
 now runs continuously instead of waiting for every 500ms UI/cloud poll. Current
 evidence and constraints are in [SPEED_TORRENT_IME_REPORT.md](SPEED_TORRENT_IME_REPORT.md).
 
+Version 0.1.3 adds a signed public preview update flow under **Me → About** and
+live received-byte progress on ordinary downloads. Downloading is cancellable;
+installation verifies the APK identity, increasing versionCode and existing signer
+set before opening the Android permission page or system installer. The FileProvider
+exposes only the app-private `files/updates/` directory with a read-only URI grant.
+APK signing-key rotation is not supported by this first updater. Old update files
+are cleaned at the next check; restart never trusts a leftover package automatically.
+The update protocol is independent of APK signing and Windows Authenticode.
+Version0.1.2 and earlier need a manual first upgrade. See
+[UPDATES_PROGRESS_REPORT.md](UPDATES_PROGRESS_REPORT.md) for exact acceptance.
+
 ## Implemented host
 
 - Tauri mobile library entry shares the Rust Core/native API provider with desktop.
@@ -96,7 +107,9 @@ are configured on NekoPak/NikoPak. Reuse the same identity for future upgrades.
 `release.yml` builds and verifies separate Windows and Android signed artifacts;
 Android release fails when keystore inputs are missing. The release report records
 APK SHA256, signing certificate, ABI/SDK and license/16KiB validation. Public GitHub
-Release publication is separate from artifact upload. `parity-*` remains gated.
+Release publication follows both successful platform jobs and a clean-runner
+Windows installer check, then publishes a complete draft as a public prerelease.
+`parity-*` remains gated; the current publisher intentionally accepts only pre-1.0 previews.
 
 ## Verification status
 

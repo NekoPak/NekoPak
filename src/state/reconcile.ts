@@ -47,6 +47,7 @@ export function applyProgress(task: TransferTaskExt, ev: TransferProgressEvent):
     total_bytes: ev.total_bytes ?? task.total_bytes,
     speed_bytes_per_sec: ev.speed_bytes_per_sec,
   };
+  delete out.received_bytes;
   if (revision(ev.revision) !== null) out.revision = ev.revision;
   if (ev.updated_at) out.updated_at = ev.updated_at;
   if (ev.error) out.error = ev.error;
@@ -59,6 +60,7 @@ export function applyChanged(task: TransferTaskExt, ev: TransferChangedEvent): T
   const order = compareOrder(task, ev);
   if (order === -1 || order === 0) return null;
   const out: TransferTaskExt = { ...task, state: ev.state };
+  delete out.received_bytes;
   if (ev.error) out.error = ev.error;
   else delete out.error;
   if (ev.state !== "running") delete out.speed_bytes_per_sec;

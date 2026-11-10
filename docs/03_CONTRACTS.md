@@ -483,3 +483,30 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
 
 以上已接入并通过本轮离线、原生Android与发行构建验证，见SPEED_TORRENT_IME_REPORT.md。
 这不代表真实账号、实际网络吞吐或功能对齐验收。
+
+## 17. 发布更新与实时进度（0.1.3）
+
+- `TransferTask.received_bytes?:decimal u64`为当前有效下载块已经接收的实时字节位置，仅在
+  running普通下载的快照中追加；`transferred_bytes`仍为已校验并落盘的持久进度。UI使用前者
+  展示进度与ETA，暂停／错误后回到实际落盘值，同revision快照允许更新；不提前显示任务完成。
+- `update_status()->UpdateStatus`、`update_check()->UpdateStatus`、`update_download({update_id})->void`、
+  `update_cancel()->void`、`update_install({update_id})->{state:"installer_opened"|"permission_required"}`。
+  更新与PikPak账号无关。状态阶段idle/checking/up_to_date/available/downloading/ready/error，包含
+  当前版本、目标版本、preview通道、签名内更新说明、decimal下载字节、可选结构化错误。
+- Rust更新服务固定读取NekoPak/NikoPak公开release列表，选择较新且平台匹配的已签名清单；
+  不接受UI任意URL／路径／公钥，不使用PikPak凭据。预览构建接受preview更新，stable构建只
+  接受stable。没有可用release与请求失败分别显示，不把失败称为最新。
+- `settings.updates={auto_check:false}`可选启动检查；下载、安装始终用户触发。应用内代理设置
+  同样作用于更新网络；证书校验、HTTPS固定主机白名单、响应限长／超时保留。
+- `update-manifest.json`使用独立协议的Ed25519签名封套（payload_base64/signature），payload
+  包含schema/product/version/channel/published_at/notes及平台name/bytes/sha256。内置公钥
+  与仓库发布密钥对应；这不是Tauri updater协议或Windows Authenticode。签名、平台、版本、
+  文件长度与SHA256通过才成为ready，安装前再次核验。取消及失败不留下可安装半包。
+- Windows启动已验证NSIS安装器前暂停本地传输，禁用其间新任务，成功启动后退出本程序；
+  Android通过只读FileProvider将已验证APK交给系统，核验包名／升级版本／原签名证书。
+  未开放本应用安装权限时只打开系统授权页，返回后再次明确点安装；不静默安装或自动授权。
+- 检查、下载与安装核验串行互斥；检查时撤销旧候选与可安装状态，清理私有updates目录内
+  本更新器的UUID包文件。不会递归清理目录／跟随链接／删除其他文件。安装动作错误不被
+  后续状态轮询抹除。重启不会信任上次残留包，下次检查清理后重新下载和验证。
+
+公开release仍标预览，不能因此通过上游功能对齐门禁。测试与发布记录见UPDATES_PROGRESS_REPORT.md。

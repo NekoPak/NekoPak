@@ -23,7 +23,7 @@ export type TaskState = 'queued' | 'running' | 'paused' | 'retrying' | 'verifyin
 export type TransferAction = 'pause' | 'resume' | 'cancel' | 'retry';
 export interface TransferTask {
   id: string; remote_id: string; kind: 'download' | 'upload' | 'cloud_download' | 'segment_download'; state: TaskState;
-  transferred_bytes: DecimalU64; total_bytes?: DecimalU64; speed_bytes_per_sec?: number;
+  transferred_bytes: DecimalU64; received_bytes?: DecimalU64; total_bytes?: DecimalU64; speed_bytes_per_sec?: number;
   backend: BackendId; error?: ClientError; created_at: string; updated_at: string;
   revision: DecimalU64; simulated: boolean;
   name?: string; destination?: string;
@@ -60,6 +60,11 @@ export interface SyncPlan {
   warnings: string[]; has_unresolved_conflicts: boolean; has_deletes: boolean;
 }
 export interface CommandMap {
+  update_status: { args: Record<string, never>; result: import('./contract-proposals').UpdateStatus };
+  update_check: { args: Record<string, never>; result: import('./contract-proposals').UpdateStatus };
+  update_download: { args: { update_id: string }; result: void };
+  update_cancel: { args: Record<string, never>; result: void };
+  update_install: { args: { update_id: string }; result: { state: 'installer_opened' | 'permission_required' } };
   cloud_torrent_pick: { args: Record<string, never>; result: import('./contract-proposals').TorrentPreview | null };
   cloud_torrent_create: { args: { import_id: string; parent_id: string; idempotency_key: string }; result: TaskRef };
   cloud_torrent_release: { args: { import_id: string }; result: void };

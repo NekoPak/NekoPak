@@ -399,6 +399,9 @@ export async function boot(): Promise<void> {
       setLanguage(settings.language ?? "system");
       app.set({ settings, settingsError: undefined });
       applyTheme(settings.theme);
+      if(runtime==="tauri"&&status.feature_flags.app_updates&&settings.updates?.auto_check){
+        void import("../components/AppUpdates").then(module=>module.checkUpdatesAtStartup());
+      }
     } catch (e) {
       app.set({ settingsError: errorOf(e), settings: {
         schema_version: 1, theme: initialTheme(), download_dir: "", max_concurrent_transfers: 0,

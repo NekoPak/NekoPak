@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-10T14:32:24.717Z",
+  "scope": "Actual native update service; synthetic local server and key; no real account",
+  "platform": "windows-x86_64",
+  "checks": [
+    {
+      "name": "Empty channel reports no newer version",
+      "passed": true
+    },
+    {
+      "name": "Network failure is never reported as current version",
+      "passed": true
+    },
+    {
+      "name": "Invalid signed metadata prevents package download",
+      "passed": true
+    },
+    {
+      "name": "Partial update download cancels without becoming installable",
+      "passed": true
+    },
+    {
+      "name": "Altered package fails SHA256 verification",
+      "passed": true
+    },
+    {
+      "name": "Complete signed package downloads and verifies",
+      "passed": true
+    },
+    {
+      "name": "Windows launches the verified no-op installer and exits only after handoff",
+      "passed": true
+    }
+  ],
+  "package_sha256": "414243ea1375ef6a1112fac6515df20ce9ca1f285f6a76125bc86dd928b014b3"
+}

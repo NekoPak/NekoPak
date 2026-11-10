@@ -209,6 +209,25 @@ changes use existing Rust/Tauri/AndroidX APIs.
 
 The optional Windows Setup.exe is produced by Tauri's NSIS bundler (build-time tooling).
 It installs the same executable, notices and dependency license files as the portable ZIP.
-NSIS is not launched as part of normal application operation. WebView2's Microsoft
+NSIS runs only during explicit installation or a confirmed app update. WebView2's Microsoft
 bootstrapper is downloaded only when the installed system runtime is missing; the
 full runtime is not part of NekoPak's Lite payload.
+
+## App updates and live progress (0.1.3, 2026-11-10)
+
+The account-independent updater, signed update-envelope schema, release publisher
+and live received-byte snapshot field were independently implemented. There is no
+Piko/AGPL code reuse or bundled external updater. `ring`0.17.14 (Apache-2.0 AND ISC,
+with its additional bundled upstream notices preserved)
+and `semver`1.0 (MIT OR Apache-2.0), previously transitive dependencies, are now used
+directly by the Rust Core; the exact versions and full notices remain in the locked
+release inventory. Existing reqwest/TLS, base64 and SHA256 dependencies perform HTTP
+and package validation. AndroidX FileProvider and Android PackageManager/Intent APIs
+provide the native installation handoff; no Android framework implementation was copied.
+
+The Ed25519 envelope signs exact payload bytes and deliberately reuses the protected
+repository release key under a new, product-bound schema. This is NekoPak's own
+update protocol, not the Tauri updater plugin/signature format or Authenticode.
+The Python cryptography package remains build tooling and is not shipped in the app.
+Source/behavior references and tested security boundaries are recorded in
+docs/UPDATES_PROGRESS_REPORT.md and docs/RELEASE_SIGNING.md.

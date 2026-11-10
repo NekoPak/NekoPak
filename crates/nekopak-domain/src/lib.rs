@@ -255,6 +255,9 @@ pub struct TransferTask {
     pub kind: TaskKind,
     pub state: TaskState,
     pub transferred_bytes: DecimalU64,
+    /// Volatile received position for display; never used for crash recovery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub received_bytes: Option<DecimalU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total_bytes: Option<DecimalU64>,
     #[serde(skip_serializing_if = "Option::is_none")]

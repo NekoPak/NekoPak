@@ -4,6 +4,7 @@ mod catalog_commands;
 mod desktop;
 #[cfg(mobile)]
 mod mobile;
+mod update_commands;
 #[cfg(mobile)]
 use mobile as desktop;
 use nekopak_core::AppService;
@@ -595,6 +596,7 @@ pub fn run() {
             std::fs::create_dir_all(&directory)?;
             #[cfg(not(windows))]
             let directory = std::fs::canonicalize(directory)?;
+            update_commands::initialize(app.handle(), &directory)?;
             #[cfg(all(target_os = "android", debug_assertions))]
             let android_test_origin = {
                 // Opt-in isolated emulator harness, never compiled into release.
@@ -819,6 +821,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            update_commands::update_status,
+            update_commands::update_check,
+            update_commands::update_download,
+            update_commands::update_cancel,
+            update_commands::update_install,
             catalog_commands::cloud_torrent_pick,
             catalog_commands::cloud_torrent_create,
             catalog_commands::cloud_torrent_release,

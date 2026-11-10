@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-10T14:34:47.755Z",
+  "scope": "Actual native update service; synthetic local server and key; no real account",
+  "platform": "android-aarch64",
+  "checks": [
+    {
+      "name": "Empty channel reports no newer version",
+      "passed": true
+    },
+    {
+      "name": "Network failure is never reported as current version",
+      "passed": true
+    },
+    {
+      "name": "Invalid signed metadata prevents package download",
+      "passed": true
+    },
+    {
+      "name": "Partial update download cancels without becoming installable",
+      "passed": true
+    },
+    {
+      "name": "Altered package fails SHA256 verification",
+      "passed": true
+    },
+    {
+      "name": "Complete signed package downloads and verifies",
+      "passed": true
+    },
+    {
+      "name": "Android permission flow reaches the system update confirmation for the matching signed APK",
+      "passed": true
+    }
+  ],
+  "package_sha256": "00c449de81f009e4caf92800141b11bc48b86b1eac1dda12dad3edfd2c51462f"
+}

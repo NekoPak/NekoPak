@@ -1,0 +1,54 @@
+{
+  "scope": "Independent mobile UI/browser IPC fixture; no device or live-service claims",
+  "results": [
+    {
+      "name": "phone 360px light",
+      "passed": true
+    },
+    {
+      "name": "phone 360px dark",
+      "passed": true
+    },
+    {
+      "name": "phone 390px light",
+      "passed": true
+    },
+    {
+      "name": "phone 390px dark",
+      "passed": true
+    },
+    {
+      "name": "phone 412px light",
+      "passed": true
+    },
+    {
+      "name": "phone 412px dark",
+      "passed": true
+    },
+    {
+      "name": "phone login 360px light",
+      "passed": true
+    },
+    {
+      "name": "phone login 360px dark",
+      "passed": true
+    },
+    {
+      "name": "phone login 390px light",
+      "passed": true
+    },
+    {
+      "name": "phone login 390px dark",
+      "passed": true
+    },
+    {
+      "name": "phone login 412px light",
+      "passed": true
+    },
+    {
+      "name": "phone login 412px dark",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

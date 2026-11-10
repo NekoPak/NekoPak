@@ -153,6 +153,11 @@ try{
   const settings=await invoke('settings_get');assert.ok(settings.download_dir.endsWith('/Downloads'));
   const task=await invoke('transfer_start',{remote_id:'file-1',destination:settings.download_dir,idempotency_key:`android-e2e-${Date.now()}`});
   const snapshot=()=>invoke('transfers_list');
+  const live=await until(snapshot,s=>s.items.some(t=>t.id===task.task_id&&Number(t.received_bytes)>Number(t.transferred_bytes)));
+  const liveTask=live.items.find(t=>t.id===task.task_id);
+  assert(Number(liveTask.received_bytes)>0);assert(liveTask.speed_bytes_per_sec>0);
+  await until(()=>evaluate(`Number(document.querySelector('[data-task="${task.task_id}"] [role="progressbar"]')?.getAttribute('aria-valuenow'))`),percent=>percent>0);
+  record('Phone progress moves during an unfinished network chunk while restart bytes stay verified');
   await until(snapshot,s=>s.items.some(t=>t.id===task.task_id&&Number(t.transferred_bytes)>0));
   await until(snapshot,s=>s.items.some(t=>t.id===task.task_id&&t.state==='running'&&t.speed_bytes_per_sec>0));
   await screenshot('phone-transfers.png');record('Actual received bytes produce a nonzero download speed');

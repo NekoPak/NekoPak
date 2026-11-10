@@ -283,6 +283,18 @@ impl AppService {
                     self.download_record(&task.id)?.scope
                 };
                 if task_scope == "local" || scope.as_deref() == Some(task_scope.as_str()) {
+                    task.received_bytes =
+                        if task.state == TaskState::Running && task.kind == TaskKind::Download {
+                            self.download_rates
+                                .received(&task.id, task.revision.0)
+                                .map(|bytes| {
+                                    DecimalU64(bytes.max(task.transferred_bytes.0).min(
+                                        task.total_bytes.map(|value| value.0).unwrap_or(u64::MAX),
+                                    ))
+                                })
+                        } else {
+                            None
+                        };
                     task.speed_bytes_per_sec = if task.state == TaskState::Running {
                         self.download_rates.speed(&task.id)
                     } else {
@@ -973,6 +985,9 @@ mod tests {
         changed: std::sync::atomic::AtomicBool,
         switch_on_status: std::sync::Mutex<usize>,
         chunk_size: AtomicUsize,
+        hold_chunk: std::sync::atomic::AtomicBool,
+        observed_chunk: tokio::sync::Notify,
+        release_chunk: tokio::sync::Notify,
     }
     #[async_trait]
     impl ProviderPort for ByteProvider {
@@ -1061,6 +1076,11 @@ mod tests {
                 return Err(fault(ErrorCode::TransientNetwork, "测试连接中断"));
             }
             let end = (start + length).min(self.bytes.len() as u64) as usize;
+            if self.hold_chunk.load(Ordering::SeqCst) {
+                observer.received(65_536);
+                self.observed_chunk.notify_one();
+                self.release_chunk.notified().await;
+            }
             observer.received((end - start as usize) as u64);
             Ok(DownloadChunk {
                 bytes: self.bytes[start as usize..end].to_vec(),
@@ -1076,6 +1096,9 @@ mod tests {
             changed: std::sync::atomic::AtomicBool::new(false),
             switch_on_status: std::sync::Mutex::new(0),
             chunk_size: AtomicUsize::new(BLOCK as usize),
+            hold_chunk: Default::default(),
+            observed_chunk: Default::default(),
+            release_chunk: Default::default(),
         })
     }
     async fn setup(size: usize) -> (tempfile::TempDir, Arc<ByteProvider>, AppService, TaskRef) {
@@ -1102,6 +1125,37 @@ mod tests {
         }
         panic!("download did not finish: {:?}", app.task(id).unwrap());
     }
+    #[tokio::test]
+    async fn visible_progress_moves_inside_a_chunk_without_committing_unverified_bytes() {
+        let (_directory, provider, app, task) = setup(2 * BLOCK as usize).await;
+        provider.hold_chunk.store(true, Ordering::SeqCst);
+        app.tick().await.unwrap();
+        let app = Arc::new(app);
+        let worker = app.clone();
+        let pending = tokio::spawn(async move { worker.tick().await });
+        provider.observed_chunk.notified().await;
+        let snapshot = app
+            .visible_transfers(None, None, &RequestContext::default())
+            .await
+            .unwrap();
+        let wire = serde_json::to_value(&snapshot.items[0]).unwrap();
+        assert_eq!(wire["received_bytes"], "65536");
+        assert_eq!(
+            wire["transferred_bytes"], "0",
+            "unverified bytes must not become restart progress"
+        );
+        assert_eq!(app.task(&task.task_id).unwrap().transferred_bytes.0, 0);
+        app.transfer_control(&task.task_id, TransferAction::Pause)
+            .unwrap();
+        provider.release_chunk.notify_one();
+        pending.await.unwrap().unwrap();
+        let snapshot = app
+            .visible_transfers(None, None, &RequestContext::default())
+            .await
+            .unwrap();
+        assert!(serde_json::to_value(&snapshot.items[0]).unwrap()["received_bytes"].is_null());
+    }
+
     #[tokio::test]
     async fn larger_network_reads_keep_compatible_receipts_and_resume_after_restart() {
         let (directory, provider, app, task) = setup(5 * BLOCK as usize + 31).await;

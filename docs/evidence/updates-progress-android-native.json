@@ -1,0 +1,81 @@
+{
+  "date": "2026-11-10",
+  "platform": "Android15/API35 x86_64 isolated emulator",
+  "serial": "emulator-5580",
+  "checks": [
+    {
+      "name": "Android application locale is read natively and system language resolves to Chinese",
+      "result": "passed"
+    },
+    {
+      "name": "Rust JNI AndroidKeyStore synthetic roundtrip, accounts and auxiliary records",
+      "result": "passed"
+    },
+    {
+      "name": "Password keyboard hides bottom navigation; Android Back dismisses keyboard and restores navigation",
+      "result": "passed"
+    },
+    {
+      "name": "Native sign-in, validation redaction and file list via loopback",
+      "result": "passed"
+    },
+    {
+      "name": "Actual Android torrent picker cancels safely, parses .torrent bytes and submits exactly one cloud task on confirmation",
+      "result": "passed"
+    },
+    {
+      "name": "Installed Android WebView uses phone navigation, touch file rows and account page without desktop controls",
+      "result": "passed"
+    },
+    {
+      "name": "Phone progress moves during an unfinished network chunk while restart bytes stay verified",
+      "result": "passed"
+    },
+    {
+      "name": "Actual received bytes produce a nonzero download speed",
+      "result": "passed"
+    },
+    {
+      "name": "Activity background pauses local bytes; no further range requests",
+      "result": "passed"
+    },
+    {
+      "name": "Refreshing network connections never resumes a manually/background-paused task",
+      "result": "passed"
+    },
+    {
+      "name": "Transient HTTP failure automatically reconnects and completes without manual retry",
+      "result": "passed"
+    },
+    {
+      "name": "Process restart preserves queue/bytes and explicit resume completes",
+      "result": "passed"
+    },
+    {
+      "name": "Downloaded bytes match original SHA256",
+      "result": "passed"
+    },
+    {
+      "name": "Real Android document picker cancellation preserves original",
+      "result": "passed"
+    },
+    {
+      "name": "Real SAF save exports matching bytes to shared Downloads",
+      "result": "passed"
+    },
+    {
+      "name": "Actual Android WebView has no horizontal page overflow",
+      "result": "passed"
+    },
+    {
+      "name": "Completed/cancelled history stays removed after process restart while downloaded bytes remain intact",
+      "result": "passed"
+    }
+  ],
+  "network": "synthetic loopback only; in-memory provider account fixture; separate actual JNI Keystore checks",
+  "pending": [
+    "physical ARM64",
+    "real login/CAPTCHA",
+    "arbitrary document providers"
+  ]
+}

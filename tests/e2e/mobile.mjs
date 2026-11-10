@@ -33,7 +33,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
   let task = { id: "completed-a", remote_id: "file-a", backend: "rust_compat", name: file.name, kind: "download", state: "completed", destination: "/data/user/0/io.nekopak.desktop/files/Downloads/示例文件.txt", transferred_bytes: "12", total_bytes: "12", revision: "1", simulated: false, created_at: now, updated_at: now };
   let tasks=[task,{...task,id:"running-a",name:"旅行视频.mp4",state:"running",transferred_bytes:"4194304",total_bytes:"41943040",speed_bytes_per_sec:2097152},{...task,id:"cancelled-a",name:"已取消的备份.zip",state:"cancelled",transferred_bytes:"0"}];
   const settings = { schema_version: 1, theme, language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
-  window.__mobileFixture = { calls: [], exportResult: false, torrentResult: null };
+  window.__mobileFixture = { calls: [], exportResult: false, torrentResult: null, receivedBytes:"4194304", updatePhase:"idle" };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
@@ -45,7 +45,18 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
       if (command === "plugin:event|listen") return ++id;
       if (command === "plugin:event|unlisten") return;
       if (command.startsWith("plugin:window|")) return false;
-      if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, torrent_import: true, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: !mobile, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
+      if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, app_updates:true, torrent_import: true, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: !mobile, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
+      if(command==='update_status'||command==='update_check'){
+        if(command==='update_check')window.__mobileFixture.updatePhase='available';
+        const phase=window.__mobileFixture.updatePhase;
+        return {supported:true,phase,current_version:'0.1.3',channel:'preview',checked_at:now,downloaded_bytes:phase==='ready'?'12345':'0',error:null,update:phase==='idle'?null:{update_id:'update-fixture',version:'0.1.4',channel:'preview',notes:'Synthetic signed update notes',published_at:now,size_bytes:'12345'}};
+      }
+      if(command==='update_download'){window.__mobileFixture.updatePhase='downloading';setTimeout(()=>{window.__mobileFixture.updatePhase='ready';},400);return;}
+      if(command==='update_cancel'){window.__mobileFixture.updatePhase='available';return;}
+      if(command==='update_install'){
+        if(window.__mobileFixture.updateInstallError)throw {code:'INTEGRITY_FAILED',message:'测试更新包无法安装',retryable:false};
+        return {state:'permission_required'};
+      }
       if(command === "auth_preferences_get")return authPrefs;
       if(command === "cloud_torrent_pick")return window.__mobileFixture.torrentResult;
       if(command === "cloud_torrent_create")return {task_id:"torrent-cloud-a"};
@@ -64,7 +75,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
       if (command === "ui_prefs_get") return { account_id: "synthetic-account", prefs: { pins: [] } };
       if (command === "ui_prefs_update") return args.prefs;
       if (command === "quota_get") return { backend: "rust_compat", source: "account", account_tier: "unknown", dimensions: [], limitations: [], checked_at: now };
-      if (command === "transfers_list") return { items: signed ? tasks : [] };
+      if (command === "transfers_list") return { items: signed ? tasks.map(task=>task.id==='running-a'?{...task,received_bytes:window.__mobileFixture.receivedBytes}:task) : [] };
       if (command === "jobs_list" || command === "shares_list") return { items: [] };
       if (command === "files_list") return { items: args.parent_id === "root" ? [folder, {...folder,id:"folder-b",name:"工作文档"}, {...file,id:"video-a",name:"旅行视频.mp4",size_bytes:"41943040",mime_type:"video/mp4"}, {...file,id:"image-a",name:"海边的日落.jpg",size_bytes:"2419401",mime_type:"image/jpeg"}, file] : [{ ...file, id: "nested", parent_id: folder.id }] };
       if(command === "files_search")return {items:[file]};
@@ -152,6 +163,9 @@ try {
       await page.getByRole('button',{name:'传输',exact:true}).tap();
       await page.locator('[data-task="running-a"]').waitFor();
       assert((await page.locator('[data-task="running-a"] .phone-task-stats strong').textContent()).includes('/s'),"measured speed is visible");
+      await page.evaluate(()=>{window.__mobileFixture.receivedBytes='6291456';});
+      await page.waitForFunction(()=>Number(document.querySelector('[data-task="running-a"] [role="progressbar"]').getAttribute('aria-valuenow'))>=15);
+      assert((await page.locator('[data-task="running-a"] .phone-task-stats').textContent()).includes('15.0%'));
       await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`transfers-${width}-${theme}.png`)});
       await assertFits(page,`${width} ${theme} transfers`);
       await page.getByRole('button',{name:'已取消的备份.zip的更多操作',exact:true}).tap();await page.getByRole('button',{name:'移除记录',exact:true}).tap();
@@ -177,6 +191,24 @@ try {
       const calls=await page.evaluate(()=>window.__mobileFixture.calls);
       assert(calls.some(c=>c.command==='settings_update'&&c.args.patch?.experimental_network?.server_domain==='mypikpak.net'));
       assert(calls.some(c=>c.command==='network_domains_probe'));assert(calls.some(c=>c.command==='network_reconnect'));
+      await page.getByRole('button',{name:'我的',exact:true}).tap();await page.getByRole('button',{name:'关于',exact:true}).tap();
+      await page.getByRole('switch',{name:'启动时检查更新',exact:true}).tap();
+      assert(await page.evaluate(()=>window.__mobileFixture.calls.some(call=>call.command==='settings_update'&&call.args.patch?.updates?.auto_check===true)));
+      await page.getByRole('button',{name:'检查更新',exact:true}).tap();await page.getByText('Synthetic signed update notes',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'下载更新',exact:true}).tap();await page.getByText('更新包已验证，可以安装。',{exact:true}).waitFor();
+      if(width===390&&theme==='light'){
+        await page.evaluate(()=>{window.__mobileFixture.updateInstallError=true;});
+        await page.getByRole('button',{name:'安装更新',exact:true}).tap();
+        await page.getByRole('dialog',{name:'安装更新',exact:true}).getByRole('button',{name:'安装更新',exact:true}).tap();
+        await page.getByText('测试更新包无法安装',{exact:true}).waitFor();
+        await page.waitForTimeout(1200);
+        assert(await page.getByText('测试更新包无法安装',{exact:true}).isVisible(),'status polling must not erase an install error');
+        await page.evaluate(()=>{window.__mobileFixture.updateInstallError=false;});
+      }
+      await page.getByRole('button',{name:'安装更新',exact:true}).tap();
+      await page.getByRole('dialog',{name:'安装更新',exact:true}).getByRole('button',{name:'安装更新',exact:true}).tap();
+      await page.getByText('请允许本应用安装更新，返回后再次点击安装。',{exact:true}).waitFor();
+      await page.screenshot({path:resolve(output,`updates-${width}-${theme}.png`)});
       await page.getByRole('button',{name:'传输',exact:true}).tap();await page.locator('[data-task="completed-a"]').waitFor();
       await page.getByRole('button',{name:'管理传输',exact:true}).tap();await page.getByRole('button',{name:'清理已结束',exact:true}).tap();
       const confirmation=page.getByRole('dialog',{name:'清理已结束',exact:true});await confirmation.getByText('保留已下载文件与云端文件',{exact:true}).waitFor();

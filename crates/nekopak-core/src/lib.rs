@@ -16,6 +16,7 @@ pub mod store;
 mod streams;
 mod sync;
 mod torrent;
+pub mod updates;
 mod upload_tree;
 mod uploads;
 pub use mounts::MountConfig;
@@ -214,6 +215,13 @@ impl AppService {
                 ("telemetry".into(), false),
                 ("local_sources".into(), !cfg!(target_os = "android")),
                 ("media_session".into(), true),
+                (
+                    "app_updates".into(),
+                    cfg!(any(
+                        all(windows, target_arch = "x86_64"),
+                        all(target_os = "android", target_arch = "aarch64")
+                    )) || cfg!(debug_assertions),
+                ),
                 (
                     "torrent_import".into(),
                     self.provider.id() == BackendId::RustCompat,
@@ -811,6 +819,7 @@ fn new_task(remote_id: String, kind: TaskKind, total_bytes: Option<DecimalU64>) 
         kind,
         state: TaskState::Queued,
         transferred_bytes: DecimalU64(0),
+        received_bytes: None,
         total_bytes,
         speed_bytes_per_sec: None,
         backend: BackendId::Mock,

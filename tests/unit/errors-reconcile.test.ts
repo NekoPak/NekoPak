@@ -72,6 +72,12 @@ describe("event reconciliation (03_CONTRACTS §4)", () => {
     expect(mergeSnapshot({ ...base, revision: 7 }, { ...base, revision: 9 }).revision).toBe(9);
     expect(mergeSnapshot(undefined, base)).toBe(base);
   });
+  it("same revision can refresh received bytes while committed bytes stay unchanged", () => {
+    const first={...base,received_bytes:"120"};
+    const next=mergeSnapshot(first,{...base,received_bytes:"180"});
+    expect(next.received_bytes).toBe("180");expect(next.transferred_bytes).toBe(base.transferred_bytes);
+    expect(applyChanged(next,{task_id:base.id,state:"paused",revision:99})?.received_bytes).toBeUndefined();
+  });
 });
 
 describe("virtual list math", () => {

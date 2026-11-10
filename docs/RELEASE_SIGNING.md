@@ -11,8 +11,9 @@
 `scripts/release_signing.py verify` 同时验证签名和对应产物内容。
 
 这不是Windows Authenticode证书，不能据此声称EXE已获得微软信任或SmartScreen信誉。
-Authenticode需要单独的受信任代码签名证书/服务。Tauri updater自己的签名、公钥和更新
-manifest也属于独立协议，在实际接入更新器时单独生成并配置，不能拿本清单冒充可自动更新。
+Authenticode需要单独的受信任代码签名证书/服务。0.1.3接入NekoPak自己的更新协议，明确
+复用这个受保护Ed25519密钥签署另一种product/schema限定的更新封套；没有使用Tauri
+updater插件、它的签名格式或公钥。旧release-manifest.json本身不充当更新源。
 
 Android已生成独立keystore，后续同一应用更新必须保留原签名身份。已配置Secrets名称：
 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、
@@ -23,7 +24,8 @@ Android已生成独立keystore，后续同一应用更新必须保留原签名�
 
 - `windows.yml`：日常Windows检查与预览产物，不使用签名秘密。
 - `release.yml`：手动或v*/parity-*标签分别触发Windows和Android构建、测试、许可清单、签名及验证，
-  上传Actions artifact。不会自动创建公开Release。parity-*仍受严格功能门禁约束。
+  上传Actions artifact。0.1.3起两端成功后由publish job验证安装器并发布完整公开预览Release。
+  parity-*仍受严格功能门禁约束；当前publisher只接受0.x.y预览，不宣称功能对齐完成。
 - `portable-core.yml`：Linux/macOS核心测试和native provider编译，不能替代相应桌面真实验收。
 - `android.yml`：PR/main 日常 ARM64 debug APK，不使用发布私钥。debug 产物不可冒充正式签名。
 
@@ -34,7 +36,8 @@ Android已生成独立keystore，后续同一应用更新必须保留原签名�
 - `NekoPak-<version>-windows-x64-setup.exe`：真实NSIS安装器，当前用户安装，提供
   开始菜单快捷方式、卸载入口和中繁英日韩安装语言。缺WebView2时下载安装微软引导器，
   不捆绑Chromium或完整WebView2运行时。安装器内容沿用便携目录的许可证资源。
-- `release-manifest.json`：对这两个产物的名称、版本、长度和SHA256签名；公钥单独附带。
+- `release-manifest.json`：对这两个产物的名称、版本、长度和SHA256签名；0.1.3起同时签入
+  size-report.json，以绑定源码commit及干净构建状态；公钥单独附带。
 - Android APK由独立宿主和Rust library生成，使用独立keystore。设备验收状态见
   `ANDROID.md`；缺签名输入直接失败。检查包签名、SDK/ABI、ZIP和ELF16KiB对齐，
   发布清单另以Ed25519签名，不能将二者混为同一种签名。
@@ -106,3 +109,28 @@ Maven POM许可证元数据的固定URL和哈希随包附带；原始文件与Gi
 最终ZIP／NSIS／APK均已下载复验并置于dist。APK沿用原证书，versionCode102，实际从101
 覆盖升级及两次冷启动通过。具体文件摘要、大小与证据见SPEED_TORRENT_IME_REPORT.md及
 `evidence/0.1.2-android-package.json`、`0.1.2-windows-package.json`。
+
+## 0.1.3公开更新协议
+
+生产客户端固定读取`https://api.github.com/repos/NekoPak/NikoPak/releases?per_page=30`，
+按语义版本查找当前平台的新版本。预览版接受preview/stable，未来stable仅接受stable；
+不存在更高版本与网络／签名失败是不同状态。不会发送PikPak账号头或接受IPC任意URL。
+
+公开`update-manifest.json`形状为`{payload_base64,signature}`。签名覆盖解码后的**原始字节**，
+payload含schema_version=1、product=NekoPak、version、channel、published_at、notes及
+platforms。平台为windows-x86_64／android-aarch64，每项严格限定name、bytes、sha256。
+签名之外仍核对tag／文件名／通道／平台／版本；下载和安装前分别核对长度与SHA256。
+TLS证书检查保留，固定GitHub/Release CDN HTTPS白名单和有界响应／跳转；使用应用代理设置。
+
+`scripts/publish_release.py`必须验证两份平台签名，要求被发布文件完全属于签名集合、
+两端报告git_worktree_dirty=false且commit等于当前HEAD，发布源码也必须干净。两端报告
+均签入对应平台清单；已有版本不覆盖，已有tag若指向其他commit则拒绝。创建带齐所有包、
+签名和报告的draft，最后才发布prerelease，避免客户端读到半套资产。
+公开平台清单分别命名windows-release-manifest.json／android-release-manifest.json，
+其内部文件名保持不变，可将对应文件下载到同目录后用原verify命令验签。
+
+安装始终用户确认。Windows验证文件及父目录在启动期间持锁，暂停本地传输后启动正常NSIS
+向导并退出应用。Android同时校验包名、versionName、递增versionCode及当前签名证书集合，
+只读FileProvider范围为files/updates；缺权限时仅打开本应用的系统授权页。当前不支持APK
+签名轮换，不包含提权／静默安装／自动点击。便携版经向导安装新副本，原目录保留。
+0.1.2以前没有更新器，需手动安装0.1.3一次。实际验证和发布证据见UPDATES_PROGRESS_REPORT.md。

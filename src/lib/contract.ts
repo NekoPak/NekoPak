@@ -54,6 +54,7 @@ export interface TransferTask {
   kind: "download" | "upload" | "cloud_download" | "segment_download";
   state: TaskState;
   transferred_bytes: string;
+  received_bytes?: string;
   total_bytes?: string;
   speed_bytes_per_sec?: number;
   backend: BackendId;

@@ -5,7 +5,7 @@
 > 独立社区项目，非 PikPak 官方客户端，与 PikPak 服务提供者无隶属关系。
 
 **状态：** `Pre-alpha / Desktop + Android integration`（Rust 核心与手机宿主已接入；真实服务与全部上游功能仍逐项验收）
-**文档基线：** 2026-11-10 · `0.1.2` 预览
+**文档基线：** 2026-11-10 · `0.1.3` 预览
 **平台：** Windows x64 已通过自动构建、签名清单及安装／卸载测试。Android 已接入独立宿主、Keystore 凭据库、小屏界面和 APK 构建流程，完整验收状态见 [Android 说明](docs/ANDROID.md)。Linux / macOS 已有核心 CI，尚未完成桌面验收。
 
 **验收结论：** Windows 打包通过不等于产品功能验收完成。`python scripts/check_parity.py --release` 当前仍拒绝功能对齐发布，24 组必需能力均未完成全部验收。真实账号由用户在应用内验证。
@@ -94,8 +94,8 @@ cargo run -p nekopak-app --locked
 
 浏览器 `npm run dev` 使用离线演示数据；桌面离线验收须显式设置
 `$env:NEKOPAK_BACKEND = 'mock'`。桌面不会回退到浏览器 Mock。
-当前 Windows 发行形式为 `dist/NekoPak-0.1.2-windows-x64-portable.zip`（解压为完整多文件目录）
-和 `dist/NekoPak-0.1.2-windows-x64-setup.exe`（安装/快捷方式/卸载）。目录中的
+当前 Windows 发行形式为 `dist/NekoPak-0.1.3-windows-x64-portable.zip`（解压为完整多文件目录）
+和 `dist/NekoPak-0.1.3-windows-x64-setup.exe`（安装/快捷方式/卸载）。目录中的
 `NekoPak/nekopak.exe` 是程序入口；无需单独复制程序以外的系统依赖。
 本轮目录选择、速度、语言、网络和托盘记录见
 [DESKTOP_UX_FIX_REPORT.md](docs/DESKTOP_UX_FIX_REPORT.md)。此前文件、登录与迁移记录保留在
@@ -113,6 +113,12 @@ DRIVE_FILES_FIX_REPORT.md、LOGIN_FIX_REPORT.md 和 API_MIGRATION_REPORT.md。
 Android 7.0 / API24 起，首个手机发行目标为 ARM64；x86_64 用于模拟器验收。
 共享 Rust 登录、文件、云任务和媒体核心，使用系统 Android WebView，不捆绑浏览器或 JVM。
 APK 内包含原生代码、Android 宿主和第三方许可材料；手机包大小不套用 Windows Lite 的挑战值。
+
+`0.1.3` 在 **关于 → 应用更新** 接入公开预览版检查、更新说明、下载／取消与确认安装；可选
+启动时检查，默认关闭。Rust验证发布签名、长度和SHA256；Android交给系统安装器并保持原
+APK签名，Windows打开安装向导。`0.1.2`及更早版本需手动安装本版一次。普通下载进度条
+改用当前块已接收的真实字节，手机同时显示百分比和速度；断点恢复继续以校验落盘字节为准。
+实现、边界、测试与发布证据见 [0.1.3更新与进度记录](docs/UPDATES_PROGRESS_REPORT.md)。
 
 `0.1.2` 修复下载块被500ms轮询节奏限制的问题，复用经过验证的CDN连接，并在强ETag条件下
 短期复用资源信息。本地16MiB样本从9.26秒降到1.09秒，字节SHA256相同；这不是实际服务网速
@@ -139,4 +145,5 @@ APK 内包含原生代码、Android 宿主和第三方许可材料；手机包�
 开发环境需要 JDK21、SDK36、Build Tools36、NDK27.2.12479018，命令与验证证据见
 [docs/ANDROID.md](docs/ANDROID.md)。`android.yml` 生成明确标为 debug 的测试 APK；
 `release.yml` 分别构建 Windows ZIP/Setup.exe 与独立签名的 Android APK。
-Actions 产物与公开 GitHub Release 是两个步骤；未通过功能对齐门禁的版本仅可标为预览。
+Actions先分别构建和验签，再验证安装器、签入源码报告并发布完整的GitHub预览Release。
+未通过功能对齐门禁的版本仅可标为预览。

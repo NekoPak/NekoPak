@@ -100,7 +100,7 @@ export async function transportKind(): Promise<"mock" | "tauri"> {
 
 async function call<K extends CommandName>(cmd: K, args: CommandArgs<K>): Promise<CommandResult<K>> {
   const generation = sessionGeneration();
-  const accountIndependent = ["cloud_torrent_release", "auth_preferences_get", "auth_preferences_update", "network_reconnect", "network_domains_probe", "auth_status", "auth_sign_in", "auth_verify", "auth_logout", "auth_cancel", "auth_begin", "account_switch", "account_remove", "backend_discover", "app_status", "settings_get", "settings_update", "media_session_close"].includes(cmd);
+  const accountIndependent = cmd.startsWith("update_") || ["cloud_torrent_release", "auth_preferences_get", "auth_preferences_update", "network_reconnect", "network_domains_probe", "auth_status", "auth_sign_in", "auth_verify", "auth_logout", "auth_cancel", "auth_begin", "account_switch", "account_remove", "backend_discover", "app_status", "settings_get", "settings_update", "media_session_close"].includes(cmd);
   // Defense in depth: keyboard, stale menus and async dialogs all pass through
   // this boundary. Local/shared handles must never reach drive write commands.
   const fields = args as Record<string, unknown> | undefined;
@@ -160,6 +160,11 @@ export function newIdempotencyKey(): string {
 /* ------------------------------------------------------------------ */
 
 export const api = {
+  updateStatus: () => call("update_status", undefined),
+  updateCheck: () => call("update_check", undefined),
+  updateDownload: (update_id: string) => call("update_download", { update_id }),
+  updateCancel: () => call("update_cancel", undefined),
+  updateInstall: (update_id: string) => call("update_install", { update_id }),
   cloudTorrentPick: () => call("cloud_torrent_pick", undefined),
   cloudTorrentCreate: (import_id: string, parent_id: string, idempotency_key: string) => call("cloud_torrent_create", { import_id, parent_id, idempotency_key }),
   cloudTorrentRelease: (import_id: string) => call("cloud_torrent_release", { import_id }),

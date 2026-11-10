@@ -3,6 +3,7 @@ import { useStore } from "../lib/store";
 import { app } from "../state/app";
 import { LogoMark } from "../components/Brand";
 import { Btn, openOfficial } from "../components/ui";
+import { AppUpdates } from "../components/AppUpdates";
 
 /**
  * Mirrors docs/04_SOURCES_LICENSES.md. "关系" reflects what the UI code
@@ -49,6 +50,7 @@ export function AboutContent() {
         <p>{tr("NekoPak 是社区开发的 PikPak 客户端，与 PikPak 官方无关。")}</p>
       </div>
 
+      <AppUpdates />
       <h3>{tr("来源与致谢")}</h3>
       <p class="dim">{tr("完整清单与核查记录见仓库中的 docs/04_SOURCES_LICENSES.md、docs/UI_SOURCES_AND_DEPENDENCIES.md 与 THIRD_PARTY_NOTICES.md。各项目代码及素材归各自权利人所有，列出不代表其作者为 NekoPak 背书。")}</p>
       <div class="table-wrap">

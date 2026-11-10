@@ -15,9 +15,9 @@ see the integration report for source/format/runtime limitations.
 
 ## Run the provided Windows application
 
-Extract `NekoPak-0.1.2-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
+Extract `NekoPak-0.1.3-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
 Keep the directory's notices and licenses alongside the executable. Alternatively, run
-`NekoPak-0.1.2-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
+`NekoPak-0.1.3-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
 The native application embeds its frontend resources and does not self-extract them on startup.
 The required runtime is Windows x64 with Microsoft Edge WebView2 Evergreen.
 No compiler, terminal command, CLI installation, client registration or environment
@@ -33,6 +33,21 @@ Click the download path or **选择文件夹** to open the Windows directory pic
 keeps the previous folder. **下载时询问保存位置** enables a per-download picker. The task
 menu opens the containing folder recorded for that task, including after changing the default.
 Task rows, the footer and sidebar show measured download throughput.
+
+Version 0.1.3 adds **关于 → 应用更新** on Windows x64 and Android ARM64. Check,
+download and confirm installation; startup checks are optional and off by default.
+The Rust service uses the public NekoPak/NikoPak preview feed and the app's network
+proxy settings, verifies the signed metadata, byte count and SHA256, then rechecks
+the staged package before native handoff. A failed check is not reported as current.
+Windows pauses local transfers and opens the normal NSIS wizard. A portable copy
+is not overwritten: the wizard installs a per-user copy, retaining app data.
+Android may first ask you to allow NekoPak to install packages; return and select
+Install again. The operating system makes the final installation decision.
+Versions through 0.1.2 lack this updater and need one manual upgrade to 0.1.3.
+
+Ordinary download bars now use actual bytes received during the current network
+block. The phone displays both percentage and speed. Pausing or retrying can return
+the bar to the last verified durable position; it never resumes from unverified RAM.
 
 In version 0.1.2, **添加链接 → 种子文件 → 选择种子文件** opens the system file
 picker on Windows and Android. Previewing is local; **提交云下载** explicitly creates

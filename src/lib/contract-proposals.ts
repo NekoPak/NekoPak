@@ -608,6 +608,7 @@ export interface MountState {
 
 /** §P1 `settings_get` / `settings_update` */
 export interface Settings {
+  updates?: { auto_check: boolean };
   media?: { player_path: string };
   ask_download_directory?: boolean;
   close_to_tray?: boolean;
@@ -673,7 +674,31 @@ export interface NetworkDomainReport {
 }
 
 /** Full command map: name -> [args, result]. Frozen names from §3 + §P commands. */
+export interface UpdateInfo {
+  update_id: string;
+  version: string;
+  channel: "preview" | "stable";
+  notes: string;
+  published_at: string;
+  size_bytes: string;
+}
+export interface UpdateStatus {
+  supported: boolean;
+  phase: "idle" | "checking" | "up_to_date" | "available" | "downloading" | "ready" | "error";
+  current_version: string;
+  channel: "preview" | "stable";
+  checked_at: string | null;
+  update: UpdateInfo | null;
+  downloaded_bytes: string;
+  error: ClientError | null;
+}
+
 export interface CommandMap {
+  update_status: [undefined, UpdateStatus];
+  update_check: [undefined, UpdateStatus];
+  update_download: [{ update_id: string }, void];
+  update_cancel: [undefined, void];
+  update_install: [{ update_id: string }, { state: "installer_opened" | "permission_required" }];
   cloud_torrent_pick: [undefined, TorrentPreview | null];
   cloud_torrent_create: [{ import_id: string; parent_id: string; idempotency_key: string }, TaskRef];
   cloud_torrent_release: [{ import_id: string }, void];

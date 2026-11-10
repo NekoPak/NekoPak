@@ -47,6 +47,14 @@ impl Rates {
     pub fn speed(&self, id: &str) -> Option<f64> {
         self.0.lock().ok()?.get_mut(id)?.speed(Instant::now())
     }
+    pub fn received(&self, id: &str, revision: u64) -> Option<u64> {
+        let map = self.0.lock().ok()?;
+        map.get(id)
+            .filter(|sample| sample.revision == revision)?
+            .points
+            .back()
+            .map(|(_, bytes)| *bytes)
+    }
     pub fn remove(&self, id: &str) {
         if let Ok(mut map) = self.0.lock() {
             map.remove(id);
