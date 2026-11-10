@@ -459,7 +459,7 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
           <div class="link-pick-head"><strong dir="auto">{torrent.title}</strong><span>{torrent.file_count} {tr("个文件")} · {formatBytes(torrent.total_bytes)}</span></div>
           <p class="dim">{tr("将提交整个种子中的文件。")}</p>
           {torrent.private ? <p class="inline-note warn">{tr("这是私有种子，服务端可能需要对应站点权限。")}</p> : null}
-          <ul class="link-files">{torrent.files.map(file => <li key={file.path}><span dir="auto" class="ellipsis">{file.path}</span><span class="dim">{formatBytes(file.size_bytes)}</span></li>)}</ul>
+          <ul class="link-files">{torrent.files.map(file => <li key={file.path} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px",padding:"8px 12px"}}><span dir="auto" class="ellipsis">{file.path}</span><span class="dim" style={{flexShrink:0}}>{formatBytes(file.size_bytes)}</span></li>)}</ul>
           {torrent.file_count > torrent.files.length ? <p class="dim">{tr("仅展示前 200 个文件，提交包含全部文件。")}</p> : null}
         </div> : null}
         {torrentError ? <ErrorPanel error={torrentError} compact/> : null}
