@@ -5,10 +5,12 @@ import { useStore } from "../lib/store";
 import { closeDialog, closeMenu, dialogs, dismissToast, menu, toasts, type MenuItem } from "../state/ui";
 import { Icon } from "./Icon";
 import { ErrorPanel } from "./ui";
+import { useMobileLayout } from "../lib/mobile";
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function DialogHost() {
+  const phone = useMobileLayout();
   const stack = useStore(dialogs, (s) => s.stack);
   const top = stack[stack.length - 1];
   const ref = useRef<HTMLDivElement>(null);
@@ -35,7 +37,7 @@ export function DialogHost() {
 
   return (
     <div
-      class="modal-backdrop"
+      class={`modal-backdrop${phone ? " phone-modal-backdrop" : ""}`}
       onMouseDown={(e) => {
         if (dismissable && e.target === e.currentTarget) closeDialog(top.id);
       }}
@@ -87,6 +89,39 @@ export function DialogHost() {
 }
 
 export function MenuHost() {
+  const phone = useMobileLayout();
+  return phone ? <MobileMenuHost/> : <DesktopMenuHost/>;
+}
+
+function MobileMenuHost() {
+  const m = useStore(menu,s=>s);
+  const ref = useRef<HTMLDivElement>(null);
+  const previousFocus=useRef<HTMLElement|null>(null);
+  const items=m.items.filter(item=>item.id!=="open-tab");
+  useEffect(()=>{
+    if(!m.open)return;
+    previousFocus.current=document.activeElement as HTMLElement;
+    requestAnimationFrame(()=>ref.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus());
+    return()=>previousFocus.current?.focus?.();
+  },[m.open]);
+  if(!m.open)return null;
+  return <div class="mobile-sheet-backdrop" onClick={event=>{if(event.target===event.currentTarget)closeMenu();}}>
+    <div ref={ref} class="mobile-action-sheet" role="dialog" aria-modal="true" aria-label={m.label??tr("操作")} onKeyDown={event=>{
+      if(event.key==="Escape"){event.stopPropagation();closeMenu();}
+      if(event.key==="Tab"){
+        const buttons=[...ref.current!.querySelectorAll<HTMLElement>('button:not([disabled])')];const first=buttons[0],last=buttons[buttons.length-1];
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+      }
+    }}>
+      <span class="mobile-sheet-handle"/>
+      <h2>{m.label??tr("操作")}</h2>
+      <div class="mobile-action-list">{items.map(item=><button type="button" key={item.id} class={`${item.danger?"danger ":""}${item.separatorBefore?"separated":""}`} disabled={item.disabled} onClick={()=>{closeMenu();item.run?.();}}><Icon name={item.icon??"more"}/><span>{item.label}{item.disabled&&item.reason?<small>{item.reason}</small>:null}</span></button>)}</div>
+      <button type="button" class="mobile-sheet-cancel" onClick={closeMenu}>{tr("取消")}</button>
+    </div>
+  </div>;
+}
+
+function DesktopMenuHost() {
   const m = useStore(menu, (s) => s);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });

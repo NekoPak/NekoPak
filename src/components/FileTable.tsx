@@ -13,6 +13,8 @@ import type { GridSize } from "../state/prefs";
 import { Icon } from "./Icon";
 import { onSessionReset } from "../state/session";
 import { app, isMobileHost } from "../state/app";
+import { useMobileLayout } from "../lib/mobile";
+import { MobileFileList } from "./MobileFileList";
 
 export type ColumnId = "name" | "size" | "modified" | "kind" | "location";
 export type SortKey = "name" | "size" | "modified" | "kind";
@@ -231,6 +233,11 @@ interface Marquee {
 }
 
 export function FileTable(p: FileTableProps) {
+  const phone = useMobileLayout();
+  return phone ? <MobileFileList {...p}/> : <DesktopFileTable {...p}/>;
+}
+
+function DesktopFileTable(p: FileTableProps) {
   const mobile = useStore(app, isMobileHost);
   const touchPress = useRef(false);
   const scroller = useRef<HTMLDivElement>(null);

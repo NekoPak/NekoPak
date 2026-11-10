@@ -29,6 +29,8 @@ import { SettingsPage } from "../pages/Settings";
 import { Onboarding } from "../pages/Onboarding";
 import { requestRefresh } from "../pages/common";
 import { on } from "../lib/api";
+import { useMobileLayout } from "../lib/mobile";
+import { MobileShell, MobileMePage } from "./MobileShell";
 
 const SharesPage = lazyPage(() => import("../pages/Shares").then((m) => m.SharesPage));
 const ReferencesPage = lazyPage<{ manifest?: string }>(() => import("../pages/References").then(m => m.ReferencesPage));
@@ -136,6 +138,7 @@ function useGlobalShortcuts() {
 function Page() {
   const r = useStore(route, (s) => s.current);
   switch (r.page) {
+    case "me": return <MobileMePage />;
     case "files": return <FilesPage folder={r.folder} />;
     case "search": return <SearchPage query={r.query} />;
     case "recent": return <RecentPage />;
@@ -158,6 +161,7 @@ function Page() {
 }
 
 export function App() {
+  const mobileLayout = useMobileLayout();
   // Rerender translated labels without remounting the tree or losing forms.
   useStore(language, state => state.preference);
   const tabId = useStore(workspaceTabs, state => state.activeId);
@@ -268,6 +272,12 @@ export function App() {
   const showOnboarding = !s.accepted || obActive === true;
   // Narrow windows always use the rail; the user preference applies to wide windows.
   const collapsed = !phone && (narrow || collapsedPref);
+
+  if (mobileLayout) return <div class="phone-root">
+    <MobileShell><Page key={`${s.sessionEpoch}:${tabId}`} /></MobileShell>
+    {showOnboarding ? <Onboarding onClose={() => setObActive(false)} /> : null}
+    <DialogHost /><PaletteSlot /><MenuHost /><ToastHost />
+  </div>;
 
   return (
     <div class={`app${collapsed ? " rail" : ""}${mobile ? " mobile-host" : ""}${phone && navOpen ? " nav-open" : ""}`}>

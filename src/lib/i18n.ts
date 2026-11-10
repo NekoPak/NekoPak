@@ -23,6 +23,14 @@ function initial(): Language {
 }
 
 export const language = new Store<{ preference: Language }>({ preference: initial() });
+let nativeSystemLanguage: string | undefined;
+
+/** Android WebView may retain an English navigator locale while the OS is Chinese. */
+export function setSystemLanguageOverride(locale?: string): void {
+  nativeSystemLanguage = typeof locale === "string" && /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/.test(locale)
+    ? locale.replaceAll("_", "-") : undefined;
+  if (typeof document !== "undefined") document.documentElement.lang = resolvedLanguage();
+}
 
 export function resolveSystemLanguage(value: string): Locale {
   if (/^zh(-Hant|-TW|-HK|-MO)/i.test(value)) return "zh-TW";
@@ -34,7 +42,8 @@ export function resolveSystemLanguage(value: string): Locale {
 export function resolvedLanguage(): Locale {
   const pref = language.get().preference;
   if (pref !== "system") return pref;
-  return typeof document === "undefined" ? "zh-CN" : resolveSystemLanguage(globalThis.navigator?.language ?? "en");
+  return nativeSystemLanguage ? resolveSystemLanguage(nativeSystemLanguage)
+    : typeof document === "undefined" ? "zh-CN" : resolveSystemLanguage(globalThis.navigator?.language ?? "en");
 }
 
 export function setLanguage(preference: Language): void {

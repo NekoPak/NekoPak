@@ -15,11 +15,12 @@ import { openMenu, toast } from "../state/ui";
 import { Icon } from "../components/Icon";
 import { Btn, copyWithToast, Empty, ErrorPanel, Progress, Spinner, VerificationRecovery } from "../components/ui";
 import { PageFrame } from "../components/Frame";
-import { newCloudTask } from "../components/dialogs";
+import { confirmDialog, newCloudTask } from "../components/dialogs";
 import { useTicker } from "./common";
 import { formatClock } from "../lib/clip";
 import { jobs } from "../state/jobs";
 import type { ServerJob } from "../lib/contract-proposals";
+import { useMobileLayout } from "../lib/mobile";
 
 const STATE_LABEL: Record<TaskState, string> = {
   get queued() { return tr("排队中"); }, get running() { return tr("进行中"); }, get paused() { return tr("已暂停"); }, get retrying() { return tr("重试等待"); },
@@ -42,6 +43,17 @@ async function control(t: TransferTaskExt, action: TransferAction): Promise<void
     const err = errorOf(e);
     toast(`${ERROR_COPY[err.code].title}：${err.message}`, "error", { error: err });
   }
+}
+
+const FINISHED = new Set<TaskState>(["completed","cancelled","failed"]);
+async function forgetTask(task: TransferTaskExt) {
+  try { await api.transferForget(task.id); await loadSnapshot(); }
+  catch(error) { toast(errorOf(error).message,"error"); }
+}
+async function clearFinished() {
+  if(!await confirmDialog({title:tr("清理已结束"),body:<p>{tr("保留已下载文件与云端文件")}</p>,confirmLabel:tr("清理已结束")}))return;
+  try { const result=await api.transferClearFinished();await loadSnapshot();toast(tx("已移除 {0} 条记录",result.removed),"success"); }
+  catch(error) { toast(errorOf(error).message,"error"); }
 }
 
 function TaskActions({ t }: { t: TransferTaskExt }) {
@@ -74,6 +86,7 @@ function TaskActions({ t }: { t: TransferTaskExt }) {
           const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
           openMenu(r.right - 240, r.bottom + 4, [
             { id: "cancel", label: tr("取消任务"), icon: "x", disabled: !active, reason: tr("任务已结束"), run: () => void control(t, "cancel") },
+            ...(FINISHED.has(t.state)?[{id:"forget",label:tr("移除记录"),icon:"trash",run:()=>void forgetTask(t)}]:[]),
             ...(canExport && (t.kind === "download" || t.kind === "segment_download") ? [{ id: "export", label: tr("导出文件"), icon: "download", disabled: exporting || t.state !== "completed" || !!t.simulated, reason: exporting ? tr("正在导出") : tr("下载完成后可导出"), run: () => void exportFile() }] : []),
             { id: "open", label: cloud ? tr("在网盘中查看") : tr("打开所在文件夹"), icon: "folder", disabled: cloud ? t.state !== "completed" : !desktop || !canOpenDirectory || t.simulated || !t.destination, reason: cloud ? tr("完成后可查看") : !canOpenDirectory ? tr("请使用导出文件保存到手机") : tr("此任务没有本地下载目录"), run: () => cloud ? navigate({ page: "files", folder: ROOT_ID }) : void api.transferOpenDirectory(t.id).catch(e=>toast(errorOf(e).message,"error")) },
             { id: "diag", label: tr("复制诊断信息"), icon: "copy", separatorBefore: true, disabled: !t.error, reason: tr("任务没有错误"), run: () => t.error && void copyWithToast(diagnosticsText(t.error, `task=${t.id}`), tr("诊断信息")) },
@@ -250,6 +263,7 @@ function TransfersFooter({ tasks }: { tasks: TransferTaskExt[] }) {
 }
 
 export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
+  const phone = useMobileLayout();
   const mobile = useStore(app, isMobileHost);
   const st = useStore(transfers, (s) => s);
   const jobMap = useStore(jobs, (j) => j.jobs);
@@ -288,6 +302,24 @@ export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
     { id: "all", label: tr("全部") }, { id: "download", label: tr("下载") }, { id: "upload", label: tr("上传") }, { id: "cloud_download", label: tr("云下载") },
   ];
 
+  if(phone)return <PageFrame label={tr("传输")} caption={null} mobileHeader={<header class="mobile-page-header"><h1>{tr("传输")}</h1><button type="button" class="mobile-icon-button" aria-label={tr("添加链接")} onClick={()=>void newCloudTask(ROOT_ID,"/")} disabled={!g.ok}><Icon name="plus" size={24}/></button><button type="button" class="mobile-icon-button" aria-label={tr("管理传输")} onClick={()=>openMenu(0,0,[
+    {id:"resume",label:tr("全部继续"),icon:"play",disabled:!resumable.length,run:()=>void bulk(resumable,"resume")},
+    {id:"pause",label:tr("全部暂停"),icon:"pause",disabled:!pausable.length,run:()=>void bulk(pausable,"pause")},
+    {id:"clear",label:tr("清理已结束"),icon:"trashSweep",disabled:!all.some(t=>FINISHED.has(t.state)),run:()=>void clearFinished()},
+    {id:"refresh",label:tr("刷新"),icon:"refresh",run:()=>void loadSnapshot()},
+  ],tr("管理传输"))}><Icon name="more"/></button></header>}>
+    <div class="phone-transfer-summary"><span><Icon name="download" size={18}/><strong>{formatSpeed(all.filter(t=>t.state==="running"&&t.kind!=="cloud_download"&&t.kind!=="upload").reduce((n,t)=>n+(t.speed_bytes_per_sec??0),0))}</strong></span><small>{tx("{0} 项进行中",all.filter(t=>ACTIVE_STATES.has(t.state)).length)}</small></div>
+    <div class="phone-transfer-tabs" role="tablist" aria-label={tr("任务类别")}>{cats.filter(c=>c.id!=="upload"||counts.upload).map(c=><button type="button" role="tab" aria-selected={cat===c.id} onClick={()=>setCat(c.id)}>{c.label}<small>{counts[c.id]}</small></button>)}</div>
+    <div class="phone-task-scroll">
+      {mobile?<p class="phone-transfer-note">{tr("离开应用时暂停，返回后可继续下载。")}</p>:null}
+      {st.error?<ErrorPanel error={st.error} onRetry={()=>void loadSnapshot()}/>:null}
+      {st.phase==="loading"?<Spinner/>:null}
+      {shown.length===0?<Empty title={tr("还没有任务")}>{tr("在文件页面选择下载，或添加云下载链接。")}</Empty>:null}
+      {shown.map(task=><PhoneTaskCard key={task.id} task={task}/>)}
+      {jobRows.length?<JobsSection jobs={jobRows} now={now}/>:null}
+    </div>
+  </PageFrame>;
+
   return (
     <PageFrame
       label={tr("下载")}
@@ -306,7 +338,7 @@ export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
         <div class="cmd-group">
           <Btn tone="ghost" icon="play" label={tr("全部继续")} busy={busy} disabled={!resumable.length} reason={tr("没有已暂停的任务")} onClick={() => void bulk(resumable, "resume")} />
           <Btn tone="ghost" icon="pause" label={tr("全部暂停")} busy={busy} disabled={!pausable.length} reason={tr("没有可暂停的本地任务")} onClick={() => void bulk(pausable, "pause")} />
-          <Btn tone="ghost" icon="trashSweep" label={tr("清除已完成")} disabled reason={tr("暂不支持")} />
+          <Btn tone="ghost" icon="trashSweep" label={tr("清理已结束")} disabled={!all.some(t=>FINISHED.has(t.state))} reason={tr("没有已结束的任务")} onClick={()=>void clearFinished()} />
           <Btn tone="quiet" iconOnly icon="refresh" label={tr("刷新（F5）")} busy={st.phase === "loading"} onClick={() => void loadSnapshot()} />
         </div>
         <div class="cmd-group cmd-end">
@@ -332,4 +364,27 @@ export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
       )}
     </PageFrame>
   );
+}
+
+function PhoneTaskCard({task:t}:{task:TransferTaskExt}) {
+  const [exporting,setExporting]=useState(false);
+  const exportable=useStore(app,s=>s.app?.feature_flags.transfer_export===true);
+  const cloud=t.kind==="cloud_download";
+  const pct=cloud&&t.progress_percent!==undefined?t.progress_percent:percent(t.transferred_bytes,t.total_bytes);
+  const exportFile=async()=>{setExporting(true);try{if(await api.transferExport(t.id))toast(tr("文件已导出"),"success");}catch(e){toast(errorOf(e).message,"error");}finally{setExporting(false);}};
+  return <article class={`phone-task-card state-${t.state}`} data-task={t.id} aria-label={t.name??t.remote_id}>
+    <div class="phone-task-title"><span class="phone-task-icon"><Icon name={cloud?"cloudDown":t.kind==="upload"?"upload":"download"} size={24}/></span><span><strong dir="auto">{t.name??t.remote_id}</strong><small>{KIND_LABEL[t.kind]} · {stateText(t)}</small></span><button type="button" class="mobile-icon-button" aria-label={tx("{0}的更多操作",t.name??t.remote_id)} onClick={()=>openMenu(0,0,[
+      ...(!FINISHED.has(t.state)?[{id:"cancel",label:tr("取消任务"),icon:"x",run:()=>void control(t,"cancel")}]:[{id:"forget",label:tr("移除记录"),icon:"trash",run:()=>void forgetTask(t)}]),
+      ...(t.error?[{id:"diagnostics",label:tr("复制诊断信息"),icon:"copy",run:()=>void copyWithToast(diagnosticsText(t.error!,`task=${t.id}`),tr("诊断信息"))}]:[]),
+    ],t.name??t.remote_id)}><Icon name="more"/></button></div>
+    <Progress value={t.state==="completed"?100:pct} label={tx("{0} 进度",t.name??t.remote_id)} tone={t.state==="failed"?"error":t.state==="completed"?"ok":undefined}/>
+    <div class="phone-task-stats"><span>{formatBytes(t.transferred_bytes)}{t.total_bytes?` / ${formatBytes(t.total_bytes)}`:""}</span><strong>{t.state==="running"&&!cloud?formatSpeed(t.speed_bytes_per_sec):pct!==null?`${Math.round(pct)}%`:""}</strong></div>
+    {t.error?<p class="phone-task-error">{t.error.message}</p>:null}
+    <div class="phone-task-actions">
+      {!cloud&&["queued","running","retrying"].includes(t.state)?<Btn label={tr("暂停")} icon="pause" tone="ghost" onClick={()=>void control(t,"pause")}/>:null}
+      {!cloud&&t.state==="paused"?<Btn label={tr("继续")} icon="play" tone="primary" onClick={()=>void control(t,"resume")}/>:null}
+      {t.state==="failed"?<Btn label={tr("重试")} icon="retry" onClick={()=>void control(t,"retry")}/>:null}
+      {exportable&&t.state==="completed"&&(t.kind==="download"||t.kind==="segment_download")?<Btn label={tr("导出文件")} icon="download" busy={exporting} onClick={()=>void exportFile()}/>:null}
+    </div>
+  </article>;
 }

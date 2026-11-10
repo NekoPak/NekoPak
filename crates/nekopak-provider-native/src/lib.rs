@@ -8,6 +8,7 @@ mod download;
 mod drive;
 mod files;
 mod http;
+mod network;
 mod profile;
 mod refs;
 mod shared_media;
@@ -134,6 +135,7 @@ struct Cursor {
     epoch: u64,
 }
 struct Session {
+    network_generation: u64,
     loaded: bool,
     stored: Option<StoredSession>,
     device_id: String,
@@ -148,6 +150,7 @@ struct Session {
 impl Default for Session {
     fn default() -> Self {
         Self {
+            network_generation: 0,
             loaded: false,
             stored: None,
             device_id: uuid::Uuid::new_v4().simple().to_string(),
@@ -361,6 +364,18 @@ impl NativeProvider {
         let _ = self.auth_events.send(AuthChangedEvent { state, error });
     }
     fn load(&self, session: &mut Session) -> Result<(), ClientError> {
+        let network_generation = self
+            .http
+            .network_generation
+            .load(std::sync::atomic::Ordering::Acquire);
+        if session.network_generation != network_generation {
+            // A browser verification created for the previous route must not
+            // poison sign-in after a proxy/root change. Tokens remain stored;
+            // the user may request a fresh challenge on the new route.
+            session.pending = None;
+            session.drive = Default::default();
+            session.network_generation = network_generation;
+        }
         self.load_account_session(session)
     }
     fn commit(&self, session: &mut Session, stored: StoredSession) -> Result<(), ClientError> {
@@ -672,6 +687,7 @@ impl NativeProvider {
             let value: Value = serde_json::from_slice(&bytes).map_err(|_| wire::invalid())?;
             stored.user_id = wire::text(&value, "sub", 256)?;
         }
+        self.remember_username(username)?;
         self.commit(session, stored)?;
         session.invalidate_account_handles();
         self.emit(AuthStatus::SignedIn, None);
@@ -773,6 +789,21 @@ impl ProviderPort for NativeProvider {
     fn subscribe_auth(&self) -> Option<broadcast::Receiver<AuthChangedEvent>> {
         Some(self.auth_events.subscribe())
     }
+    fn network_reconnect(&self) -> Result<(), ClientError> {
+        self.http.reconnect()
+    }
+    fn configure_server_domain(&self, domain: &str) -> Result<(), ClientError> {
+        self.http.set_server_domain(domain)
+    }
+    async fn network_domains_probe(&self) -> Result<Value, ClientError> {
+        self.probe_server_domains().await
+    }
+    async fn auth_preferences_get(&self) -> Result<Value, ClientError> {
+        self.account_preferences().await
+    }
+    async fn auth_preferences_update(&self, value: &Value) -> Result<Value, ClientError> {
+        self.update_account_preferences(value).await
+    }
     async fn verification_status(
         &self,
         id: Option<&str>,
@@ -848,6 +879,7 @@ impl ProviderPort for NativeProvider {
             return Err(unsupported(self.id()));
         }
         let mut session = self.session.lock().await;
+        self.load(&mut session)?;
         let pending = session.pending.as_mut().ok_or_else(expired)?;
         if pending.id != challenge_id || pending.expires_at <= now() {
             return Err(error(

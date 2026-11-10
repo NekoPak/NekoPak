@@ -87,6 +87,24 @@ impl Default for DownloadObserver {
 #[async_trait]
 pub trait ProviderPort: Send + Sync {
     fn id(&self) -> BackendId;
+    fn configure_server_domain(&self, _domain: &str) -> Result<(), ClientError> {
+        Ok(())
+    }
+    fn network_reconnect(&self) -> Result<(), ClientError> {
+        Ok(())
+    }
+    async fn network_domains_probe(&self) -> Result<serde_json::Value, ClientError> {
+        Err(unsupported(self.id()))
+    }
+    async fn auth_preferences_get(&self) -> Result<serde_json::Value, ClientError> {
+        Err(unsupported(self.id()))
+    }
+    async fn auth_preferences_update(
+        &self,
+        _value: &serde_json::Value,
+    ) -> Result<serde_json::Value, ClientError> {
+        Err(unsupported(self.id()))
+    }
     fn supports_password_auth(&self) -> bool {
         false
     }

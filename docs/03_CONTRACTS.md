@@ -435,3 +435,30 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
   继续。云端任务不因应用切到后台而取消。尚未接入前台服务，不宣称锁屏持续下载。
 - 前端按 Rust 能力判断 Android，不凭窗口宽度推断平台。小屏布局也用于浏览器测试，
   浏览器样例不能替代 Android APK/Keystore/设备验收。
+
+## 15. 手机重做与连接恢复增量（2026-11-10）
+
+- 手机使用独立文件／传输／我的导航、触屏文件行、上下文选择和底部操作单；桌面多标签与
+  侧栏不参与手机组件树。`app_status.system_locale?:string` 由 Android 原生配置提供，
+  跟随系统语言时优先采用它；用户显式选择语言继续优先。保持既有契约版本与字段含义。
+- `transfer_forget({task_id})->void`、`transfer_clear_finished()->{removed:number}` 只移除当前
+  账号的 completed/failed/cancelled 可见历史，进行中的任务拒绝。持久隐藏标记保存于 Rust
+  journal；任务回执、幂等证据、下载字节和远端文件保留，重启后不再出现在列表。
+- 可重试的下载网络故障进入 retrying，按有界退避恢复授权 Range／媒体读取；账号、来源身份、
+  ETag和块校验继续有效。用户暂停／取消优先；上传与远端写的未知结果不盲目重放。
+  速度来自 Rust 实际接收的字节计时，重试等待、暂停和已结束任务不报告假速度。
+  连续无进度最多自动重试6次，基础退避为1/2/4/8/16/30秒；服务端Retry-After可延长等待，
+  手动重新连接不会缩短该限制。CDN临时错误在成功响应ETag核对前分类；403/404/412不当断线重试。
+- `auth_preferences_get()->{remember_account,restore_session,username?}`、
+  `auth_preferences_update({preferences})->同形`。账号名与选项存 OS 加密凭据索引；密码
+  保持 request-only。关闭保持登录后，下一次启动不自动激活会话；已保存账号可手动选择。
+- `experimental_network.server_domain` 只接受 auto/mypikpak.com/mypikpak.net/pikpak.me/
+  pikpakdrive.com。仅重写允许的认证与网盘API主机，不改写CDN签名地址。明确保存设置后
+  用于后续请求；失败不触发远端写的跨域重放。
+- `network_domains_probe()->{selected_domain,active_domain,checked_at,results}`；每项包含
+  domain/usable/latency_ms?/warm_latency_ms?/error?。无凭据、有限时的固定端点探测；自动
+  选择只在明确测速后采用可用结果，不能用测速宣称账号或配额可用。
+- `network_reconnect()->void` 重新取得代理／HTTP连接设置并唤醒已排程的安全下载读取；
+  不自动继续用户手动暂停的任务。网络和服务错误不一律标成密码错误。
+- 原生视频选段预览使用可撤销本机媒体会话与系统WebView视频解码，跟随选段起终点seek；
+  关闭、切画质和切账号会撤销会话。Mock示意帧与实际视频不混称，不保证系统支持所有编码。

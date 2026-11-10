@@ -60,6 +60,16 @@ function SignInForm() {
   const [wait, setWait] = useState(0);
   const passRef = useRef<HTMLInputElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
+  const [remember,setRemember]=useState(false);
+  const [restore,setRestore]=useState(true);
+  const [preferencesReady,setPreferencesReady]=useState(false);
+  const touchedUser=useRef(false);
+  useEffect(()=>{
+    if(demo)return;
+    let alive=true;
+    void api.authPreferencesGet().then(value=>{if(!alive)return;setRemember(value.remember_account);setRestore(value.restore_session);if(!touchedUser.current&&value.username)setUser(value.username);setPreferencesReady(true);},()=>{if(alive)setPreferencesReady(false);});
+    return()=>{alive=false;};
+  },[demo]);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -85,6 +95,7 @@ function SignInForm() {
     }
     setErr(null);
     try {
+      if(!demo&&preferencesReady)await api.authPreferencesUpdate({remember_account:remember,restore_session:restore,...(remember?{username:user.trim()}: {})});
       const ch = await signIn(user.trim(), pass);
       enter(ch);
     } catch (e) {
@@ -175,7 +186,7 @@ function SignInForm() {
       <label class="signin-field">
         <span>{tr("账号")}</span>
         <input class="input" type="text" name="username" autocomplete="username" placeholder={demo ? tr("邮箱或手机号") : tr("邮箱")} value={user} spellcheck={false} disabled={!available || busy}
-          onInput={(e) => { setUser((e.target as HTMLInputElement).value); setErr(null); }} data-autofocus="" />
+          onInput={(e) => { touchedUser.current=true;setUser((e.target as HTMLInputElement).value); setErr(null); }} data-autofocus="" />
       </label>
       <label class="signin-field">
         <span>{tr("密码")}</span>
@@ -190,6 +201,7 @@ function SignInForm() {
       </label>
       {err ? <p class="field-error" role="alert">{err}</p> : null}
       {err && lastError ? <button type="button" class="link-btn" onClick={() => void copyText(diagnosticsText(lastError, "auth_sign_in")).then(ok => toast(ok ? tr("诊断信息已复制") : tr("复制失败"), ok ? "info" : "error"))}>{tr("复制诊断信息")}</button> : null}
+      {!demo&&preferencesReady?<div class="phone-auth-preferences"><label><input type="checkbox" checked={remember} onChange={e=>setRemember((e.target as HTMLInputElement).checked)}/><span>{tr("记住账号")}</span></label><label><input type="checkbox" checked={restore} onChange={e=>setRestore((e.target as HTMLInputElement).checked)}/><span>{tr("保持登录")}</span></label></div>:null}
       <Btn type="submit" tone="primary" label={tr("登录")} busy={busy} disabled={!available} reason={tr("当前版本尚未配置可用的账号登录")} class="signin-go" />
       {demo ? (
         <p class="dim signin-demo"><Icon name="flask" size={14} />{tr("演示：任意账号和密码都能登录。密码填 wrong 会提示错误，填 captcha 会要求安全验证；手机号会要求验证码。")}</p>

@@ -91,7 +91,14 @@ fn validate_host_destination(service: &AppService, destination: &str) -> Result<
 
 #[tauri::command]
 fn app_status(service: State<'_, Service>) -> AppStatus {
-    service.app_status()
+    let status = service.app_status();
+    #[cfg(target_os = "android")]
+    let status = {
+        let mut status = status;
+        status.system_locale = mobile::system_locale();
+        status
+    };
+    status
 }
 #[tauri::command(rename_all = "snake_case")]
 fn request_cancel(request_id: String, requests: State<'_, Requests>) -> Result<(), ClientError> {
@@ -805,6 +812,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            catalog_commands::transfer_forget,
+            catalog_commands::transfer_clear_finished,
+            catalog_commands::auth_preferences_get,
+            catalog_commands::auth_preferences_update,
+            catalog_commands::network_reconnect,
+            catalog_commands::network_domains_probe,
             app_status,
             autostart::autostart_get,
             autostart::autostart_set,
@@ -930,6 +943,8 @@ mod tests {
             .manage(service.clone())
             .manage(Requests::default())
             .invoke_handler(tauri::generate_handler![
+                catalog_commands::transfer_forget,
+                catalog_commands::transfer_clear_finished,
                 app_status,
                 backend_discover,
                 files_list,
@@ -996,6 +1011,37 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
+            invoke(&webview, "transfers_list", json!({})).unwrap()["items"][0]["state"],
+            "paused"
+        );
+        assert_eq!(
+            invoke(
+                &webview,
+                "transfer_forget",
+                json!({"task_id":task["task_id"]})
+            )
+            .unwrap_err()["code"],
+            "CONFLICT"
+        );
+        invoke(
+            &webview,
+            "transfer_control",
+            json!({"task_id":task["task_id"],"action":"cancel"}),
+        )
+        .unwrap();
+        invoke(
+            &webview,
+            "transfer_forget",
+            json!({"task_id":task["task_id"]}),
+        )
+        .unwrap();
+        assert!(
+            invoke(&webview, "transfers_list", json!({})).unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
             invoke(&webview, "auth_status", json!({})).unwrap()["credential_owner"],
             "none"
         );
@@ -1023,9 +1069,12 @@ mod tests {
         );
         assert_eq!(invoke(&webview, "transfer_start", json!({"remote_id":"file-1","destination":"C:/Mock/clip.mp4", "options":{"clip":{"start_ms":1000,"end_ms":2000,"align":"previous_keyframe"}}})).unwrap_err()["code"], "UNSUPPORTED");
         assert_eq!(invoke(&webview, "cloud_task_create", json!({"source_url":"https://example.com/file","parent_id":"root","idempotency_key":"selected","file_indices":[1]})).unwrap_err()["code"], "UNSUPPORTED");
-        assert_eq!(
-            invoke(&webview, "transfers_list", json!({})).unwrap()["items"][0]["state"],
-            "paused"
+        assert!(
+            invoke(&webview, "transfers_list", json!({})).unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .is_empty(),
+            "unsupported options must not create an unintended whole-file task"
         );
         let error = invoke(
             &webview,

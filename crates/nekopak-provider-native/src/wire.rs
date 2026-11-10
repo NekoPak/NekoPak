@@ -14,6 +14,16 @@ pub fn check_response(
     if (200..300).contains(&status) && bytes.is_empty() {
         return Ok(());
     }
+    // Gateways may return HTML or credential-looking JSON. Their temporary
+    // status takes precedence over body parsing and never invalidates a session.
+    if matches!(status, 408 | 429 | 500..=599) {
+        let mut result = ClientError::from_http(status, BackendId::RustCompat);
+        result.request_id = Some(uuid::Uuid::new_v4().to_string());
+        if let Some(seconds) = retry_after {
+            result.details = Some([("retry_after_seconds".into(), seconds.into())].into());
+        }
+        return Err(result);
+    }
     let value: Value = serde_json::from_slice(bytes).map_err(|_| {
         if status >= 400 {
             let mut error = ClientError::from_http(status, BackendId::RustCompat);
@@ -31,7 +41,22 @@ pub fn check_response(
         "invalid_credentials"
         | "invalid_username_or_password"
         | "invalid_account_or_password"
-        | "invalid_password" => invalid_credentials(),
+        | "invalid_password"
+            if signing_in =>
+        {
+            invalid_credentials()
+        }
+        "invalid_credentials"
+        | "invalid_username_or_password"
+        | "invalid_account_or_password"
+        | "invalid_password" => error(
+            ErrorCode::VerificationRequired,
+            "安全验证或连接未通过，请重试连接后继续。",
+        ),
+        // A refresh-token rejection means the saved session is no longer
+        // usable. It must never be shown as a password error: no password was
+        // present on the refresh request. Only the sign-in endpoint may map a
+        // provider's invalid_grant response to invalid credentials.
         "invalid_grant" if signing_in => invalid_credentials(),
         "invalid_grant" | "unauthenticated" | "token_expired" => {
             error(ErrorCode::AuthExpired, "登录已过期，请重新登录。")

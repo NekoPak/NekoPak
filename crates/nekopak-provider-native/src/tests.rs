@@ -858,7 +858,10 @@ async fn native_login_metadata_and_logout_keep_secrets_inside_core() {
         assert_eq!(requests[1].headers["x-client-version"], "1.0.0");
         assert_eq!(requests[1].headers["x-sdk-version"], "8.1.4");
         assert_eq!(requests[1].headers["x-protocol-version"], "301");
-        assert_eq!(requests[1].headers["user-agent"], "NekoPak/0.1.0");
+        assert_eq!(
+            requests[1].headers["user-agent"],
+            concat!("NekoPak/", env!("CARGO_PKG_VERSION"))
+        );
         let drive = requests
             .iter()
             .find(|r| r.path.starts_with("/drive/v1/files?"))
@@ -898,6 +901,276 @@ async fn invalid_password_never_creates_a_session_or_echoes_server_diagnostics()
     assert!(vault.load().unwrap().is_none());
     assert!(!provider.auth_status().await.unwrap().authenticated);
     assert_eq!(server.requests.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn gateway_failures_and_captcha_rejections_are_not_reported_as_wrong_password() {
+    for (stage, status, upstream, expected) in [
+        (
+            "/v1/shield/captcha/init",
+            400,
+            "invalid_grant",
+            ErrorCode::VerificationRequired,
+        ),
+        (
+            "/v1/shield/captcha/init",
+            400,
+            "invalid_credentials",
+            ErrorCode::VerificationRequired,
+        ),
+        (
+            "/v1/auth/signin",
+            503,
+            "invalid_credentials",
+            ErrorCode::TransientNetwork,
+        ),
+    ] {
+        let server = Server::new(move |request| {
+            if request.path == stage {
+                reply(
+                    status,
+                    json!({"error":upstream,"error_description":"PRIVATE_PASSWORD"}),
+                )
+            } else {
+                standard(request)
+            }
+        })
+        .await;
+        let (provider, vault) = server.provider();
+        let failure = provider
+            .sign_in("tester@example.test", "request-only-password")
+            .await
+            .unwrap_err();
+        assert_eq!(failure.code, expected);
+        assert_ne!(
+            failure.details.as_ref().and_then(|d| d.get("reason")),
+            Some(&json!("invalid_credentials"))
+        );
+        assert!(!serde_json::to_string(&failure).unwrap().contains("PRIVATE"));
+        assert!(vault.load().unwrap().is_none());
+        assert_eq!(
+            server
+                .requests
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|r| r.path == stage)
+                .count(),
+            1,
+            "Do not replay authentication requests after a gateway response"
+        );
+    }
+}
+
+#[tokio::test]
+async fn temporary_refresh_failure_keeps_saved_session_and_recovers_without_password_or_restart() {
+    let offline = Arc::new(AtomicBool::new(true));
+    let flag = offline.clone();
+    let server = Server::new(move |request| {
+        if request.path == "/v1/auth/token" && flag.load(Ordering::SeqCst) {
+            reply(503, json!({"error":"invalid_grant"}))
+        } else {
+            standard(request)
+        }
+    })
+    .await;
+    let (provider, vault) = server.provider();
+    login(&provider).await;
+    {
+        let mut session = provider.session.lock().await;
+        session.stored.as_mut().unwrap().expires_at = now();
+    }
+    let before = vault.load().unwrap().unwrap();
+    assert_eq!(
+        provider.auth_status().await.unwrap_err().code,
+        ErrorCode::TransientNetwork
+    );
+    assert_eq!(vault.load().unwrap().unwrap().as_str(), before.as_str());
+    offline.store(false, Ordering::SeqCst);
+    provider.configure_network("none", None, false).unwrap();
+    assert!(provider.auth_status().await.unwrap().authenticated);
+    assert_eq!(
+        server
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|r| r.path == "/v1/auth/signin")
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn failed_transport_is_rebuilt_for_a_later_attempt_without_restarting_or_replaying_the_password(
+) {
+    let server = Server::new(standard).await;
+    let (provider, vault) = server.provider();
+    let unused = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = unused.local_addr().unwrap();
+    drop(unused);
+    // Model a connection pool captured while the system proxy was unavailable.
+    // The configured tuple remains direct; the failed transport must be rebuilt
+    // for the next user attempt, without changing global environment/OS proxy.
+    provider.http.replace_transport_for_test(
+        reqwest::Client::builder()
+            .no_proxy()
+            .proxy(reqwest::Proxy::all(format!("http://{address}")).unwrap())
+            .connect_timeout(Duration::from_millis(100))
+            .build()
+            .unwrap(),
+    );
+    let failure = provider
+        .sign_in("tester@example.test", "request-only-password")
+        .await
+        .unwrap_err();
+    assert_eq!(failure.code, ErrorCode::TransientNetwork);
+    assert!(server.requests.lock().unwrap().is_empty());
+    assert!(vault.load().unwrap().is_none());
+    login(&provider).await;
+    assert!(provider.auth_status().await.unwrap().authenticated);
+    assert_eq!(
+        server
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|r| r.path == "/v1/auth/signin")
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn reconnect_discards_stale_challenges_but_keeps_active_and_remembered_account() {
+    let server = Server::new(|request| {
+        if request.path == "/v1/shield/captcha/init"
+            && request.body["meta"].get("user_id").is_some()
+        {
+            reply(
+                200,
+                json!({"url":"https://user.mypikpak.com/challenge?id=network-route"}),
+            )
+        } else {
+            standard(request)
+        }
+    })
+    .await;
+    let (provider, vault) = server.provider();
+    login(&provider).await;
+    let previous = provider.auth_status().await.unwrap().account_id.unwrap();
+    assert_eq!(
+        provider.stat("file-1").await.unwrap_err().code,
+        ErrorCode::VerificationRequired
+    );
+    assert!(provider.verification_status(None).await.unwrap().is_some());
+    let raw = vault.load().unwrap().unwrap();
+    provider.network_reconnect().unwrap();
+    assert!(provider.verification_status(None).await.unwrap().is_none());
+    assert_eq!(
+        provider.auth_status().await.unwrap().account_id.as_deref(),
+        Some(previous.as_str())
+    );
+    assert_eq!(vault.load().unwrap().unwrap().as_str(), raw.as_str());
+    assert_eq!(
+        provider.auth_preferences_get().await.unwrap()["username"],
+        "tester@example.test"
+    );
+}
+
+#[tokio::test]
+async fn remembered_login_preferences_are_vault_only_and_restore_can_be_disabled() {
+    let server = Server::new(standard).await;
+    let (provider, vault) = server.provider();
+    assert_eq!(
+        provider.auth_preferences_get().await.unwrap(),
+        json!({"remember_account":true,"restore_session":true})
+    );
+    provider.auth_preferences_update(&json!({"remember_account":true,"restore_session":false,"username":"tester@example.test"})).await.unwrap();
+    login(&provider).await;
+    let first = provider.auth_status().await.unwrap().account_id.unwrap();
+    assert!(!vault
+        .load_accounts()
+        .unwrap()
+        .unwrap()
+        .contains("one-use-password"));
+    *provider.session.lock().await = Session::default();
+    assert!(!provider.auth_status().await.unwrap().authenticated);
+    let saved = provider.accounts_list().await.unwrap();
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].id, first);
+    assert!(!saved[0].active);
+    provider.account_switch(&first).await.unwrap();
+    assert!(provider.auth_status().await.unwrap().authenticated);
+    let clear = provider.auth_preferences_update(&json!({"remember_account":false,"restore_session":true,"username":"should-not-remain@example.test"})).await.unwrap();
+    assert!(clear.get("username").is_none());
+    assert!(!vault
+        .load_accounts()
+        .unwrap()
+        .unwrap()
+        .contains("should-not-remain"));
+    *provider.session.lock().await = Session::default();
+    assert!(provider.auth_status().await.unwrap().authenticated);
+    for invalid in [
+        json!({"remember_account":true,"restore_session":true,"username":"not-an-email"}),
+        json!({"remember_account":true,"restore_session":true,"password":"must-never-persist"}),
+    ] {
+        assert_eq!(
+            provider
+                .auth_preferences_update(&invalid)
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::Conflict
+        );
+    }
+}
+
+#[tokio::test]
+async fn unauthenticated_domain_probe_requires_real_gateway_shape_and_sends_no_account_headers() {
+    for (status, value, accepted) in [
+        (
+            401,
+            json!({"error":"unauthenticated","error_code":16}),
+            true,
+        ),
+        (200, json!({"error_code":16}), false),
+        (401, json!({"error":"other","error_code":9}), false),
+    ] {
+        let server = Server::new(move |request| {
+            assert_eq!(request.method, "GET");
+            for key in [
+                "authorization",
+                "x-device-id",
+                "x-captcha-token",
+                "x-client-id",
+            ] {
+                assert!(!request.headers.contains_key(key));
+            }
+            reply(status, value.clone())
+        })
+        .await;
+        let http = HttpApi::production(profile::WEB_CLIENT_ID).unwrap();
+        let response = network::gateway_check(
+            &http.fresh_probe_client().unwrap(),
+            &format!("{}/drive/v1/about", server.origin),
+        )
+        .await;
+        // Production probe clients are HTTPS-only; the HTTP fixture is rejected
+        // before reaching it. Use an explicitly loopback-only test client below.
+        assert!(response.is_err());
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+        assert_eq!(
+            network::gateway_check(&client, &format!("{}/drive/v1/about", server.origin))
+                .await
+                .is_ok(),
+            accepted
+        );
+    }
 }
 
 #[tokio::test]
@@ -1156,6 +1429,53 @@ async fn native_download_rejects_bad_ranges_and_sends_no_api_credentials_to_cdn(
         } else {
             assert_eq!(result.err().unwrap().code, ErrorCode::IntegrityFailed);
         }
+    }
+}
+
+#[tokio::test]
+async fn cdn_errors_preserve_retry_after_without_confusing_temporary_failure_with_etag_change() {
+    for (status, expected) in [
+        (503, ErrorCode::TransientNetwork),
+        (429, ErrorCode::TransientNetwork),
+        (403, ErrorCode::PermissionDenied),
+        (404, ErrorCode::NotFound),
+        (412, ErrorCode::IntegrityFailed),
+    ] {
+        let server = Server::new(move |request| {
+            assert_eq!(request.path, "/content");
+            assert!(!request.headers.contains_key("authorization"));
+            Reply {
+                status,
+                body: "PRIVATE_CDN_DIAGNOSTIC".into(),
+                headers: "Retry-After: 120\r\n".into(),
+                delay: Duration::ZERO,
+            }
+        })
+        .await;
+        let (provider, _) = server.provider();
+        let result = provider
+            .fetch_range(
+                &format!("{}/content", server.origin),
+                Some(6),
+                2,
+                3,
+                Some("\"expected-version\""),
+                nekopak_provider::DownloadObserver::default(),
+            )
+            .await;
+        let failure = result.err().unwrap();
+        assert_eq!(failure.code, expected, "HTTP {status}");
+        assert_eq!(failure.retryable, matches!(status, 429 | 503));
+        if matches!(status, 429 | 503) {
+            assert_eq!(
+                failure.details.as_ref().unwrap()["retry_after_seconds"],
+                120
+            );
+        }
+        assert!(!serde_json::to_string(&failure)
+            .unwrap()
+            .contains("PRIVATE_CDN"));
+        assert_eq!(server.requests.lock().unwrap().len(), 1);
     }
 }
 

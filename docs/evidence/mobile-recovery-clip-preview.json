@@ -1,0 +1,27 @@
+{
+  "scope": "Real H264 system-browser decoding with synthetic IPC and loopback Range server; no account or bundled decoder",
+  "checks": [
+    {
+      "name": "actual selected start frame decodes red",
+      "passed": true
+    },
+    {
+      "name": "changing selected edge seeks actual decoded blue frame",
+      "passed": true
+    },
+    {
+      "name": "selection playback stops at selected end",
+      "passed": true
+    },
+    {
+      "name": "quality switch closes previous Rust media session",
+      "passed": true
+    },
+    {
+      "name": "account reset revokes preview without reopening old source",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "rangeRequests": 2
+}

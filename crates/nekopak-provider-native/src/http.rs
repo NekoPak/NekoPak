@@ -4,8 +4,8 @@ use reqwest::{header, Client, Method};
 use serde::Serialize;
 use std::{
     sync::{
-        atomic::{AtomicBool, Ordering},
-        RwLock,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Mutex as StdMutex, RwLock,
     },
     time::Duration,
 };
@@ -36,6 +36,9 @@ pub(crate) struct HttpApi {
     client_id: String,
     auth_headers: header::HeaderMap,
     network: RwLock<(String, Option<String>, bool)>,
+    last_system_refresh: StdMutex<std::time::Instant>,
+    pub network_generation: AtomicU64,
+    pub routing: RwLock<crate::network::DomainRouting>,
     block_access_domains: AtomicBool,
     pub auth_origin: String,
     pub drive_origin: String,
@@ -44,6 +47,10 @@ pub(crate) struct HttpApi {
 }
 
 impl HttpApi {
+    #[cfg(test)]
+    pub fn replace_transport_for_test(&self, client: Client) {
+        *self.client.write().unwrap() = client;
+    }
     pub fn production(client_id: &str) -> Result<Self, ClientError> {
         Self::build(
             AUTH_ORIGIN,
@@ -134,6 +141,9 @@ impl HttpApi {
                 compatibility,
             )),
             block_access_domains: AtomicBool::new(false),
+            last_system_refresh: StdMutex::new(std::time::Instant::now()),
+            network_generation: AtomicU64::new(0),
+            routing: RwLock::new(Default::default()),
             auth_origin: auth.into(),
             drive_origin: drive.into(),
             next_request: Mutex::new(Instant::now()),
@@ -181,9 +191,73 @@ impl HttpApi {
             proxy,
             compatibility,
         )?;
+        // Replace the tuple and client under the same settings lock. A
+        // concurrent reconnect cannot reinstall the previous system-proxy
+        // client between these two writes.
+        let mut current = self.network.write().map_err(|_| wire::invalid())?;
         *self.client.write().map_err(|_| wire::invalid())? =
             fresh.client.into_inner().map_err(|_| wire::invalid())?;
-        *self.network.write().map_err(|_| wire::invalid())? = desired;
+        *current = desired;
+        self.network_generation.fetch_add(1, Ordering::AcqRel);
+        Ok(())
+    }
+    /// Re-read OS proxy configuration and discard pooled failed connections.
+    /// No HTTP request, saved credential or password is replayed here.
+    pub fn reconnect(&self) -> Result<(), ClientError> {
+        self.rebuild_client()?;
+        self.network_generation.fetch_add(1, Ordering::AcqRel);
+        Ok(())
+    }
+    fn rebuild_client(&self) -> Result<(), ClientError> {
+        let network = self.network.read().map_err(|_| wire::invalid())?.clone();
+        let fresh = Self::build(
+            &self.auth_origin,
+            &self.drive_origin,
+            &self.client_id,
+            self.auth_origin.starts_with("https://"),
+            self.interval,
+            &network.0,
+            network.1.as_deref(),
+            network.2,
+        )?;
+        // A concurrently changed setting wins over a client prepared for old
+        // settings. Never restore the previous proxy after it was disabled.
+        let current = self.network.read().map_err(|_| wire::invalid())?;
+        if *current == network {
+            *self.client.write().map_err(|_| wire::invalid())? =
+                fresh.client.into_inner().map_err(|_| wire::invalid())?;
+        }
+        *self
+            .last_system_refresh
+            .lock()
+            .map_err(|_| wire::invalid())? = std::time::Instant::now();
+        Ok(())
+    }
+    pub fn fresh_probe_client(&self) -> Result<Client, ClientError> {
+        let network = self.network.read().map_err(|_| wire::invalid())?.clone();
+        let fresh = Self::build(
+            &self.auth_origin,
+            &self.drive_origin,
+            &self.client_id,
+            true,
+            self.interval,
+            &network.0,
+            network.1.as_deref(),
+            network.2,
+        )?;
+        fresh.client.into_inner().map_err(|_| wire::invalid())
+    }
+    fn refresh_system_proxy_if_due(&self) -> Result<(), ClientError> {
+        let system = self.network.read().map_err(|_| wire::invalid())?.0 == "system";
+        let due = self
+            .last_system_refresh
+            .lock()
+            .map_err(|_| wire::invalid())?
+            .elapsed()
+            >= Duration::from_secs(2);
+        if system && due {
+            self.rebuild_client()?;
+        }
         Ok(())
     }
     pub fn cdn_proxy(
@@ -224,13 +298,21 @@ impl HttpApi {
         body: Option<&T>,
         signing_in: bool,
     ) -> Result<Zeroizing<Vec<u8>>, ClientError> {
+        // Re-read the OS proxy for explicit sign-in attempts. Healthy metadata
+        // traffic keeps its pooled TLS connections; a transport failure or an
+        // explicit reconnect refreshes the client for subsequent requests.
+        if signing_in {
+            self.refresh_system_proxy_if_due()?;
+        }
+        let routed = self.route_api_url(url)?;
+        let url = routed.as_str();
         self.check_url(url)?;
         self.throttle().await;
         let client = self.client.read().map_err(|_| wire::invalid())?.clone();
         let mut request = client
             .request(method, url)
             .header("x-device-id", auth.device_id);
-        if url.starts_with(&format!("{}/v1/", self.auth_origin)) {
+        if self.is_auth_url(url)? {
             request = request
                 .headers(self.auth_headers.clone())
                 // Locally generated Web device identifier, not a borrowed device signature.
@@ -276,7 +358,13 @@ impl HttpApi {
                     }
                     self.throttle().await;
                 }
-                _ => return Err(network_detail(url, attempts)),
+                _ => {
+                    // The next user/read-only retry may occur after a VPN or OS
+                    // proxy changed. Refresh transport only; never replay this
+                    // possibly side-effecting request after a sent body.
+                    let _ = self.rebuild_client();
+                    return Err(network_detail(url, attempts));
+                }
             }
         };
         let status = response.status().as_u16();
@@ -284,7 +372,7 @@ impl HttpApi {
             .headers()
             .get(header::RETRY_AFTER)
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u32>().ok());
+            .and_then(retry_after_seconds);
         if response
             .content_length()
             .is_some_and(|size| size > MAX_RESPONSE as u64)
@@ -298,9 +386,38 @@ impl HttpApi {
             }
             bytes.extend_from_slice(&chunk);
         }
-        wire::check_response(status, &bytes, retry_after, signing_in)?;
+        let credential_exchange =
+            signing_in && url::Url::parse(url).is_ok_and(|url| url.path() == "/v1/auth/signin");
+        if url.ends_with("/v1/shield/captcha/init") {
+            if let Err(mut failure) = wire::check_response(status, &bytes, retry_after, false) {
+                if failure.code == ErrorCode::AuthExpired {
+                    failure.code = ErrorCode::VerificationRequired;
+                    failure.retryable = false;
+                    failure.message = "安全验证初始化未通过，请检查连接后重试登录。".into();
+                }
+                return Err(failure);
+            }
+        } else {
+            wire::check_response(status, &bytes, retry_after, credential_exchange)?;
+        }
         Ok(bytes)
     }
+}
+
+pub(crate) fn retry_after_seconds(value: &str) -> Option<u32> {
+    if let Ok(seconds) = value.trim().parse::<u32>() {
+        return Some(seconds);
+    }
+    let date = httpdate::parse_http_date(value).ok()?;
+    let delay = date
+        .duration_since(std::time::SystemTime::now())
+        .unwrap_or_default();
+    Some(
+        delay
+            .as_secs()
+            .saturating_add(u64::from(delay.subsec_nanos() != 0))
+            .min(u64::from(u32::MAX)) as u32,
+    )
 }
 
 fn apply_proxy(

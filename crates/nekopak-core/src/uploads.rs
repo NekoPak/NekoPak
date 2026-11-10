@@ -147,6 +147,7 @@ impl AppService {
         // cancelled side-effecting request still records its unknown outcome.
         let result = self.upload_step_at(&task, record, &ctx).await;
         if let Err(error) = result {
+            self.download_rates.remove(&task.id);
             let current = self.store()?.get(&task.id)?;
             if current.revision == task.revision {
                 let updated = self.store()?.update(
@@ -253,6 +254,7 @@ impl AppService {
                 prepared.total_bytes.0,
                 None,
             )?;
+            self.download_rates.remove(&task.id);
             self.emit(&completed);
             if !prepared.upload_ref.is_empty() {
                 ctx.run(
@@ -270,6 +272,10 @@ impl AppService {
             let mut bytes =
                 vec![0; (total.saturating_sub(offset).min(prepared.part_bytes)) as usize];
             file.read_exact(&mut bytes).map_err(|_| invalid())?;
+            let part_length = bytes.len() as u64;
+            let observer =
+                self.download_rates
+                    .start(&task.id, task.revision.0, task.transferred_bytes.0);
             let tag = ctx
                 .run(self.provider.upload_part(
                     &prepared.upload_ref,
@@ -278,6 +284,10 @@ impl AppService {
                     &record.scope,
                 ))
                 .await?;
+            // Upload's provider API reports a successful part only after the
+            // response. Measure acknowledged bytes over its actual duration;
+            // do not invent in-flight bytes or replay an uncertain write.
+            observer.received(part_length);
             if local::read_identity(&file)? != record.identity {
                 return Err(invalid());
             }
@@ -328,6 +338,7 @@ impl AppService {
         let completed = self
             .store()?
             .update(&verifying, TaskState::Completed, total, None)?;
+        self.download_rates.remove(&task.id);
         self.emit(&completed);
         ctx.run(
             self.provider

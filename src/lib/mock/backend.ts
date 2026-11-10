@@ -1106,6 +1106,18 @@ export class MockTransport implements Transport {
     return this.page(all, args.cursor, args.limit ?? 500);
   }
 
+  protected cmd_transfer_forget(args: CommandArgs<"transfer_forget">): void {
+    const item=this.tasks.get(args.task_id);
+    if(!item)throw this.err("NOT_FOUND","任务记录不存在");
+    if(!["completed","failed","cancelled"].includes(item.task.state))throw this.err("CONFLICT","任务尚未结束");
+    this.tasks.delete(args.task_id);
+  }
+  protected cmd_transfer_clear_finished(): {removed:number} {
+    let removed=0;
+    for(const [id,item] of this.tasks)if(["completed","failed","cancelled"].includes(item.task.state)){this.tasks.delete(id);removed++;}
+    return {removed};
+  }
+
   protected cmd_transfer_start(args: CommandArgs<"transfer_start">): { task_id: string } {
     this.remote();
     const e = this.entries.get(args.remote_id);

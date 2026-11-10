@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+serde_json.workspace = true
 serde.workspace = true
 nekopak-domain.workspace = true
 async-trait.workspace = true

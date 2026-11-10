@@ -1,8 +1,16 @@
 # Android integration and acceptance
 
-2026-11-09. Pre-alpha Android adaptation; this is not a declaration of upstream
+2026-11-10. Pre-alpha Android adaptation; this is not a declaration of upstream
 functional parity or live-account acceptance. The Windows ZIP/Setup installer
 pipeline has passed; Android has its own build, signing and device checks.
+
+Version 0.1.1 replaces the earlier desktop-shaped phone navigation with a dedicated
+Files / Transfers / Me shell, touch rows and settings subpages. Launcher resources
+now come from the project's cat-box layers and are checked inside the compiled APK.
+Android's native application locale drives the System language preference. Login
+preferences, connection recovery, bounded download retries and terminal-history
+removal are described in [MOBILE_RECOVERY_REPORT.md](MOBILE_RECOVERY_REPORT.md).
+The 0.1.0 checks below remain historical evidence, not verification of the corrected icon.
 
 ## Implemented host
 
@@ -142,3 +150,20 @@ The downloaded GitHub ARM64 APK was also installed as a same-certificate update
 on the isolated emulator and started to the login page with correct system insets.
 Its exact digest and independent verification are in
 `evidence/android-actions-package.json`; no real credentials were entered.
+
+## 0.1.1 phone and recovery verification (2026-11-10)
+
+The new x86_64 debug APK passed 14 actual Android WebView/Rust/JNI checks on the
+dedicated API35 emulator, including native Chinese locale, phone-only navigation,
+measured byte throughput, automatic recovery from an injected HTTP503, preserved
+manual/background pauses, process recovery, SAF export and durable history removal.
+Downloads and exported files have matching SHA256. Account HTTP traffic is synthetic
+loopback traffic with an in-memory provider vault; the separate JNI Keystore checks
+exercise actual Android secure storage. See `evidence/mobile-recovery-android-native.json`.
+
+Browser phone fixtures passed 12/12 across 360/390/412px and both themes. Packaging
+and launcher tests passed 18/18 with actual AAPT2 resources. The APK checker verifies
+25 PNG variants and four adaptive resource graphs, including round and themed icons.
+Screenshots from the installed WebView are named `screenshots/android/phone-*.png`;
+browser fixture screenshots are labeled separately. Signed release artifacts and
+their runtime checks are recorded in the corresponding package reports.

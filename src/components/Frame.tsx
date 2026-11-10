@@ -15,6 +15,9 @@ import { closeSide, side } from "../state/prefs";
 import { Icon } from "./Icon";
 import { Btn } from "./ui";
 import { toast } from "../state/ui";
+import { useMobileLayout } from "../lib/mobile";
+import { navigateHistory, activeTab } from "../state/route";
+import { openDialog } from "../state/ui";
 
 type WinApi = { minimize(): Promise<void>; toggleMaximize(): Promise<void>; close(): Promise<void>; isMaximized(): Promise<boolean> };
 
@@ -132,10 +135,24 @@ export interface PageFrameProps {
   label: string;
   class?: string;
   children: ComponentChildren;
+  mobileHeader?: ComponentChildren;
+  mobileActions?: ComponentChildren;
+  mobileBottom?: ComponentChildren;
 }
 
 export function PageFrame(p: PageFrameProps) {
   const mobile = useStore(app, isMobileHost);
+  const mobileLayout = useMobileLayout();
+  if (mobileLayout) return <section class={`mobile-page${p.class ? ` ${p.class}` : ""}`} aria-label={p.label}>
+    {p.mobileHeader ?? <header class="mobile-page-header">
+      <button class="mobile-icon-button" type="button" aria-label={tr("返回")} onClick={() => activeTab().at > 0 ? navigateHistory(-1) : navigate({page:"me"})}><Icon name="arrowBack" size={24}/></button>
+      <h1>{p.label}</h1>
+      {p.mobileActions ?? (p.commands ? <button class="mobile-icon-button" type="button" aria-label={tr("更多操作")} onClick={() => void openDialog({title:p.label,render:()=><div class="mobile-command-sheet">{p.commands}</div>})}><Icon name="more" size={24}/></button> : null)}
+    </header>}
+    <div class="mobile-page-content"><Banners />{p.children}</div>
+    {p.mobileBottom}
+    {p.side ? <SideIsland /> : null}
+  </section>;
   return (
     <section class={`pf${p.class ? ` ${p.class}` : ""}`} aria-labelledby="page-title">
       <header class="pf-caption" data-tauri-drag-region={mobile ? undefined : true}>

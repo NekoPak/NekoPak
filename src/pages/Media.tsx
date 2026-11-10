@@ -18,6 +18,8 @@ import { Icon } from "../components/Icon";
 import { RangeSlider } from "../components/RangeSlider";
 import { Btn, ErrorPanel, Segmented, Spinner } from "../components/ui";
 import { confirmDialog } from "../components/dialogs";
+import { ClipVideoPreview } from "../components/ClipVideoPreview";
+import { useStore } from "../lib/store";
 
 import { CAP_LABEL, downloadDir, downloadWithOptions, isVideo, showQueued } from "./download";
 
@@ -26,6 +28,7 @@ import { CAP_LABEL, downloadDir, downloadWithOptions, isVideo, showQueued } from
 /* ------------------------------------------------------------------ */
 
 function ClipPanel({ entry, close }: { entry: RemoteEntry; close: () => void }) {
+  const nativePreview = useStore(app, s => s.runtime === "tauri" && s.app?.feature_flags.media_session === true);
   const [probe, setProbe] = useState<MediaProbe | null>(null);
   const [error, setError] = useState<ClientError | null>(null);
   const [range, setRange] = useState<Range | null>(null);
@@ -83,7 +86,7 @@ function ClipPanel({ entry, close }: { entry: RemoteEntry; close: () => void }) 
   // Preview follows the end being edited.
   const editingPos = range ? (active === "start" ? range.start : range.end) : 0;
   useEffect(() => {
-    if (!probe || !range || probe.preview !== "available") return;
+    if (nativePreview || !probe || !range || probe.preview !== "available") return;
     const my = ++frameSeq.current;
     const t = setTimeout(() => {
       api.mediaPreviewFrame(entry.id, editingPos, 480).then(
@@ -92,7 +95,7 @@ function ClipPanel({ entry, close }: { entry: RemoteEntry; close: () => void }) 
       );
     }, 140);
     return () => clearTimeout(t);
-  }, [probe, editingPos]);
+  }, [probe, editingPos, nativePreview]);
 
   if (error) return <ErrorPanel error={error} onRetry={load} compact />;
   if (!probe || !range) return <ClipSkeleton />;
@@ -146,14 +149,15 @@ function ClipPanel({ entry, close }: { entry: RemoteEntry; close: () => void }) 
     <div class="clip">
       <p class="clip-file ellipsis" dir="auto" title={entry.name}>{entry.name}</p>
 
-      <div class={`clip-preview${frame?.synthetic ? " synthetic" : ""}`} aria-live="off">
+      {nativePreview ? <ClipVideoPreview remoteId={entry.id} qualityId={quality} positionMs={editingPos}
+        startMs={range.start} endMs={range.end} edge={active}/> : <div class={`clip-preview${frame?.synthetic ? " synthetic" : ""}`} aria-live="off">
         {probe.preview !== "available" ? (
           <span class="clip-preview-off"><Icon name="visibilityOff" size={20} />{probe.preview_reason ?? tr("暂无预览画面")}</span>
         ) : frame ? (
           <img src={`data:${frame.mime};base64,${frame.data_base64}`} alt={tx("{0} 处的{1}画面", formatClock(frame.position_ms), frame.synthetic ? "示意" : "预览")} />
         ) : frameErr ? <span class="clip-preview-off"><Icon name="alert" size={20} />{frameErr}</span> : <Spinner label={tr("正在读取预览")} />}
         <span class="clip-pos tabular">{active === "start" ? tr("起点") : tr("终点")} {formatClock(editingPos)}</span>
-      </div>
+      </div>}
 
       <div class="clip-edit">
         <Segmented<"start" | "end"> label={tr("正在调整")} value={active} onChange={setActive}

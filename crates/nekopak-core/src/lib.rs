@@ -1,9 +1,11 @@
 mod catalog;
 mod cloud;
 mod downloads;
+mod history;
 mod intents;
 mod media;
 mod rates;
+mod retry;
 mod settings;
 pub use media::TransferOptions;
 mod jobs;
@@ -153,6 +155,7 @@ impl AppService {
     }
     pub fn app_status(&self) -> AppStatus {
         AppStatus {
+            system_locale: None,
             version: env!("CARGO_PKG_VERSION").into(),
             contract_version: CONTRACT_VERSION.into(),
             mode: if self.provider.id() == BackendId::Mock {
@@ -547,7 +550,15 @@ impl AppService {
         cursor: Option<&str>,
         limit: Option<u32>,
     ) -> Result<Page<TransferTask>, ClientError> {
-        self.store()?.list(cursor, page_limit(limit)?)
+        let mut page = self.store()?.list(cursor, page_limit(limit)?)?;
+        let mut visible = Vec::new();
+        for task in page.items {
+            if !self.transfer_history_hidden(&task.id)? {
+                visible.push(task);
+            }
+        }
+        page.items = visible;
+        Ok(page)
     }
     pub fn task(&self, id: &str) -> Result<TransferTask, ClientError> {
         self.store()?.get(id)
@@ -614,6 +625,7 @@ impl AppService {
             }
         }
         let task = self.store()?.control(id, action)?;
+        self.clear_transfer_retry(id)?;
         self.download_rates.remove(id);
         self.emit(&task);
         Ok(())
@@ -739,6 +751,7 @@ impl AppService {
         if !self.is_foreground() {
             return Ok(());
         }
+        self.recover_transfer_retries()?;
         if self.provider.id() != BackendId::Mock {
             self.tick_cloud().await?;
             return self.tick_native_download().await;

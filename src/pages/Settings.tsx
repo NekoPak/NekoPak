@@ -2,12 +2,12 @@ import { LANGUAGES, tr, tx } from "../lib/i18n";
 import type { Language } from "../lib/i18n";
 import { useEffect, useState } from "preact/hooks";
 import { CONTRACT_VERSION } from "../lib/contract";
-import type { QualityCap, QuotaItem, Settings } from "../lib/contract-proposals";
+import type { NetworkDomainReport, ServerDomain, QualityCap, QuotaItem, Settings } from "../lib/contract-proposals";
 import { PROPOSED_COMMANDS } from "../lib/contract-proposals";
 import { api, errorOf } from "../lib/api";
 import { formatBytes, formatDateTime, parseU64, percent } from "../lib/format";
 import { useStore } from "../lib/store";
-import { app, applyTheme, hostSupports, isMobileHost, refreshQuota, updateSettings } from "../state/app";
+import { app, applyTheme, hostSupports, isMobileHost, refreshQuota, resync, updateSettings } from "../state/app";
 import { navigate, type SettingsSection } from "../state/route";
 import { toast } from "../state/ui";
 import { Icon } from "../components/Icon";
@@ -22,6 +22,7 @@ import { PageFrame, PageTitle } from "../components/Frame";
 import { prefs, setPref } from "../state/prefs";
 import { transfers } from "../state/transfers";
 import { ACCENTS } from "../styles/accents.generated";
+import { useMobileLayout } from "../lib/mobile";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: string }[] = [
   { id: "account", get label() { return tr("账号"); }, icon: "user" },
@@ -40,6 +41,12 @@ function showDev(): boolean {
 }
 
 export function SettingsPage({ section }: { section: SettingsSection }) {
+  const phone = useMobileLayout();
+  if(phone)return <PageFrame label={section==="language"?tr("界面语言"):SECTIONS.find(s=>s.id===section)?.label??tr("设置")} caption={null} class="phone-settings">
+    <div class="phone-settings-body">
+      {section==="general"?<PhoneAppearance/>:section==="language"?<LanguageSettings/>:section==="account"||section==="backends"?<><AuthPanel/><SavedAccounts/></>:section==="quota"?<Quota/>:section==="transfers"?<TransfersSettings/>:section==="network"?<Network/>:section==="about"?<AboutContent/>:<PhoneAppearance/>}
+    </div>
+  </PageFrame>;
   return (
     <PageFrame label={tr("设置")} class="settings-page" caption={<PageTitle>{tr("设置")}</PageTitle>}>
       <div class="settings-layout">
@@ -53,7 +60,7 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
           ))}
         </nav>
         <div class="settings-body">
-          {section === "general" ? <General />
+          {section === "general" ? <General /> : section === "language" ? <LanguageSettings/>
             : section === "account" || section === "backends" ? <Section title={tr("账号")}><div class="set-card"><AuthPanel /></div><SavedAccounts/></Section>
                 : section === "quota" ? <Quota />
                   : section === "transfers" ? <TransfersSettings />
@@ -65,6 +72,16 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
       </div>
     </PageFrame>
   );
+}
+
+function LanguageSettings() {
+  const settings=useStore(app,s=>s.settings);
+  return <div class="mobile-settings-group">{LANGUAGES.map(item=><button type="button" class="mobile-setting-link" aria-pressed={settings?.language===item.value} onClick={()=>void updateSettings({language:item.value}).catch(e=>toast(errorOf(e).message,"error"))}><span>{item.value==="system"?tr(item.label):item.label}</span>{settings?.language===item.value?<Icon name="check"/>:null}</button>)}</div>;
+}
+
+function PhoneAppearance() {
+  const settings=useStore(app,s=>s.settings), accent=useStore(prefs,p=>p.accent), reduce=useStore(prefs,p=>p.reduceMotion);
+  return <div class="phone-appearance"><h2>{tr("主题")}</h2><div class="phone-themes">{(["system","light","dark"] as const).map(value=><button type="button" aria-pressed={settings?.theme===value} onClick={()=>void updateSettings({theme:value}).catch(e=>toast(errorOf(e).message,"error"))}><Icon name={value==="dark"?"moon":value==="light"?"sun":"monitor"}/><span>{tr(value==="system"?"跟随系统":value==="light"?"浅色":"深色")}</span></button>)}</div><h2>{tr("强调色")}</h2><div class="swatches">{ACCENTS.map(a=><button type="button" class={`swatch${accent===a.id?" on":""}`} style={{"--sw":a.seed} as preact.JSX.CSSProperties} aria-label={tr(a.label)} aria-pressed={accent===a.id} onClick={()=>setPref("accent",a.id)}><span class="swatch-dot">{accent===a.id?<Icon name="check"/>:null}</span><span>{tr(a.label)}</span></button>)}</div><Row label={tr("减少动画")}><Switch label={tr("减少动画")} checked={reduce} onChange={v=>setPref("reduceMotion",v)}/></Row></div>;
 }
 
 function Section({ title, children, desc }: { title: string; desc?: preact.ComponentChildren; children: preact.ComponentChildren }) {
@@ -248,6 +265,7 @@ function TransfersSettings() {
 }
 
 function NativeTransfersSettings() {
+  const phone=useMobileLayout();
   const settings = useStore(app, s => s.settings);
   const mobile = useStore(app, isMobileHost);
   const directoryPicker = useStore(app, s => hostSupports("directory_picker", s));
@@ -269,19 +287,23 @@ function NativeTransfersSettings() {
   return <Section title={tr("下载与传输")}>
     {mobile ? <p class="mobile-storage-note">{tr("文件先保存到应用内。下载完成后，在任务菜单中选择“导出文件”。卸载前请导出需要保留的文件。")}</p> : null}
     <form class="form-grid" onSubmit={e => { e.preventDefault(); if (!busy) void save(); }}>
+      {!phone ? <>
       <Field label={tr("下载目录")} htmlFor="native-download-dir" hint={tr(directoryPicker ? "点击路径或“选择文件夹”浏览目录。同名文件不会被覆盖。" : "应用私有目录；完成后通过系统保存对话框导出。") }>
         <div class="directory-picker"><input id="native-download-dir" class="input mono" value={dir} readOnly onClick={directoryPicker ? ()=>void pick() : undefined} aria-label={tr("下载目录")} />
         <Btn icon="folderOpen" label={tr("选择文件夹")} disabled={!directoryPicker} reason={tr("Android 当前版本使用应用私有下载目录")} busy={picking} onClick={()=>void pick()} /></div>
       </Field>
+      </> : null}
       <Field label={tr("带宽上限（KiB/s）")} htmlFor="native-bandwidth" hint={tr("0 表示不限速，修改后对后续下载块生效。")}>
         <input id="native-bandwidth" class="input" type="number" min={0} max={1048576} value={bandwidth} onInput={e => setBandwidth((e.target as HTMLInputElement).value)} />
       </Field>
-      <Row label={tr("下载时询问保存位置")}><Switch label={tr("每次下载选择文件夹")} checked={ask} disabled={!directoryPicker} reason={tr("Android 当前版本使用应用私有下载目录")} onChange={setAsk} /></Row>
+      {!phone ? <Row label={tr("下载时询问保存位置")}><Switch label={tr("每次下载选择文件夹")} checked={ask} disabled={!directoryPicker} reason={tr("Android 当前版本使用应用私有下载目录")} onChange={setAsk} /></Row> : null}
       <Field label={tr("默认下载画质")} htmlFor="native-quality"><select id="native-quality" class="select" value={quality} onChange={e=>setQuality((e.target as HTMLSelectElement).value as QualityCap)}>{(["original","2160p","1080p","720p","480p"] as QualityCap[]).map(value=><option value={value}>{CAP_LABEL[value]}</option>)}</select></Field>
+      {!phone ? <>
       <Field label={tr("外部播放器")} htmlFor="native-player" hint={tr(playerPicker ? "选择已安装的播放器。媒体地址由 Rust 交给播放器，不经过命令行脚本。" : "Android 当前版本尚未支持外部播放器") }>
         <div class="directory-picker"><input id="native-player" class="input mono" value={player} readOnly/><Btn label={tr("选择播放器")} icon="folderOpen" disabled={!playerPicker} reason={tr("Android 当前版本尚未支持外部播放器")} onClick={()=>void api.playerConfigPick().then(value=>{if(value!==null)setPlayer(value);},e=>toast(errorOf(e).message,"error"))}/></div>
         {player?<Btn label={tr("清除播放器配置")} size="sm" tone="quiet" onClick={()=>setPlayer("")}/>:null}
       </Field>
+      </> : null}
       <p class="download-help">{tr("下载原始文件，支持暂停、继续及重启后恢复。")}</p>
       {mobile ? <p class="download-help">{tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
       <div class="form-actions"><Btn type="submit" tone="primary" label={tr("保存")} busy={busy} /></div>
@@ -383,9 +405,18 @@ function NativeNetwork(){
   const [url,setUrl]=useState(n?.proxy_url??"");
   const [compatibility,setCompatibility]=useState(n?.compatibility_mode??false);
   const [blockAccessDomains,setBlockAccessDomains]=useState(n?.block_access_domains??false);
+  const [serverDomain,setServerDomain]=useState<ServerDomain>(n?.server_domain??"auto");
+  const [domainReport,setDomainReport]=useState<NetworkDomainReport>();
+  const [probing,setProbing]=useState(false);
+  const [reconnecting,setReconnecting]=useState(false);
   const [busy,setBusy]=useState(false);
-  const save=async()=>{setBusy(true);try{await updateSettings({experimental_network:{enabled,proxy_mode:mode,proxy_url:url.trim(),compatibility_mode:compatibility,block_access_domains:blockAccessDomains}});toast(tr("网络设置已保存"),"success");}catch(e){toast(errorOf(e).message,"error",{error:errorOf(e)});}finally{setBusy(false);}};
+  const save=async()=>{setBusy(true);try{await updateSettings({experimental_network:{enabled,proxy_mode:mode,proxy_url:url.trim(),compatibility_mode:compatibility,block_access_domains:blockAccessDomains,server_domain:serverDomain}});toast(tr("网络设置已保存"),"success");}catch(e){toast(errorOf(e).message,"error",{error:errorOf(e)});}finally{setBusy(false);}};
+  const probe=async()=>{setProbing(true);try{setDomainReport(await api.networkDomainsProbe());}catch(e){toast(errorOf(e).message,"error");}finally{setProbing(false);}};
+  const reconnect=async()=>{setReconnecting(true);try{await api.networkReconnect();await resync();toast(tr("已重新连接"),"success");}catch(e){toast(errorOf(e).message,"error");}finally{setReconnecting(false);}};
   return <Section title={tr("网络")}>
+    <Field label={tr("服务器域名")} htmlFor="server-domain" hint={tr("保存后用于后续请求。测速使用已保存的网络设置。") }><select id="server-domain" class="select" value={serverDomain} onChange={e=>setServerDomain((e.target as HTMLSelectElement).value as ServerDomain)}>{(["auto","mypikpak.com","mypikpak.net","pikpak.me","pikpakdrive.com"] as ServerDomain[]).map(domain=><option value={domain}>{domain==="auto"?tr("自动选择"):domain}</option>)}</select></Field>
+    <div class="phone-network-actions"><Btn label={tr("测速")} icon="network" busy={probing} onClick={()=>void probe()}/><Btn label={tr("重新连接")} icon="refresh" busy={reconnecting} onClick={()=>void reconnect()}/></div>
+    {domainReport?<div class="phone-domain-results"><p>{tr("当前连接")}: <strong>{domainReport.active_domain}</strong></p>{domainReport.results.map(result=><div><code>{result.domain}</code><span>{result.usable&&result.latency_ms!==undefined?`${result.latency_ms} ms`:tr("不可用")}</span>{result.warm_latency_ms!==undefined?<small>{tr("复用连接")}: {result.warm_latency_ms} ms</small>:null}</div>)}</div>:null}
     <Row icon="network" label={tr("网络增强")} hint={tr("默认关闭。按你的网络环境选择应用内代理或兼容连接。")}><Switch label={tr("启用网络增强")} checked={enabled} onChange={setEnabled}/></Row>
     <Row label={tr("代理")}><Segmented label={tr("代理")} value={mode} onChange={setMode} options={[{value:"system",label:tr("跟随系统")},{value:"none",label:tr("不使用")},{value:"user_provided",label:tr("自定义")}]}/></Row>
     {mode==="user_provided"?<Field label={tr("代理地址")} htmlFor="proxy-url" hint={tr("支持 HTTP、HTTPS、SOCKS5；当前不保存代理账号密码。")}><input id="proxy-url" class="input mono" value={url} placeholder="http://127.0.0.1:7890" spellcheck={false} onInput={e=>setUrl((e.target as HTMLInputElement).value)}/></Field>:null}

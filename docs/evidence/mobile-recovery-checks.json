@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-10",
+  "version": "0.1.1",
+  "scope": "Phone redesign and recovery preview; no live account or parity claim",
+  "rust": {
+    "command": "cargo test --workspace --locked --offline -j 2",
+    "passed": 182,
+    "failed": 0,
+    "ignored": 19
+  },
+  "clippy": "cargo clippy --workspace --all-targets --locked --offline -j 2 -- -D warnings: passed",
+  "explicit_media_queue_test": {
+    "passed": 1,
+    "oracle": "existing external FFmpeg7.1; not redistributed"
+  },
+  "frontend": {
+    "typecheck": "passed",
+    "vitest": 117,
+    "wire": 6,
+    "build": "passed",
+    "desktop_browser": 57,
+    "phone_browser": 12,
+    "clip_decoding": 5,
+    "windows_native_startup": 4,
+    "windows_native_functional": 3
+  },
+  "android": {
+    "native_checks": 14,
+    "device": "Dedicated Android15/API35 x86_64 emulator; no physical device",
+    "provider": "synthetic loopback + in-memory test vault; separate actual Rust JNI Keystore checks",
+    "debug_apk_sha256": "a4d3af457c4a27c41d84803b671b569c3365e9a35bd0f0894b14042420d86e1e",
+    "debug_native_sha256": "fbe9488d4752a087f855f3fdf594b17cb251f7924b82180caa0da10d5a6b0b29",
+    "icons": "25 PNG variants and 4 adaptive resource graphs verified in actual APK"
+  },
+  "python": {
+    "android_packaging_and_icons": 18,
+    "parity": 4,
+    "signing": 1
+  },
+  "remaining": [
+    "Live user login/CAPTCHA and real account permissions/network",
+    "Physical ARM64 device acceptance",
+    "Android upload/shared-directory sync/foreground transfer service",
+    "All24 mandatory upstream feature groups remain partial"
+  ],
+  "license": "Independent MIT; no AGPL implementation or added runtime; fixed-domain source provenance in NETWORK_RECOVERY_RESEARCH.md",
+  "source_logs": "target/continuation-*.log (local, ignored)",
+  "build_environment_note": "First Rust build ran out of disk space; scoped Cargo cache clean then full successful rerun. CARGO_INCREMENTAL=0 used locally."
+}

@@ -30,6 +30,8 @@ pub(crate) struct CachedSource {
     local: Option<PathBuf>,
     cache_gate: Arc<std::sync::Mutex<()>>,
     validated_at: tokio::sync::Mutex<std::time::Instant>,
+    transfer_observer: Option<DownloadObserver>,
+    network_bytes: Arc<std::sync::atomic::AtomicU64>,
 }
 impl CachedSource {
     pub(crate) fn entry(&self) -> &RemoteEntry {
@@ -117,6 +119,21 @@ impl RangeSource for CachedSource {
                 let bytes = if let Some(bytes) = cached {
                     bytes
                 } else {
+                    let observer = if let Some(observer) = &self.transfer_observer {
+                        let observer = observer.clone();
+                        let total = self.network_bytes.clone();
+                        let previous = Arc::new(std::sync::atomic::AtomicU64::new(0));
+                        DownloadObserver::new(move |received| {
+                            let old = previous.swap(received, Ordering::SeqCst);
+                            let delta = received.saturating_sub(old);
+                            let count = total
+                                .fetch_add(delta, Ordering::SeqCst)
+                                .saturating_add(delta);
+                            observer.received(count);
+                        })
+                    } else {
+                        DownloadObserver::default()
+                    };
                     let chunk = self
                         .context
                         .run(self.provider.media_chunk(
@@ -126,7 +143,7 @@ impl RangeSource for CachedSource {
                             &self.info.account_scope,
                             base,
                             size,
-                            DownloadObserver::default(),
+                            observer,
                         ))
                         .await?;
                     if chunk.total != self.len() || chunk.bytes.len() != size as usize {
@@ -217,6 +234,8 @@ impl AppService {
                 local: Some(path),
                 cache_gate: self.cache_gate.clone(),
                 validated_at: tokio::sync::Mutex::new(std::time::Instant::now()),
+                transfer_observer: None,
+                network_bytes: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             });
         }
         let info = ctx.run(self.provider.media_info(id, quality)).await?;
@@ -246,6 +265,8 @@ impl AppService {
             local: None,
             cache_gate: self.cache_gate.clone(),
             validated_at: tokio::sync::Mutex::new(std::time::Instant::now()),
+            transfer_observer: None,
+            network_bytes: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         })
     }
     async fn media_choices(
@@ -529,16 +550,25 @@ impl AppService {
             .into_iter()
             .filter(|t| t.kind == TaskKind::SegmentDownload && !t.simulated)
         {
+            if !self.retry_ready(&task)? {
+                continue;
+            }
             let record = self.export(&task.id)?;
-            if self.check_scope(&record.scope, &ctx).await.is_ok() {
-                selected = Some((task, record));
-                break;
+            match self.check_scope(&record.scope, &ctx).await {
+                Ok(()) => {
+                    selected = Some((task, record));
+                    break;
+                }
+                Err(error) if error.code == ErrorCode::TransientNetwork => {
+                    self.schedule_transfer_retry(&task, error)?;
+                }
+                Err(_) => {}
             }
         }
         let Some((mut task, record)) = selected else {
             return Ok(());
         };
-        if task.state == TaskState::Queued {
+        if matches!(task.state, TaskState::Queued | TaskState::Retrying) {
             let _gate = self.download_gate.lock().map_err(|_| invalid())?;
             if !self.is_foreground() || self.store()?.get(&task.id)?.revision != task.revision {
                 return Ok(());
@@ -589,6 +619,10 @@ impl AppService {
             }
             let current = self.store()?.get(&task.id)?;
             if matches!(current.state, TaskState::Running | TaskState::Verifying) {
+                self.download_rates.remove(&task.id);
+                if self.schedule_transfer_retry(&current, error.clone())? {
+                    return Ok(());
+                }
                 let next = self.store()?.update(
                     &current,
                     TaskState::Failed,
@@ -633,9 +667,11 @@ impl AppService {
         let result = if recovery {
             record.result.clone().ok_or_else(invalid)?
         } else {
-            let source = self
+            let mut source = self
                 .media_source(&task.remote_id, &record.quality, ctx)
                 .await?;
+            source.transfer_observer =
+                Some(self.download_rates.start(&task.id, task.revision.0, 0));
             native::render(&source, &record.plan, &mut file, control).await?
         };
         if control.is_cancelled() || self.store()?.get(&task.id)?.state != TaskState::Running {
@@ -687,6 +723,8 @@ impl AppService {
         let completed = self
             .store()?
             .update(&verifying, TaskState::Completed, bytes, None)?;
+        self.clear_transfer_retry(&task.id)?;
+        self.download_rates.remove(&task.id);
         self.emit(&completed);
         Ok(())
     }

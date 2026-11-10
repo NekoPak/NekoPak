@@ -6,7 +6,7 @@ import { api, errorOf, on, transportKind, writeLocal } from "../lib/api";
 import { Store } from "../lib/store";
 import { scheduleReload, startTransfers } from "./transfers";
 import { resetSessionUi, sessionGeneration } from "./session";
-import { setLanguage, tr, tx } from "../lib/i18n";
+import { setLanguage, setSystemLanguageOverride, tr, tx } from "../lib/i18n";
 import { entrySource } from "../lib/entry-source";
 import { configureNativePreferences, loadAccountPreferences, pauseAccountPreferences } from "./prefs";
 
@@ -130,7 +130,10 @@ function clearAccountData(): void {
 
 export async function recoverAuth(): Promise<void> {
   app.set({ authBusy: true, authError: undefined });
-  try { await resync(); } finally { app.set({ authBusy: false }); }
+  try {
+    if (app.get().runtime === "tauri") await api.networkReconnect();
+    await resync();
+  } finally { app.set({ authBusy: false }); }
 }
 
 export interface Gate {
@@ -383,6 +386,7 @@ export async function boot(): Promise<void> {
     app.set({ runtime });
     const status = await api.appStatus();
     app.set({ app: status });
+    setSystemLanguageOverride(status.system_locale);
     configureNativePreferences(runtime === "tauri" && status.feature_flags.ui_prefs === true);
     // Legacy pins had no account identity. Keep them clear until Rust returns
     // preferences for the selected native session.

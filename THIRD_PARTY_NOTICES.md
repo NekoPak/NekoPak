@@ -173,6 +173,23 @@ https://github.com/winfsp/winfsp . Cloud Files is a distinct Windows system API.
 The Python cryptography package is used only by the release signing workflow,
 not bundled in the desktop application. Private signing material is never included.
 
+## Phone interface and network recovery (2026-11-10)
+
+The phone navigation, touch lists, transfer cards, Android adaptive/round/monochrome
+cat-box icon layers and session-based video selection preview were independently
+implemented using the existing Preact/Tauri components. No new runtime dependency,
+Piko UI source or third-party bitmap was added. Video preview uses the system WebView
+decoder; FFmpeg remains an external test oracle only.
+
+Fixed API-domain routing was researched in MIT pikpak-kotlin commit
+8eaf5587a883ed4ea9bcca7b43a9194118719e63, original files
+src/commonMain/kotlin/io/github/nihildigit/pikpak/PikPakDomain.kt and
+src/commonTest/kotlin/io/github/nihildigit/pikpak/PikPakDomainMockTest.kt.
+Blob hashes, the MIT license record and actual verification limits are in
+docs/NETWORK_RECOVERY_RESEARCH.md. This is protocol/behavior reference; Rust routing,
+anonymous measurements, reconnect, credential preferences and retry scheduling were
+written independently. Public client domains do not imply an official public API.
+
 The optional Windows Setup.exe is produced by Tauri's NSIS bundler (build-time tooling).
 It installs the same executable, notices and dependency license files as the portable ZIP.
 NSIS is not launched as part of normal application operation. WebView2's Microsoft

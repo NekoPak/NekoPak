@@ -27,6 +27,7 @@ import { isStarred } from "../lib/contract-proposals";
 import { useRefreshKey } from "./common";
 import { onSessionReset } from "../state/session";
 import { noteCreated } from "../state/transfers";
+import { useMobileLayout } from "../lib/mobile";
 
 export interface Crumb { id: string; name: string }
 
@@ -239,6 +240,7 @@ type KindFilter = "all" | FileKind;
 const SORT_LABEL: Record<SortKey, string> = { get name() { return tr("名称"); }, get size() { return tr("大小"); }, get modified() { return tr("修改时间"); }, get kind() { return tr("类型"); } };
 
 export function FilesPage({ folder }: { folder: string }) {
+  const phone = useMobileLayout();
   const s = useStore(app, (x) => x);
   const gate = (op: Parameters<typeof fileGate>[0]) => fileGate(op, folder, s);
   const view = useStore(prefs, (p) => p.view);
@@ -460,11 +462,35 @@ export function FilesPage({ folder }: { folder: string }) {
     <PageFrame
       label={tr("文件")}
       side
+      mobileHeader={<>
+        <header class="mobile-page-header">
+          {goUp ? <button type="button" class="mobile-icon-button" aria-label={tr("返回上一级")} onClick={goUp}><Icon name="arrowBack" size={24}/></button> : null}
+          <h1>{folder===ROOT_ID ? tr("文件") : crumbs[crumbs.length-1]?.name}</h1>
+          <button class="mobile-icon-button" type="button" aria-label={tr("搜索")} onClick={()=>setSearching(!searching)}><Icon name="search" size={24}/></button>
+          <button class="mobile-icon-button" type="button" aria-label={tr("新建")} onClick={()=>openMenu(0,0,[
+            {id:"cloud",label:tr("添加链接"),icon:"bolt",disabled:!gCloud.ok,reason:gCloud.reason,run:()=>void newCloudTask(folder,crumbPath)},
+            {id:"mkdir",label:tr("新建文件夹"),icon:"folderPlus",disabled:!gMk.ok,reason:gMk.reason,run:()=>void newFolder()},
+            ...(gUp.ok ? [{id:"upload",label:tr("上传文件"),icon:"upload",run:()=>void upload()}] : []),
+            ...(clipCount ? [{id:"paste",label:tx("粘贴 {0} 项",clipCount),icon:"paste",run:paste}] : []),
+          ],tr("新建"))}><Icon name="plus" size={24}/></button>
+        </header>
+        {searching ? <div class="mobile-search"><CaptionSearch onClose={()=>setSearching(false)}/></div> : null}
+        {goUp ? <nav class="mobile-crumbs" aria-label={tr("路径")}>{crumbs.map(c=><button type="button" onClick={()=>navigate({page:"files",folder:c.id})}>{c.id===ROOT_ID?tr("网盘"):c.name}</button>)}</nav> : null}
+        <div class="mobile-file-options"><span>{tr(kind==="all"?"全部文件":KIND_LABEL[kind])}</span><button type="button" onClick={()=>openMenu(0,0,[
+          {id:"list-view",label:tr("列表视图"),icon:view==="list"?"check":"rows",run:()=>setPref("view","list")},
+          {id:"grid-view",label:tr("网格视图"),icon:view==="grid"?"check":"grid",run:()=>setPref("view","grid")},
+          ...Object.keys(SORT_LABEL).map(k=>({id:k,label:tx("按{0}",SORT_LABEL[k as SortKey]),icon:sort.key===k?"check":"sort",run:()=>onSort(k as SortKey)})),
+          {id:"all",label:tr("全部类型"),icon:kind==="all"?"check":"filter",separatorBefore:true,run:()=>setKind("all")},
+          ...(["folder","video","image","audio","doc","archive"] as FileKind[]).map(k=>({id:`filter-${k}`,label:KIND_LABEL[k],icon:kind===k?"check":"filter",run:()=>setKind(k)})),
+          {id:"refresh",label:tr("刷新"),icon:"refresh",separatorBefore:true,run:reload},
+          ...(s.app?.feature_flags.media_session?[{id:"gallery",label:tr("媒体库"),icon:"image",run:()=>navigate({page:"gallery",folder,mode:"images"})}]:[]),
+        ],tr("排序与筛选"))}><Icon name="sort" size={18}/>{tr("排序与筛选")}</button></div>
+      </>}
       caption={<>
         <NavButtons up={goUp} />
         {searching ? <CaptionSearch onClose={() => setSearching(false)} /> : <AddressBar crumbs={crumbs} onSearch={() => setSearching(true)} onDrop={onDropInto} />}
       </>}
-      commands={commands}
+      commands={phone ? undefined : commands}
     >
       {st.next && st.phase === "ready" && (sort.key !== "name" || sort.dir !== "asc" || kind !== "all") ? (
         <div class="inline-note" role="note">

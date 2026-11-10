@@ -15,9 +15,9 @@ see the integration report for source/format/runtime limitations.
 
 ## Run the provided Windows application
 
-Extract `NekoPak-0.1.0-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
+Extract `NekoPak-0.1.1-windows-x64-portable.zip` and double-click `NekoPak/nekopak.exe`.
 Keep the directory's notices and licenses alongside the executable. Alternatively, run
-`NekoPak-0.1.0-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
+`NekoPak-0.1.1-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
 The native application embeds its frontend resources and does not self-extract them on startup.
 The required runtime is Windows x64 with Microsoft Edge WebView2 Evergreen.
 No compiler, terminal command, CLI installation, client registration or environment
@@ -33,6 +33,14 @@ Click the download path or **选择文件夹** to open the Windows directory pic
 keeps the previous folder. **下载时询问保存位置** enables a per-download picker. The task
 menu opens the containing folder recorded for that task, including after changing the default.
 Task rows, the footer and sidebar show measured download throughput.
+
+Version 0.1.1 adds remembered usernames and automatic session restoration preferences in
+the OS credential vault. Passwords remain request-only. After bringing a proxy online,
+retry sign-in or use **重新连接** without restarting NekoPak. **设置 → 网络** offers a fixed
+API-domain choice and anonymous gateway measurements; it does not rewrite CDN URLs.
+Interrupted downloads retry with bounded backoff and preserve server Retry-After limits.
+Manual pauses remain paused. Remove terminal history from the task menu or **清理已结束**;
+downloaded files and idempotency receipts are retained.
 
 **设置 → 外观** offers system/Simplified Chinese/Traditional Chinese/English/Japanese/Korean,
 and **关闭窗口时最小化到托盘**. Language changes apply without reloading. Tray actions show/hide
@@ -128,7 +136,7 @@ credential only; it never enumerates or reads user credentials:
 cargo test -p nekopak-provider-native windows_vault_roundtrip_and_delete -- --ignored
 ```
 
-Portable package: `dist/NekoPak-0.1.0-windows-x64-portable.zip`. It includes the binary,
+Portable package: `dist/NekoPak-0.1.1-windows-x64-portable.zip`. It includes the binary,
 notices, full dependency license inventory and current usage notes, not historical
 CLI installation instructions. `dist/size-report.json` records build/source hashes,
 bytes, runtime requirements and license gaps. No driver, media runtime, browser,
@@ -148,6 +156,8 @@ filtered by account; native events request a fresh filtered snapshot without inc
 another account's task metadata. Download throughput is volatile Rust state and can change
 without advancing the persisted task revision; resumed bytes do not count as new traffic.
 
-To replace the application icon later, edit `public/brand/app-icon.svg`, run
-`npm run gen:app-icons`, then rebuild the frontend and Windows executable. The same asset
-supplies the UI mark, EXE/window icon and tray icon. No external icon download is needed.
+To replace the application icon later, edit `public/brand/app-icon.svg` and the Android
+layer sources referenced by `public/brand/app-icons.json`, run `npm run gen:app-icons`,
+then rebuild the relevant applications. Android preparation synchronizes these resources
+into the generated project and package validation checks their actual compiled pixels.
+No external icon download is needed.

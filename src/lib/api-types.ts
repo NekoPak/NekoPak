@@ -45,7 +45,7 @@ export interface SegmentDownloadPlan {
   aligned_start_ms?: DecimalU64; subtitle_warning: string; requires_random_read: boolean;
 }
 export interface StorageStatus { status: 'ready' | 'recovery_required'; schema_version: number; error?: ClientError }
-export interface AppStatus { version: string; contract_version: string; mode: 'mock' | 'rust_compat_preview'; storage: StorageStatus; features: Record<string, boolean> }
+export interface AppStatus { system_locale?: string; version: string; contract_version: string; mode: 'mock' | 'rust_compat_preview'; storage: StorageStatus; features: Record<string, boolean> }
 export interface AuthState { backend: BackendId; authenticated: boolean; credential_owner: 'none' | 'os_vault'; account_tier: 'free' | 'premium' | 'unknown'; message: string; state: 'signed_out' | 'pending' | 'signed_in' | 'expired'; display_name?: string; account_id?: string }
 export interface SignInChallenge { challenge_id: string; kind: 'captcha'; url: string; expires_at: string; requires_password: boolean }
 export type SignInResult = { state: 'signed_in' } | { state: 'challenge'; challenge: SignInChallenge };
@@ -60,6 +60,12 @@ export interface SyncPlan {
   warnings: string[]; has_unresolved_conflicts: boolean; has_deletes: boolean;
 }
 export interface CommandMap {
+  transfer_forget: { args: { task_id: string }; result: void };
+  transfer_clear_finished: { args: Record<string, never>; result: { removed: number } };
+  auth_preferences_get: { args: Record<string, never>; result: import('./contract-proposals').AuthPreferences };
+  auth_preferences_update: { args: { preferences: import('./contract-proposals').AuthPreferences }; result: import('./contract-proposals').AuthPreferences };
+  network_reconnect: { args: Record<string, never>; result: void };
+  network_domains_probe: { args: Record<string, never>; result: import('./contract-proposals').NetworkDomainReport };
   download_directory_pick: {args: Record<string,never>;result:string|null};
   transfer_open_directory: {args:{task_id:string};result:void};
   transfer_export: {args:{task_id:string};result:boolean};

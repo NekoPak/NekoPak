@@ -4,6 +4,7 @@ import { onSessionReset } from "./session";
 import { tr } from "../lib/i18n";
 
 export type Route =
+  | { page: "me" }
   | { page: "files"; folder: string }
   | { page: "search"; query: string }
   | { page: "recent" }
@@ -24,9 +25,9 @@ export type Route =
   | { page: "about" };
 // Local source ids are minted by Rust; the UI never constructs filesystem paths.
 
-export type SettingsSection = "general" | "account" | "backends" | "quota" | "transfers" | "network" | "shortcuts" | "developer" | "about";
+export type SettingsSection = "general" | "language" | "account" | "backends" | "quota" | "transfers" | "network" | "shortcuts" | "developer" | "about";
 
-const SECTIONS: SettingsSection[] = ["general", "account", "backends", "quota", "transfers", "network", "shortcuts", "developer", "about"];
+const SECTIONS: SettingsSection[] = ["general", "language", "account", "backends", "quota", "transfers", "network", "shortcuts", "developer", "about"];
 
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").map((p) => {
@@ -37,6 +38,7 @@ export function parseHash(hash: string): Route {
     }
   });
   switch (parts[0]) {
+    case "me": return { page: "me" };
     case "files": return { page: "files", folder: parts[1] || ROOT_ID };
     case "search": return { page: "search", query: parts.slice(1).join("/") };
     case "recent": return { page: "recent" };
@@ -147,7 +149,7 @@ export function setTabTitle(r: Route, title: string): void {
 export function tabTitle(tab: WorkspaceTab): string {
   const r = tab.history[tab.at];
   if (tab.title && tab.titleRoute === routeHash(r)) return tab.title;
-  const label: Record<Route["page"], string> = { files: "网盘", search: "搜索", recent: "最近", transfers: "下载", cloud: "云下载", sync: "自动同步", mount: "挂载", trash: "回收站", starred: "星标", shares: "我的分享", references: "引用归档", local: "本地文件夹", gallery: "媒体库", duplicates: "查找重复", space: "空间分布", archive: "压缩包", settings: "设置", about: "关于" };
+  const label: Record<Route["page"], string> = { me: "我的", files: "网盘", search: "搜索", recent: "最近", transfers: "下载", cloud: "云下载", sync: "自动同步", mount: "挂载", trash: "回收站", starred: "星标", shares: "我的分享", references: "引用归档", local: "本地文件夹", gallery: "媒体库", duplicates: "查找重复", space: "空间分布", archive: "压缩包", settings: "设置", about: "关于" };
   return r.page === "search" ? `${tr(label[r.page])}: ${r.query}` : tr(label[r.page]);
 }
 onSessionReset(() => {

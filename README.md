@@ -5,7 +5,7 @@
 > 独立社区项目，非 PikPak 官方客户端，与 PikPak 服务提供者无隶属关系。
 
 **状态：** `Pre-alpha / Desktop + Android integration`（Rust 核心与手机宿主已接入；真实服务与全部上游功能仍逐项验收）
-**文档基线：** 2026-11-09
+**文档基线：** 2026-11-10 · `0.1.1` 预览
 **平台：** Windows x64 已通过自动构建、签名清单及安装／卸载测试。Android 已接入独立宿主、Keystore 凭据库、小屏界面和 APK 构建流程，完整验收状态见 [Android 说明](docs/ANDROID.md)。Linux / macOS 已有核心 CI，尚未完成桌面验收。
 
 **验收结论：** Windows 打包通过不等于产品功能验收完成。`python scripts/check_parity.py --release` 当前仍拒绝功能对齐发布，24 组必需能力均未完成全部验收。真实账号由用户在应用内验证。
@@ -94,8 +94,8 @@ cargo run -p nekopak-app --locked
 
 浏览器 `npm run dev` 使用离线演示数据；桌面离线验收须显式设置
 `$env:NEKOPAK_BACKEND = 'mock'`。桌面不会回退到浏览器 Mock。
-当前 Windows 发行形式为 `dist/NekoPak-0.1.0-windows-x64-portable.zip`（解压为完整多文件目录）
-和 `dist/NekoPak-0.1.0-windows-x64-setup.exe`（安装/快捷方式/卸载）。目录中的
+当前 Windows 发行形式为 `dist/NekoPak-0.1.1-windows-x64-portable.zip`（解压为完整多文件目录）
+和 `dist/NekoPak-0.1.1-windows-x64-setup.exe`（安装/快捷方式/卸载）。目录中的
 `NekoPak/nekopak.exe` 是程序入口；无需单独复制程序以外的系统依赖。
 本轮目录选择、速度、语言、网络和托盘记录见
 [DESKTOP_UX_FIX_REPORT.md](docs/DESKTOP_UX_FIX_REPORT.md)。此前文件、登录与迁移记录保留在
@@ -113,6 +113,17 @@ DRIVE_FILES_FIX_REPORT.md、LOGIN_FIX_REPORT.md 和 API_MIGRATION_REPORT.md。
 Android 7.0 / API24 起，首个手机发行目标为 ARM64；x86_64 用于模拟器验收。
 共享 Rust 登录、文件、云任务和媒体核心，使用系统 Android WebView，不捆绑浏览器或 JVM。
 APK 内包含原生代码、Android 宿主和第三方许可材料；手机包大小不套用 Windows Lite 的挑战值。
+
+`0.1.1` 使用独立的 **文件／传输／我的** 底部导航、单击打开／长按多选的文件列表、
+传输卡片与设置子页。桌面侧栏、标签页和多段工具栏不再进入手机组件树。Android 启动图标
+从项目猫箱图标生成，打包时核对 APK 中的实际像素和自适应／圆形／主题图标引用；跟随系统
+语言读取 Android 原生配置。修复与本轮验证见 [手机与连接恢复记录](docs/MOBILE_RECOVERY_REPORT.md)。
+
+登录页支持 **记住账号／保持登录**，用户名及会话偏好由系统加密凭据库保存，密码仍只用于
+当前请求。代理恢复后可直接重试登录或重新连接；临时网络故障不会清除可恢复会话或统一显示
+为密码错误。设置中的域名选择和测速只针对固定认证／网盘 API，不改写下载链接。
+下载断线后有限自动重试，并遵守服务端等待时间；界面显示实际接收速度。已完成、失败、取消
+的任务可以移除记录，保留下载文件及任务回执，跨账号和损坏记录会被拒绝。
 
 手机本地下载写入应用私有目录，完成后通过任务菜单的 **导出文件** 调用系统保存选择器。
 卸载应用会删除未导出的私有文件。应用切到后台会暂停本地任务，返回后手动继续；当前没有

@@ -35,6 +35,8 @@ tauri = { version = "2", features = ["tray-icon"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-fs = "2.7"
+jni = "0.21.1"
+ndk-context = "0.1.1"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_Registry", "Win32_Foundation", "Win32_Security"] }

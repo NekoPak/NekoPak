@@ -100,6 +100,12 @@ impl AppService {
             {
                 settings["experimental_network"]["block_access_domains"] = false.into();
             }
+            if settings["experimental_network"]
+                .get("server_domain")
+                .is_none()
+            {
+                settings["experimental_network"]["server_domain"] = "auto".into();
+            }
             validate(&settings)?;
             settings
         } else {
@@ -114,7 +120,7 @@ impl AppService {
                 ClientError::new(ErrorCode::PermissionDenied, "无法创建应用下载目录。")
             })?;
             json!({"schema_version":1,"theme":"system","language":"system","ask_download_directory":false,"close_to_tray":false,"download_dir":base.join("Downloads").to_string_lossy(),"max_concurrent_transfers":1,"bandwidth_limit_kib_s":0,
-                "cache":{"dir":"","max_bytes":"536870912"},"experimental_network":{"enabled":false,"proxy_mode":"system","proxy_url":"","compatibility_mode":false,"block_access_domains":false,"user_proxy_configured":false,"custom_dns_mode":false,"connection_diagnostics":false},"telemetry":false,
+                "cache":{"dir":"","max_bytes":"536870912"},"experimental_network":{"server_domain":"auto","enabled":false,"proxy_mode":"system","proxy_url":"","compatibility_mode":false,"block_access_domains":false,"user_proxy_configured":false,"custom_dns_mode":false,"connection_diagnostics":false},"telemetry":false,
                 "download":{"default_quality":"original","connections_per_task":1},"media":{"player_path":""}})
         };
         self.apply_network(&settings)?;
@@ -145,6 +151,7 @@ impl AppService {
                                 | "proxy_url"
                                 | "compatibility_mode"
                                 | "block_access_domains"
+                                | "server_domain"
                         ) {
                             return Err(ClientError::new(
                                 ErrorCode::Unsupported,
@@ -247,10 +254,21 @@ impl AppService {
             n["enabled"] == true && n["compatibility_mode"] == true,
         )?;
         self.provider
+            .configure_server_domain(n["server_domain"].as_str().unwrap_or("auto"))?;
+        self.provider
             .set_domain_blocking(n["block_access_domains"] == true)
     }
 }
 fn validate(settings: &Value) -> Result<(), ClientError> {
+    if !matches!(
+        settings["experimental_network"]["server_domain"].as_str(),
+        Some("auto" | "mypikpak.com" | "mypikpak.net" | "pikpak.me" | "pikpakdrive.com")
+    ) {
+        return Err(ClientError::new(
+            ErrorCode::Conflict,
+            "请选择受支持的服务器域名。",
+        ));
+    }
     if !matches!(
         settings["download"]["default_quality"].as_str(),
         Some("original" | "2160p" | "1080p" | "720p" | "480p")

@@ -1,6 +1,6 @@
 {
   "name": "nekopak",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "size": "node scripts/ui-size-report.mjs",
     "tauri": "tauri",
     "gen:icons": "node scripts/gen-icons.mjs",
-    "gen:app-icons": "tauri icon public/brand/app-icon.svg --output src-tauri/icons"
+    "gen:app-icons": "python scripts/android_project.py --generate-icons"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.4",

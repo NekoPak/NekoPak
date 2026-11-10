@@ -7,6 +7,7 @@ import { LogoMark } from "../components/Brand";
 import { Btn } from "../components/ui";
 import { WindowControls } from "../components/Frame";
 import { AuthPanel } from "./Auth";
+import { useMobileLayout } from "../lib/mobile";
 
 /**
  * First launch / signed out: brand on the frame colour, the sign-in island
@@ -15,6 +16,7 @@ import { AuthPanel } from "./Auth";
 export function Onboarding({ onClose }: { onClose: () => void }) {
   const auth = useStore(app, (x) => x.auth?.state);
   const mobile = useStore(app, isMobileHost);
+  const phone = useMobileLayout();
 
   useEffect(() => {
     if (auth === "signed_in" || auth === "demo") {
@@ -25,7 +27,7 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
   }, [auth]);
 
   return (
-    <div class="onboarding" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+    <div class={phone ? "phone-login" : "onboarding"} role="dialog" aria-modal="true" aria-labelledby="ob-title">
       <div class="ob-caption" data-tauri-drag-region={mobile ? undefined : true}><span class="pf-drag" data-tauri-drag-region={mobile ? undefined : true} /><WindowControls /></div>
       <div class="ob-brand">
         <LogoMark size={72} />

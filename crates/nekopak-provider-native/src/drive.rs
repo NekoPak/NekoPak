@@ -195,6 +195,7 @@ impl NativeProvider {
         id: Option<&str>,
     ) -> Result<Option<VerificationState>, ClientError> {
         let mut session = self.session.lock().await;
+        self.load(&mut session)?;
         let Some(pending) = session.drive.pending.as_ref() else {
             return Ok(None);
         };

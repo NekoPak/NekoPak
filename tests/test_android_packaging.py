@@ -64,7 +64,7 @@ class AndroidPackageValidation(unittest.TestCase):
         self.fail("Unexpected external command")
 
     def inspect(self, profile="release", abi="arm64-v8a"):
-        with patch.object(packaging, "sdk_tool", side_effect=lambda sdk, name: Path(name)), patch.object(packaging, "run", side_effect=self.tool_output):
+        with patch.object(packaging, "sdk_tool", side_effect=lambda sdk, name: Path(name)), patch.object(packaging, "run", side_effect=self.tool_output), patch.object(packaging, "verify_launcher_icons", return_value={"brand": "NekoPak cat"}):
             return packaging.apk_metadata(self.apk, Path(self.temp.name), abi, profile)
 
     def test_verified_release_reports_certificate_and_all_native_alignment(self):

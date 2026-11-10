@@ -5,6 +5,7 @@ import { tr } from "../i18n";
 
 export function statusForUi(status: Wire.AppStatus): AppStatus {
   return {
+    system_locale: status.system_locale,
     version: status.version, contract_version: status.contract_version, runtime: "tauri", mode: status.mode,
     storage: { status: status.storage.status === "ready" ? "ok" : "corrupt_readonly", message: status.storage.error?.message },
     feature_flags: { ...status.features, auth_flow: false },
@@ -40,6 +41,7 @@ export function unsupported(command: string): Wire.ClientError {
 }
 
 export const RUST_COMMANDS = new Set([
+  "transfer_forget", "transfer_clear_finished", "auth_preferences_get", "auth_preferences_update", "network_reconnect", "network_domains_probe",
   "app_status", "backend_discover", "auth_status", "files_list", "files_stat", "files_path",
   "auth_sign_in", "auth_verify", "auth_logout",
   "accounts_list", "account_switch", "account_remove",

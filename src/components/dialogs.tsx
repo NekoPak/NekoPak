@@ -11,6 +11,7 @@ import { navigate } from "../state/route";
 import { noteCreated } from "../state/transfers";
 import { openDialog, toast } from "../state/ui";
 import { openSide } from "../state/prefs";
+import { mobileLayout } from "../lib/mobile";
 import { EntryName } from "./FileTable";
 import { Icon } from "./Icon";
 import { Btn, copyWithToast, ErrorPanel, Field, Spinner } from "./ui";
@@ -464,6 +465,7 @@ function CloudTaskBody({ initialParent, initialPath, initialText = "", close }: 
 export function newCloudTask(parentId: string, parentPath: string, text = ""): Promise<unknown> {
   const g = fileGate("cloud_task", parentId);
   if (!g.ok) { toast(g.reason ?? tr("当前不可用"), "info"); return Promise.resolve(); }
+  if (mobileLayout()) return openDialog({title:tr("添加链接"),render:close=><CloudTaskBody initialParent={parentId} initialPath={parentPath} initialText={text} close={close}/>});
   void openSide({ key: "add-link", title: tr("添加链接"), render: (close) => <CloudTaskBody initialParent={parentId} initialPath={parentPath} initialText={text} close={close} /> });
   return Promise.resolve();
 }

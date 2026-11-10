@@ -291,6 +291,30 @@ impl NativeProvider {
                 location = url.join(redirect).map_err(|_| wire::invalid())?.into();
                 continue;
             }
+            let status = response.status().as_u16();
+            if matches!(status, 412 | 416) {
+                return Err(error(
+                    ErrorCode::IntegrityFailed,
+                    "下载来源版本或范围已改变，未拼接不同内容。",
+                ));
+            }
+            if !response.status().is_success() {
+                // Classify the HTTP failure before requiring the success
+                // response's ETag. Error pages need not carry a content ETag.
+                let mut failure = ClientError::from_http(status, BackendId::RustCompat);
+                if failure.code == ErrorCode::TransientNetwork {
+                    if let Some(seconds) = response
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|value| value.to_str().ok())
+                        .and_then(http::retry_after_seconds)
+                    {
+                        failure.details =
+                            Some([("retry_after_seconds".into(), seconds.into())].into());
+                    }
+                }
+                return Err(failure);
+            }
             let requested = end - start + 1;
             let etag = response
                 .headers()
@@ -325,17 +349,10 @@ impl NativeProvider {
                 }
                 actual_total = Some(declared);
             } else if response.status().as_u16() != 200 || start != 0 || total != Some(requested) {
-                return Err(if response.status().is_success() {
-                    error(
-                        ErrorCode::IntegrityFailed,
-                        "服务器未返回请求的文件范围，未追加错误内容。",
-                    )
-                } else {
-                    error(
-                        ErrorCode::TransientNetwork,
-                        "文件下载暂时失败，已保留已确认进度。",
-                    )
-                });
+                return Err(error(
+                    ErrorCode::IntegrityFailed,
+                    "服务器未返回请求的文件范围，未追加错误内容。",
+                ));
             }
             if response
                 .headers()

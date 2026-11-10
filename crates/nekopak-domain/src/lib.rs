@@ -292,7 +292,7 @@ impl TaskState {
         use TaskState::*;
         matches!(
             (self, next),
-            (Queued, Running | Paused | Cancelled | Failed)
+            (Queued, Running | Retrying | Paused | Cancelled | Failed)
                 | (Running, Paused | Retrying | Verifying | Failed | Cancelled)
                 | (Paused, Queued | Cancelled)
                 | (Retrying, Queued | Running | Paused | Failed | Cancelled)
@@ -400,6 +400,8 @@ pub struct QuotaReport {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AppStatus {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_locale: Option<String>,
     pub version: String,
     pub contract_version: String,
     pub mode: String,

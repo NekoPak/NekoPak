@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-09T05:52:16.740Z",
+  "date": "2026-11-10T05:42:28.708Z",
   "scope": "Real Windows WebView2 + native Rust HTTP, SQLite and file IO; synthetic local server, no account/service traffic",
   "results": [
     {
@@ -15,7 +15,7 @@
       "passed": true
     }
   ],
-  "fixture_requests": 58,
+  "fixture_requests": 59,
   "external_requests": 0,
   "download_bytes": 2097289,
   "errors": []

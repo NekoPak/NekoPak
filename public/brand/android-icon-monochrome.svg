@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <g transform="translate(9.2 9.2) scale(2.8)">
+    <!-- Even-odd eye cutouts remain transparent when Android applies a themed tint. -->
+    <path fill="#fff" fill-rule="evenodd" d="M7.5 13.2 10.2 7.6l3.5 4.1h4.6l3.5-4.1 2.7 5.6v9.3a2.2 2.2 0 0 1-2.2 2.2H9.7a2.2 2.2 0 0 1-2.2-2.2Z M11.03 18.73q1.77-1.77 3.54 0a.8.8 0 0 1-1.14 1.14q-.63-.63-1.26 0a.8.8 0 0 1-1.14-1.14Z M17.43 18.73q1.77-1.77 3.54 0a.8.8 0 0 1-1.14 1.14q-.63-.63-1.26 0a.8.8 0 0 1-1.14-1.14Z"/>
+  </g>
+</svg>

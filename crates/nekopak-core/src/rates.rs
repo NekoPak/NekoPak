@@ -105,4 +105,23 @@ mod tests {
         assert_eq!(sample.speed(start + Duration::from_secs(2)), Some(512.0));
         assert_eq!(sample.speed(start + Duration::from_secs(4)), Some(0.0));
     }
+
+    #[test]
+    fn resumed_bytes_and_stale_callbacks_do_not_inflate_measured_speed() {
+        let rates = Rates::default();
+        let stale = rates.start("task", 1, 9_000_000);
+        stale.received(1000);
+        let current = rates.start("task", 2, 9_001_000);
+        stale.received(80_000_000);
+        current.received(2000);
+        let map = rates.0.lock().unwrap();
+        let sample = map.get("task").unwrap();
+        assert_eq!(sample.points.front().unwrap().1, 9_000_000);
+        assert_eq!(sample.points.back().unwrap().1, 9_003_000);
+        drop(map);
+        rates.remove("task");
+        assert!(rates.speed("task").is_none());
+        current.received(5000);
+        assert!(rates.speed("task").is_none());
+    }
 }

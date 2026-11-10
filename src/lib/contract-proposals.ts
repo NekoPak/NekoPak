@@ -24,6 +24,7 @@ export const ROOT_ID = "root";
 
 /** §P1 `app_status` */
 export interface AppStatus {
+  system_locale?: string;
   version: string;
   contract_version: string;
   /** "mock" when the Mock adapter answers, "tauri" when real IPC answers. */
@@ -612,6 +613,7 @@ export interface Settings {
     max_bytes: string;
   };
   experimental_network: {
+    server_domain?: ServerDomain;
     enabled: boolean;
     proxy_mode: "system" | "none" | "user_provided";
     /** Never returned in clear text; only whether one is stored. */
@@ -652,8 +654,21 @@ export const PROPOSED_EVENTS = {
   jobChanged: "nekopak://job/changed",
 } as const;
 
+export type ServerDomain = "auto" | "mypikpak.com" | "mypikpak.net" | "pikpak.me" | "pikpakdrive.com";
+export interface AuthPreferences { remember_account: boolean; restore_session: boolean; username?: string }
+export interface NetworkDomainReport {
+  selected_domain: ServerDomain; active_domain: Exclude<ServerDomain, "auto">; checked_at: string;
+  results: { domain: Exclude<ServerDomain, "auto">; usable: boolean; latency_ms?: number; warm_latency_ms?: number; error?: string }[];
+}
+
 /** Full command map: name -> [args, result]. Frozen names from §3 + §P commands. */
 export interface CommandMap {
+  transfer_forget: [{ task_id: string }, void];
+  transfer_clear_finished: [undefined, { removed: number }];
+  auth_preferences_get: [undefined, AuthPreferences];
+  auth_preferences_update: [{ preferences: AuthPreferences }, AuthPreferences];
+  network_reconnect: [undefined, void];
+  network_domains_probe: [undefined, NetworkDomainReport];
   autostart_get: [undefined, { enabled: boolean; available: boolean }];
   autostart_set: [{ enabled: boolean }, { enabled: boolean; available: boolean }];
   reference_create: [{ ids: string[]; idempotency_key: string }, ReferenceManifest];

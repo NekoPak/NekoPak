@@ -21,16 +21,18 @@ if (!process.env.E2E_BASE) {
 const browser = await chromium.launch({ channel: process.env.E2E_BROWSER_CHANNEL ?? (process.platform === "win32" ? "msedge" : undefined) });
 const results = [], errors = [];
 
-function fixture({ signedIn, mobile = true }) {
+function fixture({ signedIn, mobile = true, theme = "light" }) {
   localStorage.setItem("nekopak.disclaimer.v1", "1");
   localStorage.setItem("nekopak.language", "zh-CN");
   let signed = signedIn, id = 0;
+  let authPrefs={remember_account:true,restore_session:true,username:"remembered@example.test"};
   const callbacks = new Map();
   const now = "2026-11-09T08:00:00Z";
   const folder = { id: "folder-a", parent_id: "root", name: "手机测试文件夹", kind: "folder", size_bytes: "0" };
   const file = { id: "file-a", parent_id: "root", name: "示例文件.txt", kind: "file", size_bytes: "12" };
-  const task = { id: "completed-a", remote_id: "file-a", backend: "rust_compat", name: file.name, kind: "download", state: "completed", destination: "/data/user/0/io.nekopak.desktop/files/Downloads/示例文件.txt", transferred_bytes: "12", total_bytes: "12", revision: "1", simulated: false, created_at: now, updated_at: now };
-  const settings = { schema_version: 1, theme: "light", language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
+  let task = { id: "completed-a", remote_id: "file-a", backend: "rust_compat", name: file.name, kind: "download", state: "completed", destination: "/data/user/0/io.nekopak.desktop/files/Downloads/示例文件.txt", transferred_bytes: "12", total_bytes: "12", revision: "1", simulated: false, created_at: now, updated_at: now };
+  let tasks=[task,{...task,id:"running-a",name:"旅行视频.mp4",state:"running",transferred_bytes:"4194304",total_bytes:"41943040",speed_bytes_per_sec:2097152},{...task,id:"cancelled-a",name:"已取消的备份.zip",state:"cancelled",transferred_bytes:"0"}];
+  const settings = { schema_version: 1, theme, language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
   window.__mobileFixture = { calls: [], exportResult: false };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -44,6 +46,10 @@ function fixture({ signedIn, mobile = true }) {
       if (command === "plugin:event|unlisten") return;
       if (command.startsWith("plugin:window|")) return false;
       if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: !mobile, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
+      if(command === "auth_preferences_get")return authPrefs;
+      if(command === "auth_preferences_update"){authPrefs=args.preferences;return authPrefs;}
+      if(command === "network_reconnect")return;
+      if(command === "network_domains_probe"){const selected=settings.experimental_network.server_domain??"auto";return {selected_domain:selected,active_domain:selected==="auto"?"mypikpak.com":selected,checked_at:now,results:["mypikpak.com","mypikpak.net","pikpak.me","pikpakdrive.com"].map((domain,index)=>({domain,usable:true,latency_ms:42+index*10,warm_latency_ms:12+index*5}))};}
       if (command === "auth_status") return { backend: "rust_compat", authenticated: signed, state: signed ? "signed_in" : "signed_out", account_id: signed ? "synthetic-account" : undefined, display_name: "fixture@example.test", credential_owner: "os_vault", account_tier: "unknown", checked_at: now };
       if (command === "auth_sign_in") {
         if (args.password === "synthetic-rejected") throw { code: "PERMISSION_DENIED", message: "测试凭据未通过", retryable: false, details: { reason: "invalid_credentials" } };
@@ -55,9 +61,15 @@ function fixture({ signedIn, mobile = true }) {
       if (command === "ui_prefs_get") return { account_id: "synthetic-account", prefs: { pins: [] } };
       if (command === "ui_prefs_update") return args.prefs;
       if (command === "quota_get") return { backend: "rust_compat", source: "account", account_tier: "unknown", dimensions: [], limitations: [], checked_at: now };
-      if (command === "transfers_list") return { items: signed ? [task] : [] };
+      if (command === "transfers_list") return { items: signed ? tasks : [] };
       if (command === "jobs_list" || command === "shares_list") return { items: [] };
-      if (command === "files_list") return { items: args.parent_id === "root" ? [folder, file] : [{ ...file, id: "nested", parent_id: folder.id }] };
+      if (command === "files_list") return { items: args.parent_id === "root" ? [folder, {...folder,id:"folder-b",name:"工作文档"}, {...file,id:"video-a",name:"旅行视频.mp4",size_bytes:"41943040",mime_type:"video/mp4"}, {...file,id:"image-a",name:"海边的日落.jpg",size_bytes:"2419401",mime_type:"image/jpeg"}, file] : [{ ...file, id: "nested", parent_id: folder.id }] };
+      if(command === "files_search")return {items:[file]};
+      if(command === "cloud_task_create")return {task_id:"cloud-a"};
+      if(command === "cloud_task_preview")throw {code:"UNSUPPORTED",message:"fixture preview unavailable",retryable:false};
+      if(command === "transfer_forget"){tasks=tasks.filter(t=>t.id!==args.task_id);return;}
+      if(command === "transfer_clear_finished"){const before=tasks.length;tasks=tasks.filter(t=>!["completed","cancelled","failed"].includes(t.state));return {removed:before-tasks.length};}
+      if(command === "transfer_control"){const task=tasks.find(t=>t.id===args.task_id);if(task)task.state=args.action==="pause"?"paused":args.action==="cancel"?"cancelled":"running";return;}
       if (command === "files_path") return args.id === folder.id ? [folder] : [];
       if (command === "files_stat") return args.id === folder.id ? folder : file;
       if (command === "transfer_export") return window.__mobileFixture.exportResult;
@@ -74,9 +86,9 @@ async function assertFits(page, name) {
   assert.deepEqual(overflow, [], `${name} has horizontal content overflow`);
 }
 
-async function context(width, signedIn = true, mobile = true) {
-  const ctx = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: true, isMobile: true, locale: "zh-CN" });
-  await ctx.addInitScript(fixture, { signedIn, mobile });
+async function context(width, signedIn = true, mobile = true, theme = "light") {
+  const ctx = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: true, isMobile: true, locale: "zh-CN", reducedMotion: "reduce" });
+  await ctx.addInitScript(fixture, { signedIn, mobile, theme });
   const page = await ctx.newPage();
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/*", route => {
@@ -89,113 +101,84 @@ async function context(width, signedIn = true, mobile = true) {
 }
 
 try {
-  for (const width of [360, 390, 412]) {
-    const { ctx, page } = await context(width);
+  for (const width of [360,390,412]) for(const theme of ["light","dark"]) {
+    const {ctx,page}=await context(width,true,true,theme);
     try {
-      const row = page.locator('[data-id="folder-a"]');
-      await row.waitFor();
-      assert.equal(await page.locator(".win-controls").count(), 0);
-      await assertFits(page, `${width} files`);
-      // A focused selection button owns Enter/Space. Grid keyboard navigation
-      // must not open the focused folder or suppress the button's native click.
-      const folderCheck = row.getByRole("button", { name: "选择 手机测试文件夹", exact: true });
-      await folderCheck.focus();
-      await page.keyboard.press("Enter");
-      assert.equal(await folderCheck.getAttribute("aria-pressed"), "true");
-      assert.match(page.url(), /#\/files$/);
-      await page.keyboard.press("Space");
-      assert.equal(await folderCheck.getAttribute("aria-pressed"), "false");
-      assert.match(page.url(), /#\/files$/);
-      await page.getByRole("button", { name: "网格视图", exact: true }).tap();
-      const cardCheck = page.locator('[data-id="folder-a"] .card-check');
-      await cardCheck.focus();
-      await page.keyboard.press("Enter");
-      assert.equal(await cardCheck.getAttribute("aria-pressed"), "true");
-      await page.keyboard.press("Space");
-      assert.equal(await cardCheck.getAttribute("aria-pressed"), "false");
-      assert.match(page.url(), /#\/files$/);
-      await page.getByRole("button", { name: "列表视图", exact: true }).tap();
-      // Explicit selection never opens the folder; a tap on its name does.
-      await row.getByRole("button", { name: "选择 手机测试文件夹", exact: true }).tap();
-      assert.equal(await row.getAttribute("aria-selected"), "true");
-      assert.match(page.url(), /#\/files$/);
-      await row.getByRole("button", { name: "选择 手机测试文件夹", exact: true }).tap();
-      await row.locator(".ft-name").tap();
-      await page.waitForURL("**/#/files/folder-a");
-      await page.locator('[data-id="nested"]').waitFor();
-      assert.equal(await page.evaluate(() => !window.dispatchEvent(new CustomEvent("nekopak:back", { cancelable: true }))), true);
-      await page.waitForURL("**/#/files");
-      assert.equal(await page.evaluate(() => !window.dispatchEvent(new CustomEvent("nekopak:back", { cancelable: true }))), false, "root must permit native back");
-      await page.getByRole("button", { name: "新建", exact: true }).tap();
-      assert.equal(await page.getByRole("menuitem", { name: /上传文件\s+Android/ }).first().getAttribute("aria-disabled"), "true");
-      await page.getByRole("menuitem", { name: /新建文件夹/ }).tap();
-      await page.getByRole("dialog", { name: "新建文件夹", exact: true }).waitFor();
-      assert.equal(await page.evaluate(() => !window.dispatchEvent(new CustomEvent("nekopak:back", { cancelable: true }))), true, "system back closes the dialog");
-      await page.getByRole("dialog", { name: "新建文件夹", exact: true }).waitFor({ state: "hidden" });
-      await page.getByRole("button", { name: "打开导航", exact: true }).tap();
-      await page.evaluate(() => { document.querySelector('#app-navigation .sb-account button:last-child').focus(); });
-      await page.keyboard.press("Tab");
-      assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("mobile-nav-close")), true, "drawer traps forward focus");
-      await page.keyboard.press("Shift+Tab");
-      assert.equal(await page.evaluate(() => document.activeElement === document.querySelector('#app-navigation .sb-account button:last-child')), true, "drawer traps reverse focus");
-      assert.equal(await page.evaluate(() => !window.dispatchEvent(new CustomEvent("nekopak:back", { cancelable: true }))), true, "system back closes navigation");
-      await page.getByRole("button", { name: "打开导航", exact: true }).tap();
-      await page.getByRole("button", { name: "设置（Ctrl+,）", exact: true }).tap();
-      await page.locator('.settings-link[aria-current="page"]').waitFor();
-      await assertFits(page, `${width} general settings`);
-      assert.equal(await page.getByRole("switch", { name: "关闭窗口时最小化到托盘", exact: true }).getAttribute("aria-disabled"), "true");
-      await page.getByRole("link", { name: "下载与传输", exact: true }).tap();
-      await page.locator("#native-download-dir").waitFor();
-      assert.equal(await page.getByRole("button", { name: "选择文件夹", exact: true }).getAttribute("aria-disabled"), "true");
-      assert.equal(await page.getByRole("button", { name: "选择播放器", exact: true }).getAttribute("aria-disabled"), "true");
-      await assertFits(page, `${width} transfer settings`);
-      await page.getByRole("button", { name: "打开导航", exact: true }).tap();
-      await page.locator(".dl-btn").tap();
-      await page.locator('[data-task="completed-a"]').waitFor();
-      await page.getByRole("button", { name: "更多操作", exact: true }).tap();
-      await page.getByRole("menuitem", { name: "导出文件", exact: true }).tap();
-      assert.equal(await page.getByText("文件已导出", { exact: true }).count(), 0, "cancel must not claim success");
-      await page.evaluate(() => { window.__mobileFixture.exportResult = true; });
-      await page.getByRole("button", { name: "更多操作", exact: true }).tap();
-      await page.getByRole("menuitem", { name: "导出文件", exact: true }).tap();
-      await page.getByText("文件已导出", { exact: true }).waitFor();
-      const calls = await page.evaluate(() => window.__mobileFixture.calls);
-      assert.equal(calls.filter(call => call.command === "transfer_export").length, 2);
-      assert(!calls.some(call => ["download_directory_pick", "player_config_pick", "upload_pick_and_start"].includes(call.command)));
-      await assertFits(page, `${width} transfers`);
-      await page.screenshot({ path: resolve(output, `transfers-${width}.png`) });
-      results.push({ name: `mobile IPC UI ${width}px`, passed: true });
-    } catch (error) { await page.screenshot({ path: resolve(output, `failure-${width}.png`) }); throw error; }
-    finally { await ctx.close(); }
+      await page.locator('[data-id="folder-a"]').waitFor();
+      assert.equal(await page.locator('.sidebar,.workspace-tabs,.pf-commands,.address-drop').count(),0,"desktop navigation must not exist in phone markup");
+      assert.equal(await page.locator('.mobile-bottom-nav button').count(),3);
+      assert.equal(await page.locator('.mobile-file-row .tile').count(),5,"file types retain visible icons outside selection mode");
+      await assertFits(page,`${width} ${theme} files`);
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`files-${width}-${theme}.png`)});
+      await page.getByRole('button',{name:'打开 手机测试文件夹',exact:true}).tap();
+      await page.waitForURL('**/#/files/folder-a');
+      await page.getByRole('button',{name:'返回上一级',exact:true}).tap();
+      await page.getByRole('button',{name:'选择',exact:true}).tap();
+      const select=page.getByRole('button',{name:'选择 手机测试文件夹',exact:true});
+      await select.focus();await page.keyboard.press('Enter');assert.equal(await select.getAttribute('aria-pressed'),'true');
+      await page.keyboard.press('Space');assert.equal(await select.getAttribute('aria-pressed'),'false');
+      await page.getByRole('button',{name:'取消',exact:true}).tap();
+      const longTarget=page.getByRole('button',{name:'打开 手机测试文件夹',exact:true});
+      const box=await longTarget.boundingBox();await page.mouse.move(box.x+30,box.y+30);await page.mouse.down();await page.waitForTimeout(520);await page.mouse.up();
+      assert.equal(await page.getByRole('button',{name:'选择 手机测试文件夹',exact:true}).getAttribute('aria-pressed'),'true','long press selects without opening');
+      assert.equal(await page.evaluate(()=>!window.dispatchEvent(new CustomEvent('nekopak:back',{cancelable:true}))),true);
+      await page.locator('.mobile-selection-actions').waitFor({state:'detached'});
+      await page.getByRole('button',{name:'排序与筛选',exact:true}).tap();await page.getByRole('button',{name:'网格视图',exact:true}).tap();await page.locator('.mobile-file-grid').waitFor();
+      await page.getByRole('button',{name:'排序与筛选',exact:true}).tap();await page.getByRole('button',{name:'列表视图',exact:true}).tap();
+      await page.getByRole('button',{name:'示例文件.txt的更多操作',exact:true}).tap();
+      await page.getByRole('dialog',{name:'示例文件.txt',exact:true}).waitFor();
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`actions-${width}-${theme}.png`)});
+      assert.equal(await page.evaluate(()=>!window.dispatchEvent(new CustomEvent('nekopak:back',{cancelable:true}))),true);
+      await page.getByRole('button',{name:'搜索',exact:true}).tap();
+      await page.getByRole('searchbox',{name:'搜索云盘文件'}).fill('示例');await page.keyboard.press('Enter');
+      await page.locator('.mobile-file-row').waitFor();
+      await page.getByRole('button',{name:'文件',exact:true}).tap();
+      await page.getByRole('button',{name:'新建',exact:true}).tap();await page.getByRole('button',{name:'添加链接',exact:true}).tap();
+      await page.getByRole('dialog',{name:'添加链接',exact:true}).waitFor();
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`cloud-dialog-${width}-${theme}.png`)});
+      await page.evaluate(()=>window.dispatchEvent(new CustomEvent('nekopak:back',{cancelable:true})));
+      await page.getByRole('button',{name:'传输',exact:true}).tap();
+      await page.locator('[data-task="running-a"]').waitFor();
+      assert((await page.locator('[data-task="running-a"] .phone-task-stats strong').textContent()).includes('/s'),"measured speed is visible");
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`transfers-${width}-${theme}.png`)});
+      await assertFits(page,`${width} ${theme} transfers`);
+      await page.getByRole('button',{name:'已取消的备份.zip的更多操作',exact:true}).tap();await page.getByRole('button',{name:'移除记录',exact:true}).tap();
+      await page.locator('[data-task="cancelled-a"]').waitFor({state:'detached'});
+      await page.getByRole('button',{name:'导出文件',exact:true}).tap();assert.equal(await page.getByText('文件已导出',{exact:true}).count(),0);
+      await page.evaluate(()=>{window.__mobileFixture.exportResult=true;});await page.getByRole('button',{name:'导出文件',exact:true}).tap();await page.getByText('文件已导出',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'我的',exact:true}).tap();await page.locator('.mobile-account').waitFor();
+      assert.equal(await page.getByRole('button',{name:'挂载',exact:true}).count(),0);
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`me-${width}-${theme}.png`)});
+      await page.getByRole('button',{name:'外观',exact:true}).tap();await page.locator('.phone-themes').waitFor();
+      assert.equal(await page.locator('.settings-nav').count(),0);assert.equal(await page.getByRole('switch',{name:'关闭窗口时最小化到托盘'}).count(),0);
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`appearance-${width}-${theme}.png`)});
+      await page.getByRole('button',{name:'返回',exact:true}).tap();await page.getByRole('button',{name:'下载与传输',exact:true}).tap();
+      assert.equal(await page.getByRole('button',{name:'选择播放器',exact:true}).count(),0);
+      await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`settings-${width}-${theme}.png`)});
+      await assertFits(page,`${width} ${theme} settings`);
+      await page.getByRole('button',{name:'返回',exact:true}).tap();await page.getByRole('button',{name:'网络',exact:true}).tap();
+      await page.locator('#server-domain').selectOption('mypikpak.net');
+      await page.getByRole('button',{name:'保存',exact:true}).tap();
+      await page.getByRole('button',{name:'测速',exact:true}).tap();await page.getByText('42 ms',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'重新连接',exact:true}).tap();await page.getByText('已重新连接',{exact:true}).waitFor();
+      await page.waitForTimeout(220);await page.screenshot({path:resolve(output,`network-${width}-${theme}.png`)});
+      const calls=await page.evaluate(()=>window.__mobileFixture.calls);
+      assert(calls.some(c=>c.command==='settings_update'&&c.args.patch?.experimental_network?.server_domain==='mypikpak.net'));
+      assert(calls.some(c=>c.command==='network_domains_probe'));assert(calls.some(c=>c.command==='network_reconnect'));
+      await page.getByRole('button',{name:'传输',exact:true}).tap();await page.locator('[data-task="completed-a"]').waitFor();
+      await page.getByRole('button',{name:'管理传输',exact:true}).tap();await page.getByRole('button',{name:'清理已结束',exact:true}).tap();
+      const confirmation=page.getByRole('dialog',{name:'清理已结束',exact:true});await confirmation.getByText('保留已下载文件与云端文件',{exact:true}).waitFor();
+      await confirmation.getByRole('button',{name:'清理已结束',exact:true}).tap();await page.locator('[data-task="completed-a"]').waitFor({state:'detached'});
+      assert.equal(await page.locator('[data-task="running-a"]').count(),1);
+
+      results.push({name:`phone ${width}px ${theme}`,passed:true});
+    }catch(error){await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`failure-${width}-${theme}.png`)});throw error;}finally{await ctx.close();}
   }
-  const { ctx, page } = await context(360, false);
-  try {
-    await page.getByRole("heading", { name: "登录 PikPak", exact: true }).waitFor();
-    await assertFits(page, "360px native sign-in");
-    await page.locator('input[name="username"]').fill("synthetic@example.test");
-    await page.locator('input[name="password"]').fill("synthetic-rejected");
-    await page.getByRole("button", { name: "登录", exact: true }).tap();
-    await page.getByText("测试凭据未通过", { exact: true }).waitFor();
-    assert.equal(await page.locator('input[name="password"]').inputValue(), "");
-    await page.screenshot({ path: resolve(output, "login-360.png") });
-    await page.locator('input[name="password"]').fill("synthetic-accepted");
-    await page.getByRole("button", { name: "登录", exact: true }).tap();
-    await page.locator('[data-id="folder-a"]').waitFor();
-    results.push({ name: "mobile sign-in fixture clears password and navigates", passed: true });
-  } finally { await ctx.close(); }
-  const desktop = await context(390, true, false);
-  try {
-    await desktop.page.locator('[data-id="folder-a"]').waitFor();
-    await desktop.page.getByRole("button", { name: "打开导航", exact: true }).tap();
-    await desktop.page.getByRole("button", { name: "设置（Ctrl+,）", exact: true }).tap();
-    await desktop.page.getByRole("link", { name: "下载与传输", exact: true }).tap();
-    await desktop.page.locator("#native-download-dir").waitFor();
-    assert.equal(await desktop.page.getByRole("button", { name: "选择文件夹", exact: true }).getAttribute("aria-disabled"), null);
-    assert.equal(await desktop.page.getByRole("button", { name: "选择播放器", exact: true }).getAttribute("aria-disabled"), null);
-    assert.equal(await desktop.page.locator(".mobile-storage-note").count(), 0);
-    results.push({ name: "narrow layout does not infer Android platform", passed: true });
-  } finally { await desktop.ctx.close(); }
-  assert.deepEqual(errors, []);
-  writeFileSync(resolve(output, "results.json"), JSON.stringify({ scope: "Browser mobile IPC fixture, not device or live service acceptance", results, errors }, null, 2));
-  console.log(JSON.stringify({ passed: results.length, errors, output }));
-} finally { await browser.close(); server?.kill(); }
+  for(const width of [360,390,412]) for(const theme of ['light','dark']){
+    const {ctx,page}=await context(width,false,true,theme);
+    try{await page.getByRole('heading',{name:'登录 PikPak',exact:true}).waitFor();assert.equal(await page.locator('.onboarding').count(),0);await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`login-${width}-${theme}.png`)});assert.equal(await page.locator('input[name="username"]').inputValue(),'remembered@example.test');assert.equal(await page.getByRole('checkbox',{name:'保持登录',exact:true}).isChecked(),true);await page.locator('input[name="username"]').fill('synthetic@example.test');await page.locator('input[name="password"]').fill('synthetic-rejected');await page.getByRole('button',{name:'登录',exact:true}).tap();await page.getByText('测试凭据未通过',{exact:true}).waitFor();assert.equal(await page.locator('input[name="password"]').inputValue(),'');await assertFits(page,'phone login');results.push({name:`phone login ${width}px ${theme}`,passed:true});}finally{await ctx.close();}
+  }
+  assert.deepEqual(errors,[]);
+  writeFileSync(resolve(output,'results.json'),JSON.stringify({scope:'Independent mobile UI/browser IPC fixture; no device or live-service claims',results,errors},null,2));
+  console.log(JSON.stringify({passed:results.length,errors,output}));
+}finally{await browser.close();server?.kill();}

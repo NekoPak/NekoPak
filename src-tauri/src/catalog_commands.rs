@@ -1,5 +1,53 @@
 use crate::*;
 
+#[tauri::command(rename_all = "snake_case")]
+pub async fn transfer_forget(
+    service: State<'_, Service>,
+    task_id: String,
+) -> Result<(), ClientError> {
+    service
+        .transfer_forget(&task_id, &RequestContext::default())
+        .await
+}
+#[tauri::command]
+pub async fn transfer_clear_finished(
+    service: State<'_, Service>,
+) -> Result<serde_json::Value, ClientError> {
+    let removed = service
+        .transfer_clear_finished(&RequestContext::new(Duration::from_secs(60)))
+        .await?;
+    Ok(serde_json::json!({"removed":removed}))
+}
+#[tauri::command]
+pub async fn auth_preferences_get(
+    service: State<'_, Service>,
+) -> Result<serde_json::Value, ClientError> {
+    service
+        .auth_preferences_get(&RequestContext::default())
+        .await
+}
+#[tauri::command]
+pub async fn auth_preferences_update(
+    service: State<'_, Service>,
+    preferences: serde_json::Value,
+) -> Result<serde_json::Value, ClientError> {
+    service
+        .auth_preferences_update(&preferences, &RequestContext::default())
+        .await
+}
+#[tauri::command]
+pub async fn network_domains_probe(
+    service: State<'_, Service>,
+) -> Result<serde_json::Value, ClientError> {
+    service
+        .network_domains_probe(&RequestContext::new(Duration::from_secs(60)))
+        .await
+}
+#[tauri::command]
+pub fn network_reconnect(service: State<'_, Service>) -> Result<(), ClientError> {
+    service.network_reconnect()
+}
+
 fn require_desktop_files() -> Result<(), ClientError> {
     if cfg!(mobile) {
         Err(ClientError::new(

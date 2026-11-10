@@ -12,6 +12,38 @@ struct AccountIndex {
     accounts: Vec<AccountRecord>,
     #[serde(default)]
     removing: Vec<String>,
+    #[serde(default)]
+    preferences: AuthPreferences,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct AuthPreferences {
+    pub(super) remember_account: bool,
+    pub(super) restore_session: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) username: Option<String>,
+}
+impl Default for AuthPreferences {
+    fn default() -> Self {
+        Self {
+            remember_account: true,
+            restore_session: true,
+            username: None,
+        }
+    }
+}
+impl AuthPreferences {
+    fn validate(&self) -> Result<(), ClientError> {
+        if self.username.as_ref().is_some_and(|name| {
+            name.len() > 254
+                || !name.contains('@')
+                || name.chars().any(|c| c.is_control() || c.is_whitespace())
+        }) {
+            return Err(error(ErrorCode::Conflict, "记住的账号必须是有效邮箱。"));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -53,6 +85,7 @@ impl AccountIndex {
             });
         };
         let index: Self = serde_json::from_str(&raw).map_err(|_| wire::invalid())?;
+        index.preferences.validate()?;
         if index.schema_version != 1
             || index.accounts.len() > MAX_ACCOUNTS
             || index.removing.len() > MAX_ACCOUNTS
@@ -99,6 +132,38 @@ impl Session {
 }
 
 impl NativeProvider {
+    pub(super) async fn account_preferences(&self) -> Result<Value, ClientError> {
+        self.profile()?;
+        let _session = self.session.lock().await;
+        let index = AccountIndex::load(self.vault.as_ref())?;
+        serde_json::to_value(index.preferences).map_err(|_| wire::invalid())
+    }
+    pub(super) async fn update_account_preferences(
+        &self,
+        value: &Value,
+    ) -> Result<Value, ClientError> {
+        self.profile()?;
+        let mut preferences: AuthPreferences = serde_json::from_value(value.clone())
+            .map_err(|_| error(ErrorCode::Conflict, "登录偏好格式无效。"))?;
+        if !preferences.remember_account {
+            preferences.username = None;
+        }
+        preferences.validate()?;
+        let _session = self.session.lock().await;
+        let mut index = AccountIndex::load(self.vault.as_ref())?;
+        index.preferences = preferences;
+        index.save(self.vault.as_ref())?;
+        serde_json::to_value(index.preferences).map_err(|_| wire::invalid())
+    }
+    pub(super) fn remember_username(&self, username: &str) -> Result<(), ClientError> {
+        let mut index = AccountIndex::load(self.vault.as_ref())?;
+        if index.preferences.remember_account {
+            index.preferences.username = Some(username.into());
+            index.preferences.validate()?;
+            index.save(self.vault.as_ref())?;
+        }
+        Ok(())
+    }
     fn stored_scope(&self, stored: &StoredSession) -> Result<Option<String>, ClientError> {
         Ok((!stored.user_id.is_empty()).then(|| {
             format!(
@@ -258,6 +323,22 @@ impl NativeProvider {
             let migrating = stored.account_id.is_empty();
             self.ensure_account_id(&mut stored, &index)?;
             self.track_account(&mut index, &stored)?;
+            if !index.preferences.restore_session {
+                // Archive before clearing activation: opting out of automatic
+                // restore must not erase the only recoverable account session.
+                self.vault
+                    .save_account(&stored.account_id, &encode(&stored)?)?;
+                index
+                    .accounts
+                    .iter_mut()
+                    .find(|r| r.id == stored.account_id)
+                    .ok_or_else(wire::invalid)?
+                    .archived = true;
+                index.save(self.vault.as_ref())?;
+                self.vault.delete()?;
+                session.loaded = true;
+                return Ok(());
+            }
             // Register before upgrading the original credential. A failed write
             // leaves its complete legacy session readable and recoverable.
             index.save(self.vault.as_ref())?;

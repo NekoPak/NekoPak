@@ -14,6 +14,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
+import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = {"arm64-v8a": "aarch64-linux-android", "x86_64": "x86_64-linux-android"}
@@ -209,6 +210,160 @@ def sdk_tool(sdk: Path, name: str) -> Path:
     return path
 
 
+def png_pixels(data: bytes) -> tuple[int, int, bytes]:
+    """Decode bounded non-interlaced launcher PNG pixels, ignoring AAPT encoding."""
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("Launcher asset is not a PNG.")
+    offset, compressed, palette, transparency = 8, bytearray(), b"", b""
+    width = height = depth = kind = 0
+    while offset + 12 <= len(data):
+        size = struct.unpack_from(">I", data, offset)[0]
+        tag = data[offset + 4:offset + 8]
+        end = offset + 12 + size
+        if end > len(data):
+            raise ValueError("Truncated launcher PNG.")
+        payload = data[offset + 8:offset + 8 + size]
+        if zlib.crc32(tag + payload) & 0xffffffff != struct.unpack_from(">I", data, offset + 8 + size)[0]:
+            raise ValueError("Launcher PNG CRC mismatch.")
+        if tag == b"IHDR":
+            width, height, depth, kind, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
+            if not 0 < width <= 2048 or not 0 < height <= 2048 or compression or filtering or interlace:
+                raise ValueError("Unsupported launcher PNG dimensions or interlace.")
+        elif tag == b"PLTE":
+            palette = payload
+        elif tag == b"tRNS":
+            transparency = payload
+        elif tag == b"IDAT":
+            compressed.extend(payload)
+        elif tag == b"IEND":
+            break
+        offset = end
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}.get(kind)
+    if channels is None or (depth != 8 and not (kind in (0, 3) and depth in (1, 2, 4))):
+        raise ValueError("Unsupported launcher PNG pixel format.")
+    stride = (width * channels * depth + 7) // 8
+    expected = (stride + 1) * height
+    decoder = zlib.decompressobj()
+    raw = decoder.decompress(bytes(compressed), expected + 1)
+    if len(raw) != expected or not decoder.eof:
+        raise ValueError("Invalid launcher PNG scanlines.")
+    step = max(1, (channels * depth + 7) // 8)
+    previous = bytearray(stride)
+    rgba = bytearray()
+    for row in range(height):
+        start = row * (stride + 1)
+        mode, current = raw[start], bytearray(raw[start + 1:start + 1 + stride])
+        if mode > 4:
+            raise ValueError("Invalid launcher PNG filter.")
+        for index in range(stride):
+            left = current[index - step] if index >= step else 0
+            up = previous[index]
+            corner = previous[index - step] if index >= step else 0
+            estimate = left + up - corner
+            distances = [abs(estimate - value) for value in (left, up, corner)]
+            paeth = (left, up, corner)[distances.index(min(distances))]
+            current[index] = (current[index] + (0, left, up, (left + up) // 2, paeth)[mode]) & 255
+        for x in range(width):
+            if depth < 8:
+                value = (current[x * depth // 8] >> (8 - depth - x * depth % 8)) & ((1 << depth) - 1)
+                values = [value]
+            else:
+                values = current[x * channels:(x + 1) * channels]
+            if kind == 6:
+                pixel = tuple(values)
+            elif kind == 2:
+                transparent = tuple(struct.unpack(">HHH", transparency)) if len(transparency) == 6 else None
+                pixel = (*values, 0 if tuple(values) == transparent else 255)
+            elif kind == 3:
+                index = values[0]
+                if len(palette) < (index + 1) * 3:
+                    raise ValueError("Launcher PNG palette is incomplete.")
+                pixel = (*palette[index * 3:index * 3 + 3], transparency[index] if index < len(transparency) else 255)
+            elif kind == 4:
+                pixel = (values[0], values[0], values[0], values[1])
+            else:
+                value = values[0]
+                grey = value * 255 // ((1 << depth) - 1)
+                transparent = struct.unpack(">H", transparency)[0] if len(transparency) == 2 else None
+                pixel = (grey, grey, grey, 0 if value == transparent else 255)
+            # Optimizers may discard RGB under alpha=0; visual content is equal.
+            rgba.extend(pixel if pixel[3] else (0, 0, 0, 0))
+        previous = current
+    return width, height, bytes(rgba)
+
+
+def resource_table(text: str) -> dict:
+    resources, current = {}, None
+    for line in text.splitlines():
+        header = re.match(r"\s*resource\s+(0x[0-9a-fA-F]+)\s+([^\s]+)", line)
+        if header:
+            current = {"id": header[1].lower(), "name": header[2], "files": {}}
+            resources[header[2]] = current
+        elif current:
+            entry = re.match(r"\s*\(([^)]*)\)\s+\(file\)\s+(\S+)\s+type=(PNG|XML)", line)
+            if entry:
+                current["files"][entry[1]] = {"path": entry[2], "type": entry[3]}
+    return resources
+
+
+def verify_launcher_icons(apk: Path, sdk: Path, root: Path = ROOT) -> dict:
+    """Follow manifest IDs and compiled adaptive references to actual branded pixels."""
+    aapt2 = str(sdk_tool(sdk, "aapt2"))
+    table = resource_table(run(aapt2, "dump", "resources", str(apk)))
+    by_id = {value["id"]: value["name"] for value in table.values()}
+    source = root / "src-tauri/icons/android"
+    pixels_checked, aggregate = 0, hashlib.sha256()
+    with zipfile.ZipFile(apk) as archive:
+        # Validate legacy pixels first: the formerly shipped APK has the same
+        # resource names but Tauri's blue/yellow glyph, not this project's cat.
+        for file in sorted(source.rglob("*.png")):
+            resource_name = f"{file.parent.name.split('-')[0]}/{file.stem}"
+            qualifier = file.parent.name.split("-", 1)[1]
+            definition = table.get(resource_name, {})
+            entry = definition.get("files", {}).get(qualifier)
+            if not entry or entry["type"] != "PNG":
+                raise ValueError(f"APK launcher resource is missing: {resource_name} ({qualifier}).")
+            expected = png_pixels(file.read_bytes())
+            actual = png_pixels(archive.read(entry["path"]))
+            if expected != actual:
+                raise ValueError(f"APK launcher pixels do not match NekoPak brand: {resource_name} ({qualifier}).")
+            aggregate.update(file.relative_to(source).as_posix().encode())
+            aggregate.update(actual[2])
+            pixels_checked += 1
+    manifest = run(aapt2, "dump", "xmltree", "--file", "AndroidManifest.xml", str(apk))
+    for attribute, expected in [("icon", "mipmap/ic_launcher"), ("roundIcon", "mipmap/ic_launcher_round")]:
+        match = re.search(r"android:" + attribute + r"\([^)]*\)=@(0x[0-9a-fA-F]+)", manifest)
+        if not match or by_id.get(match[1].lower()) != expected:
+            raise ValueError(f"Android manifest {attribute} does not resolve to NekoPak's launcher resource.")
+    adaptive_checked = []
+    for api in (26, 33):
+        expected_layers = {"background", "foreground"} | ({"monochrome"} if api == 33 else set())
+        for name in ("ic_launcher", "ic_launcher_round"):
+            source_xml = source / f"mipmap-anydpi-v{api}/{name}.xml"
+            xml = ET.parse(source_xml).getroot()
+            if xml.tag != "adaptive-icon" or {child.tag for child in xml} != expected_layers:
+                raise ValueError(f"Invalid committed API {api} adaptive icon descriptor.")
+            entry = table.get(f"mipmap/{name}", {}).get("files", {}).get(f"anydpi-v{api}")
+            if not entry or entry["type"] != "XML":
+                raise ValueError(f"APK API {api} adaptive launcher is missing: {name}.")
+            tree = run(aapt2, "dump", "xmltree", "--file", entry["path"], str(apk))
+            layers, current = {}, None
+            for line in tree.splitlines():
+                element = re.search(r"E: ([\w-]+)", line)
+                if element:
+                    current = element[1]
+                reference = re.search(r"android:drawable\([^)]*\)=@(0x[0-9a-fA-F]+)", line)
+                if reference and current:
+                    layers[current] = by_id.get(reference[1].lower())
+            expected = {child.tag: child.attrib["{http://schemas.android.com/apk/res/android}drawable"].removeprefix("@") for child in xml}
+            if layers != expected:
+                raise ValueError(f"APK adaptive launcher layer graph differs from source: {name} API {api}.")
+            adaptive_checked.append(f"{name}:api{api}")
+    return {"brand": "NekoPak cat", "manifest_icon": "@mipmap/ic_launcher", "manifest_round_icon": "@mipmap/ic_launcher_round",
+            "png_variants_verified": pixels_checked, "adaptive_variants_verified": adaptive_checked,
+            "pixel_set_sha256": aggregate.hexdigest(), "verification": "Compiled APK resource IDs, adaptive layer graph and decoded RGBA pixels match committed brand resources."}
+
+
 def apk_metadata(apk: Path, sdk: Path, abi: str, profile: str) -> dict:
     signature = run(str(sdk_tool(sdk, "apksigner")), "verify", "--verbose", "--print-certs", str(apk))
     certificate = re.findall(r"Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F:]+)", signature)
@@ -252,7 +407,8 @@ def apk_metadata(apk: Path, sdk: Path, abi: str, profile: str) -> dict:
         license_report = json.loads(notices.read("LICENSE_INVENTORY.json"))
         if license_report.get("license_text_gaps") != []:
             raise ValueError("APK license inventory has unresolved text gaps.")
-    return {"application_id": package[1], "version_code": package[2], "version": package[3],
+    launcher = verify_launcher_icons(apk, sdk)
+    return {"application_id": package[1], "version_code": package[2], "version": package[3], "launcher_icon": launcher,
             "min_sdk": int(minimum[1]), "target_sdk": int(target[1]), "debuggable": is_debug,
             "certificate_sha256": certificate, "signature_verified": True, "zip_alignment_16k": True,
             "native_libraries": libraries, "license_inventory": license_report,

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,94 @@ def copy_kotlin(source: Path, destination: Path) -> list[str]:
         target.write_text(content, encoding="utf-8", newline="\n")
         copied.append(str(file.relative_to(source)))
     return copied
+
+
+def sync_android_icons(root: Path, resources: Path) -> dict:
+    source = root / "src-tauri/icons/android"
+    intended = root.resolve() / "src-tauri/gen/android/app/src/main/res"
+    if resources.resolve() != intended or resources.is_symlink():
+        raise ValueError("Refusing to modify launcher resources outside the generated Android project.")
+    required = [source / bucket / name for bucket in ["mipmap-anydpi-v26", "mipmap-anydpi-v33"]
+                for name in ["ic_launcher.xml", "ic_launcher_round.xml"]]
+    if not all(file.is_file() for file in required):
+        raise ValueError("Committed Android normal/round adaptive icons for API 26 and 33 are missing.")
+    files = sorted(file for file in source.rglob("*") if file.is_file())
+    if any(file.is_symlink() or not file.resolve().is_relative_to(source.resolve()) for file in files):
+        raise ValueError("Android icon sources must be ordinary repository files.")
+    expected = {file.relative_to(source).as_posix() for file in files}
+    removed = []
+    # Tauri init installs its own launcher assets. Delete only stale, explicitly
+    # named launcher files; unrelated application resources are never removed.
+    for file in resources.rglob("ic_launcher*"):
+        if file.is_file() and file.relative_to(resources).as_posix() not in expected:
+            if file.is_symlink() or not file.resolve().is_relative_to(intended):
+                raise ValueError("Refusing to delete a launcher symlink or escaped generated path.")
+            removed.append(file.relative_to(resources).as_posix())
+            file.unlink()
+    for file in files:
+        target = resources / file.relative_to(source)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_symlink() or not target.resolve().is_relative_to(intended):
+            raise ValueError("Refusing to replace an escaped Android resource path.")
+        shutil.copyfile(file, target)
+    return {"source": "src-tauri/icons/android", "files": {
+        file.relative_to(source).as_posix(): hashlib.sha256(file.read_bytes()).hexdigest() for file in files
+    }, "removed_template_resources": sorted(removed)}
+
+
+def capture_generated_icons(root: Path = ROOT) -> None:
+    """Persist Tauri icon output even when its Android special case targets gen/."""
+    destination = root / "src-tauri/icons/android"
+    generated = root / "src-tauri/gen/android/app/src/main/res"
+    source = generated if (generated / "mipmap-mdpi/ic_launcher_monochrome.png").is_file() else destination
+    if not (source / "mipmap-mdpi/ic_launcher_monochrome.png").is_file():
+        raise ValueError("Run Tauri icon with public/brand/app-icons.json before capturing Android resources.")
+    names = ["ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png", "ic_launcher_background.png", "ic_launcher_monochrome.png"]
+    for density in ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]:
+        for name in names:
+            file = source / f"mipmap-{density}" / name
+            if not file.is_file():
+                raise ValueError(f"Incomplete generated Android icon set: {density}/{name}")
+            target = destination / file.relative_to(source)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # Preserve the established legacy tile. Tauri derives legacy icons
+            # by enlarging android_fg, which is composed for the adaptive safe
+            # zone here; using that crop would change the existing brand scale.
+            if name in ("ic_launcher.png", "ic_launcher_round.png") and target.is_file():
+                continue
+            if file.resolve() != target.resolve():
+                shutil.copyfile(file, target)
+    for api in (26, 33):
+        icon = ET.Element("adaptive-icon")
+        for role in ["background", "foreground"] + (["monochrome"] if api == 33 else []):
+            ET.SubElement(icon, role, {f"{{{ANDROID_NS}}}drawable": f"@mipmap/ic_launcher_{role}"})
+        tree = ET.ElementTree(icon)
+        ET.indent(tree, space="  ")
+        directory = destination / f"mipmap-anydpi-v{api}"
+        directory.mkdir(parents=True, exist_ok=True)
+        for name in ["ic_launcher.xml", "ic_launcher_round.xml"]:
+            tree.write(directory / name, encoding="utf-8", xml_declaration=True)
+    # Older single-input generation used a color instead of the branded PNG.
+    obsolete = destination / "values/ic_launcher_background.xml"
+    if obsolete.is_file():
+        if obsolete.is_symlink() or not obsolete.resolve().is_relative_to(destination.resolve()):
+            raise ValueError("Refusing to remove an unexpected old launcher color resource.")
+        obsolete.unlink()
+    print("Persisted Android icon manifest output and API26/API33 normal, round and themed descriptors.")
+
+
+def generate_icons(root: Path = ROOT) -> None:
+    # Depending on whether android init ran, Tauri writes into either gen/res or
+    # the requested output directory. Snapshot existing legacy tiles before the
+    # command so both paths preserve the established non-adaptive mark.
+    icons = root / "src-tauri/icons/android"
+    legacy = {file: file.read_bytes() for file in icons.glob("mipmap-*/*.png")
+              if file.name in ("ic_launcher.png", "ic_launcher_round.png")}
+    subprocess.run(["node", "node_modules/@tauri-apps/cli/tauri.js", "icon",
+                    "public/brand/app-icons.json", "--output", "src-tauri/icons"], cwd=root, check=True)
+    for file, data in legacy.items():
+        file.write_bytes(data)
+    capture_generated_icons(root)
 
 
 def prepare(root: Path = ROOT) -> dict:
@@ -180,6 +269,8 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
     application = tree.getroot().find("application")
     if application is None:
         raise ValueError("Android manifest has no application.")
+    application.set(f"{{{ANDROID_NS}}}icon", "@mipmap/ic_launcher")
+    application.set(f"{{{ANDROID_NS}}}roundIcon", "@mipmap/ic_launcher_round")
     application.set(f"{{{ANDROID_NS}}}allowBackup", "false")
     application.set(f"{{{ANDROID_NS}}}fullBackupContent", "false")
     application.set(f"{{{ANDROID_NS}}}networkSecurityConfig", "@xml/nekopak_network_security")
@@ -206,12 +297,14 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
     tests = copy_kotlin(root / "src-tauri/androidTest", project / "app/src/androidTest/java")
     if (overlays / "res").is_dir():
         shutil.copytree(overlays / "res", resources, dirs_exist_ok=True)
+    launcher = sync_android_icons(root, resources)
     proguard = project / "app/nekopak-jni.pro"
     proguard.write_text('''# Native Rust JNI looks up these application-owned classes by name.
 -keep class io.nekopak.desktop.SessionVault { *; }
 -keep class io.nekopak.desktop.AndroidFiles { *; }
 ''', encoding="utf-8", newline="\n")
     report = {"schema_version": 1, "toolchain": VERSIONS, "host_sources": copied,
+              "launcher_icons": launcher,
               "instrumentation_sources": tests, "upstream_cli": "2.12.4",
               "upstream_commit": "993038c49185307dfc895ab7657d77ca0d5ed7c7",
               "source_handling": "Owned Kotlin and resources copied into ignored generated project; no secrets generated"}
@@ -232,8 +325,16 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
-    print(json.dumps(prepare(), indent=2))
+    command = parser.add_mutually_exclusive_group()
+    command.add_argument("--capture-generated-icons", action="store_true", help="After tauri icon: preserve Android output in the committed resource directory.")
+    command.add_argument("--generate-icons", action="store_true", help="Generate the SVG icon manifest and persist its Android output reproducibly.")
+    options = parser.parse_args()
+    if options.generate_icons:
+        generate_icons()
+    elif options.capture_generated_icons:
+        capture_generated_icons()
+    else:
+        print(json.dumps(prepare(), indent=2))
 
 
 if __name__ == "__main__":

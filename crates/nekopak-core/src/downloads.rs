@@ -357,10 +357,17 @@ impl AppService {
             return Ok(());
         }
         let active = self.store()?.active()?;
-        let Some(task) = active
+        let mut selected = None;
+        for task in active
             .into_iter()
-            .find(|t| t.backend == BackendId::RustCompat && t.kind == TaskKind::Download)
-        else {
+            .filter(|t| t.backend == BackendId::RustCompat && t.kind == TaskKind::Download)
+        {
+            if self.retry_ready(&task)? {
+                selected = Some(task);
+                break;
+            }
+        }
+        let Some(task) = selected else {
             return Ok(());
         };
         let result = self.step_native_download(&task).await;
@@ -383,6 +390,9 @@ impl AppService {
             Err(e) => {
                 let current = self.store()?.get(&task.id)?;
                 if current.revision == task.revision {
+                    if self.schedule_transfer_retry(&current, e.clone())? {
+                        return Ok(());
+                    }
                     let state = if e.code == ErrorCode::AuthExpired
                         && current.state != TaskState::Verifying
                     {
@@ -416,7 +426,7 @@ impl AppService {
                 "请登录创建此任务的账号后继续下载。",
             ));
         }
-        if task.state == TaskState::Queued {
+        if matches!(task.state, TaskState::Queued | TaskState::Retrying) {
             let _gate = self
                 .download_gate
                 .lock()
@@ -480,6 +490,7 @@ impl AppService {
             let updated = self
                 .store()?
                 .update(task, TaskState::Completed, download.total, None)?;
+            self.clear_transfer_retry(&task.id)?;
             self.verified_downloads
                 .lock()
                 .map_err(|_| fault(ErrorCode::Internal, "下载校验状态不可用。"))?
@@ -613,6 +624,9 @@ impl AppService {
             transferred,
             None,
         )?;
+        if transferred > start {
+            self.clear_transfer_retry(&task.id)?;
+        }
         self.verified_downloads
             .lock()
             .map_err(|_| fault(ErrorCode::Internal, "下载校验状态不可用。"))?
@@ -904,6 +918,8 @@ mod tests {
         bytes: Vec<u8>,
         scope: std::sync::Mutex<String>,
         fail_at: AtomicUsize,
+        changed: std::sync::atomic::AtomicBool,
+        switch_on_status: AtomicUsize,
     }
     #[async_trait]
     impl ProviderPort for ByteProvider {
@@ -931,6 +947,15 @@ mod tests {
             unreachable!()
         }
         async fn auth_status(&self) -> Result<AuthState, ClientError> {
+            if self
+                .switch_on_status
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
+                    remaining.checked_sub(1)
+                })
+                .is_ok_and(|remaining| remaining == 1)
+            {
+                *self.scope.lock().unwrap() = "account-b".into();
+            }
             Ok(AuthState {
                 backend: self.id(),
                 authenticated: true,
@@ -966,13 +991,16 @@ mod tests {
         async fn download_chunk(
             &self,
             _: &str,
-            _: &str,
+            identity: &str,
             scope: &str,
             start: u64,
             length: u64,
             observer: nekopak_provider::DownloadObserver,
         ) -> Result<DownloadChunk, ClientError> {
             assert_eq!(scope, self.account_scope().await?);
+            if self.changed.load(Ordering::Relaxed) || identity != "fixed-file-version" {
+                return Err(fault(ErrorCode::IntegrityFailed, "测试来源已改变"));
+            }
             if start as usize == self.fail_at.load(Ordering::Relaxed) {
                 return Err(fault(ErrorCode::TransientNetwork, "测试连接中断"));
             }
@@ -989,6 +1017,8 @@ mod tests {
             bytes: (0..size).map(|i| (i % 251) as u8).collect(),
             scope: std::sync::Mutex::new("account-a".into()),
             fail_at: AtomicUsize::new(usize::MAX),
+            changed: std::sync::atomic::AtomicBool::new(false),
+            switch_on_status: AtomicUsize::new(0),
         })
     }
     async fn setup(size: usize) -> (tempfile::TempDir, Arc<ByteProvider>, AppService, TaskRef) {
@@ -1015,6 +1045,113 @@ mod tests {
         }
         panic!("download did not finish: {:?}", app.task(id).unwrap());
     }
+    #[tokio::test]
+    async fn native_history_removal_preserves_completed_bytes_receipts_and_account_ownership() {
+        let (directory, provider, app, task) = setup(127).await;
+        let ctx = RequestContext::default();
+        finish(&app, &task.task_id).await;
+        *provider.scope.lock().unwrap() = "account-b".into();
+        assert_eq!(
+            app.transfer_forget(&task.task_id, &ctx)
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::AuthExpired
+        );
+        assert_eq!(app.transfer_clear_finished(&ctx).await.unwrap(), 0);
+        *provider.scope.lock().unwrap() = "account-a".into();
+        app.transfer_forget(&task.task_id, &ctx).await.unwrap();
+        assert!(app
+            .visible_transfers(None, None, &ctx)
+            .await
+            .unwrap()
+            .items
+            .is_empty());
+        assert_eq!(
+            std::fs::read(directory.path().join("真实下载样本.bin")).unwrap(),
+            provider.bytes
+        );
+        drop(app);
+        let app = AppService::with_provider(&directory.path().join("tasks.db"), provider);
+        assert!(app
+            .visible_transfers(None, None, &ctx)
+            .await
+            .unwrap()
+            .items
+            .is_empty());
+        assert_eq!(
+            app.transfer_start(
+                "file-1",
+                directory.path().to_str().unwrap(),
+                Some("user-intent"),
+                &ctx
+            )
+            .await
+            .unwrap()
+            .task_id,
+            task.task_id
+        );
+        assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Completed);
+    }
+
+    #[tokio::test]
+    async fn corrupt_history_marker_is_not_overwritten_by_a_remove_request() {
+        let (_directory, _provider, app, task) = setup(127).await;
+        app.transfer_control(&task.task_id, TransferAction::Cancel)
+            .unwrap();
+        app.records()
+            .unwrap()
+            .record_put("device", "hidden-transfer", &task.task_id, "null")
+            .unwrap();
+        assert_eq!(
+            app.transfer_forget(&task.task_id, &RequestContext::default())
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::IntegrityFailed
+        );
+        assert_eq!(
+            app.records()
+                .unwrap()
+                .record_get("device", "hidden-transfer", &task.task_id)
+                .unwrap()
+                .as_deref(),
+            Some("null")
+        );
+    }
+
+    #[tokio::test]
+    async fn bulk_history_cleanup_stops_if_the_account_changes_between_pages() {
+        let (_directory, provider, app, first) = setup(1).await;
+        app.transfer_control(&first.task_id, TransferAction::Cancel)
+            .unwrap();
+        let mut download = app.download_record(&first.task_id).unwrap();
+        for _ in 0..499 {
+            let mut task = new_task("file-1".into(), TaskKind::Download, Some(DecimalU64(1)));
+            task.backend = BackendId::RustCompat;
+            task.simulated = false;
+            task.state = TaskState::Cancelled;
+            app.save_download(&task.id, &download).unwrap();
+            app.store().unwrap().insert(task, None).unwrap();
+        }
+        download.scope = "account-b".into();
+        let mut other = new_task("file-1".into(), TaskKind::Download, Some(DecimalU64(1)));
+        other.backend = BackendId::RustCompat;
+        other.simulated = false;
+        other.state = TaskState::Cancelled;
+        app.save_download(&other.id, &download).unwrap();
+        let other = app.store().unwrap().insert(other, None).unwrap();
+        provider.switch_on_status.store(2, Ordering::SeqCst);
+        assert_eq!(
+            app.transfer_clear_finished(&RequestContext::default())
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::AuthExpired
+        );
+        assert!(!app.transfer_history_hidden(&other.id).unwrap());
+    }
+
     #[tokio::test]
     async fn completed_export_requires_finished_current_account_and_unchanged_length() {
         let (directory, provider, app, task) = setup(127).await;
@@ -1081,10 +1218,10 @@ mod tests {
         app.tick().await.unwrap();
         provider.fail_at.store(BLOCK as usize, Ordering::Relaxed);
         app.tick().await.unwrap();
-        assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Failed);
+        assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Retrying);
         provider.fail_at.store(usize::MAX, Ordering::Relaxed);
-        app.transfer_control(&task.task_id, TransferAction::Retry)
-            .unwrap();
+        // The scheduler wakes a safe read without a user pressing retry.
+        app.retry_waiting_now().unwrap();
         app.tick().await.unwrap();
         drop(app);
         let app = AppService::with_provider(&directory.path().join("tasks.db"), provider.clone());
@@ -1105,6 +1242,72 @@ mod tests {
             )
             .await
             .is_err());
+    }
+
+    #[tokio::test]
+    async fn automatic_retry_keeps_verified_bytes_and_rejects_changed_source_or_account() {
+        for change_account in [false, true] {
+            let (directory, provider, app, task) = setup(BLOCK as usize * 2 + 31).await;
+            app.tick().await.unwrap();
+            app.tick().await.unwrap();
+            provider.fail_at.store(BLOCK as usize, Ordering::Relaxed);
+            app.tick().await.unwrap();
+            assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Retrying);
+            assert_eq!(app.task(&task.task_id).unwrap().transferred_bytes.0, BLOCK);
+            provider.fail_at.store(usize::MAX, Ordering::Relaxed);
+            if change_account {
+                *provider.scope.lock().unwrap() = "account-b".into();
+            } else {
+                provider.changed.store(true, Ordering::Relaxed);
+            }
+            app.retry_waiting_now().unwrap();
+            app.tick().await.unwrap();
+            app.tick().await.unwrap();
+            let current = app.task(&task.task_id).unwrap();
+            assert_eq!(
+                current.state,
+                if change_account {
+                    TaskState::Paused
+                } else {
+                    TaskState::Failed
+                }
+            );
+            assert_eq!(current.transferred_bytes.0, BLOCK);
+            assert!(!directory.path().join("真实下载样本.bin").exists());
+        }
+    }
+
+    #[tokio::test]
+    async fn restored_network_automatically_finishes_after_due_time_without_manual_control() {
+        let (directory, provider, app, task) = setup(BLOCK as usize + 31).await;
+        app.tick().await.unwrap();
+        app.tick().await.unwrap();
+        provider.fail_at.store(BLOCK as usize, Ordering::Relaxed);
+        app.tick().await.unwrap();
+        assert_eq!(app.task(&task.task_id).unwrap().state, TaskState::Retrying);
+        provider.fail_at.store(usize::MAX, Ordering::Relaxed);
+        // Advancing the persisted clock boundary avoids sleeping and exercises
+        // the ordinary scheduler; no retry/resume/reconnect action is invoked.
+        app.records()
+            .unwrap()
+            .record_put(
+                "transfer-retry",
+                "task",
+                &task.task_id,
+                r#"{"attempts":1,"next_at":1}"#,
+            )
+            .unwrap();
+        finish(&app, &task.task_id).await;
+        assert_eq!(
+            std::fs::read(directory.path().join("真实下载样本.bin")).unwrap(),
+            provider.bytes
+        );
+        assert!(app
+            .records()
+            .unwrap()
+            .record_get("transfer-retry", "task", &task.task_id)
+            .unwrap()
+            .is_none());
     }
 
     #[tokio::test]

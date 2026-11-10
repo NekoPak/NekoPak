@@ -18,6 +18,8 @@ import { copyPaths, cutOrCopy, downloadEntries, entryMenu, mutate, renameEntry, 
 import { openBatchRename } from "./lazy";
 import { isStarred } from "../lib/contract-proposals";
 import { useRefreshKey } from "./common";
+import { Icon } from "../components/Icon";
+import { navigateHistory } from "../state/route";
 
 /** Resolve "/a/b" locations for result rows, cached per parent id. */
 function useLocations(items: readonly RemoteEntry[], epoch: number) {
@@ -84,9 +86,9 @@ function useSort(initial: SortSpec): [SortSpec, (k: SortKey) => void] {
   return [sort, (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "name" ? "asc" : "desc" }))];
 }
 
-function ListShell({ title, meta, commands, caption, children }: { title: string; meta?: preact.ComponentChildren; commands?: preact.ComponentChildren; caption?: preact.ComponentChildren; children: preact.ComponentChildren }) {
+function ListShell({ title, meta, commands, caption, children, mobileHeader }: { title: string; meta?: preact.ComponentChildren; commands?: preact.ComponentChildren; caption?: preact.ComponentChildren; children: preact.ComponentChildren; mobileHeader?: preact.ComponentChildren }) {
   return (
-    <PageFrame label={title} side caption={caption ?? <><NavButtons /><PageTitle>{title}</PageTitle></>}
+    <PageFrame label={title} side mobileHeader={mobileHeader} caption={caption ?? <><NavButtons /><PageTitle>{title}</PageTitle></>}
       commands={commands || meta ? <>{commands ?? <span />}<div class="cmd-group cmd-end">{meta}</div></> : undefined}>
       {children}
     </PageFrame>
@@ -175,6 +177,7 @@ export function SearchPage({ query }: { query: string }) {
   const { st, run, loadMore, more } = useFlatList((c) => api.filesSearch(query, c), [query, epoch, refresh]);
   return (
     <ListShell title={tx("搜索“{0}”", query)}
+      mobileHeader={<><header class="mobile-page-header"><button type="button" class="mobile-icon-button" aria-label={tr("返回")} onClick={()=>navigateHistory(-1)}><Icon name="arrowBack"/></button><h1>{tr("搜索")}</h1></header><div class="mobile-search"><CaptionSearch initial={query} onClose={()=>navigate({page:"files",folder:ROOT_ID})}/></div></>}
       caption={<><NavButtons /><h1 id="page-title" class="sr-only">{tx("搜索“{0}”", query)}</h1><CaptionSearch initial={query} onClose={() => navigate({ page: "files", folder: ROOT_ID })} /></>}
       meta={st.phase === "ready" ? <span class="cmd-meta">{groupDigits(String(st.items.length))}{st.next ? "+" : ""} {tr("个结果")}</span> : null}>
       {!g.ok && signedIn() ? <div class="canvas-pad"><div class="inline-note warn">{g.reason}</div></div> : null}
