@@ -1,5 +1,9 @@
 # Run NekoPak desktop integration
 
+For installation and everyday use, start with the Chinese [User guide](USER_GUIDE.md).
+For the current UI and screenshot provenance, see [Screenshots](SCREENSHOTS.md).
+This page covers source builds, storage, checks and packaging.
+
 Current integrated capabilities and actual tests: [DESKTOP_INTEGRATION_REPORT.md](DESKTOP_INTEGRATION_REPORT.md).
 Windows packaging and installer lifecycle are verified. Android instructions and acceptance are in
 [ANDROID.md](ANDROID.md); Linux/macOS desktop acceptance remains pending. Current connections may require
@@ -99,7 +103,7 @@ Protocol/client configuration is the developer's responsibility. The user perfor
 real sign-in and human verification in NekoPak once a testable build is delivered;
 the user is not expected to discover client parameters or provide credentials in chat.
 Details and live verification gaps: API_ADAPTER.md. API origins are fixed HTTPS,
-not environment-configurable. This remains a login test preview, not a feature-complete release.
+not environment-configurable. This remains an integration preview; full feature parity is pending.
 
 For the offline persistent Rust Mock instead:
 
@@ -158,7 +162,7 @@ credential only; it never enumerates or reads user credentials:
 cargo test -p nekopak-provider-native windows_vault_roundtrip_and_delete -- --ignored
 ```
 
-Portable package: `dist/NekoPak-0.1.2-windows-x64-portable.zip`. It includes the binary,
+Portable package: `dist/NekoPak-0.1.3-windows-x64-portable.zip`. It includes the binary,
 notices, full dependency license inventory and current usage notes, not historical
 CLI installation instructions. `dist/size-report.json` records build/source hashes,
 bytes, runtime requirements and license gaps. No driver, media runtime, browser,

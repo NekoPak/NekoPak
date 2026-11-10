@@ -1,151 +1,125 @@
+<p align="center">
+  <img src="public/brand/app-icon.svg" width="80" height="80" alt="NekoPak 猫箱图标">
+</p>
+
 # NekoPak
 
-> A lightweight, Rust-powered PikPak client for desktop and Android.
->
-> 独立社区项目，非 PikPak 官方客户端，与 PikPak 服务提供者无隶属关系。
+轻量的 PikPak 桌面与 Android 客户端。用 Rust 处理文件、传输和任务恢复，以 Tauri + Preact 提供桌面窗口和独立手机界面。
 
-**状态：** `Pre-alpha / Desktop + Android integration`（Rust 核心与手机宿主已接入；真实服务与全部上游功能仍逐项验收）
-**文档基线：** 2026-11-10 · `0.1.3` 预览
-**平台：** Windows x64 已通过自动构建、签名清单及安装／卸载测试。Android 已接入独立宿主、Keystore 凭据库、小屏界面和 APK 构建流程，完整验收状态见 [Android 说明](docs/ANDROID.md)。Linux / macOS 已有核心 CI，尚未完成桌面验收。
+*A lightweight, Rust-powered PikPak client for Windows and Android.*
 
-**验收结论：** Windows 打包通过不等于产品功能验收完成。`python scripts/check_parity.py --release` 当前仍拒绝功能对齐发布，24 组必需能力均未完成全部验收。真实账号由用户在应用内验证。
+[下载 0.1.3 预览版](https://github.com/NekoPak/NikoPak/releases/tag/v0.1.3) · [使用指南](docs/USER_GUIDE.md) · [更多截图](docs/SCREENSHOTS.md) · [更新记录](CHANGELOG.md) · [问题反馈](https://github.com/NekoPak/NikoPak/issues)
 
-NekoPak 的目标不是再包装一个网页，而是构建具有原生 Rust 核心的轻量云盘管理工具：文件管理、云下载、分段下载、可靠同步、按需缓存、可选的文件系统挂载。UI 采用 **Tauri v2 + 轻量 TypeScript/CSS**，利用 Windows 已有 WebView2；不捆绑 JVM、Chromium、全套 mpv/FFmpeg、Rclone 或 WinFsp。
+> **当前为 Pre-alpha 预览。** Windows x64 与 Android ARM64 已有可安装包；真实账号、物理手机和完整上游功能仍逐项验收。NekoPak 是独立社区项目，与 PikPak 官方无隶属关系。
 
-## 设计承诺
+## 下载与安装
 
-**用户确认的最终门槛：功能不少于上游，包含视频指定片段下载。** 以
-[功能对齐基线](docs/UPSTREAM_PARITY.md)和 [逐项清单](docs/parity-manifest.json)
-验收；当前预览远未完成对齐。主连接为 Rust 直接调用 PikPak 客户端接口的
-`rust_compat`，开发与集成状态见 [API 接入说明](docs/API_ADAPTER.md)。
+- **Windows 安装版**：[Setup.exe · 4.07 MiB](https://github.com/NekoPak/NikoPak/releases/download/v0.1.3/NekoPak-0.1.3-windows-x64-setup.exe)。当前用户安装，带快捷方式和卸载入口。
+- **Windows 便携版**：[ZIP · 7.00 MiB](https://github.com/NekoPak/NikoPak/releases/download/v0.1.3/NekoPak-0.1.3-windows-x64-portable.zip)。完整解压，运行 `NekoPak/nekopak.exe`，保留同目录许可文件。
+- **Android ARM64**：[APK · 16.84 MiB](https://github.com/NekoPak/NikoPak/releases/download/v0.1.3/NekoPak-0.1.3-android-arm64-v8a.apk)。Android 7.0 / API 24 起，使用系统 Android WebView。
 
-1. **轻量而可靠：** Windows x64 Lite 的压缩发布包以 `≤ 5 MiB` 为**挑战目标**，绝非验收前的性能承诺；优先保证安全、数据完整性与下载可靠性。
-2. **直接 API 接入：** 彻底停用官方 CLI 的探测、安装引导和子进程适配；普通文件浏览与下载走 Rust 核心。使用社区客户端协议不等于获得官方公开 API 承诺。代码、登录标识和能力都需单独核验。
-3. **默认不破坏数据：** 先只读浏览和单向备份，再做双向同步。远端不可达、令牌失效、元数据不全时禁止判定文件“已删除”。
-4. **可选组件、完整能力：** 媒体处理和外部后端可按需配置，只有检测通过才启用；最终上游功能对齐版不能用“可选”或小包目标删除媒体、片段、分享等已发布功能。Cloud Files/WinFsp 分别验收。
-5. **公开致谢：** README 及 `THIRD_PARTY_NOTICES.md` 明确注明参考、复用、外部依赖的来源和各自许可证。
-6. **凭据保护：** 应用内邮箱密码登录；密码仅用于当前请求，结束即清除。Windows 会话存系统凭据管理器；Android 使用系统 Keystore 密钥加密后存入不备份的私有目录。不保存明文到配置或任务库。不修改系统 Hosts、不绕过账号风控；高级网络功能默认关闭。
+Windows 需要 x64 系统和 Microsoft Edge WebView2；安装版可在缺少 WebView2 时下载微软引导器。Linux / macOS 目前完成核心 CI，尚无经过桌面验收的发行包。上述大小来自 [0.1.3 的实际构建](docs/UPDATES_PROGRESS_REPORT.md)，不含系统运行时。
 
-## 文档导航
+**从 0.1.2 或更早版本升级，需要手动安装 0.1.3 一次。** 后续在 Windows **设置 → 关于**、Android **我的 → 关于 → 应用更新**检查新版本。Android 直接覆盖安装原签名版本即可；卸载会删除应用私有下载和登录数据。
 
-| 文件 | 用途 | 负责人 |
-|---|---|---|
-| [`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md) | 两位 Agent 的仓库级开发约定 | 双方 |
-| [`docs/01_PRODUCT_REQUIREMENTS.md`](docs/01_PRODUCT_REQUIREMENTS.md) | 产品规格、功能优先级、非目标、验收 | 双方 |
-| [`docs/02_ARCHITECTURE.md`](docs/02_ARCHITECTURE.md) | Rust 分层、后端策略、同步与挂载、轻量化 | Astra |
-| [`docs/03_CONTRACTS.md`](docs/03_CONTRACTS.md) | Rust ↔ Tauri ↔ 前端稳定接口 | 双方先冻结 |
-| [`docs/04_SOURCES_LICENSES.md`](docs/04_SOURCES_LICENSES.md) | **完整参考项目、许可证、致谢义务** | 双方 |
-| [`docs/05_ROADMAP_AND_TESTS.md`](docs/05_ROADMAP_AND_TESTS.md) | 分阶段实施、验收与体积基准 | 双方 |
-| [`docs/06_SECURITY_AND_COMPAT.md`](docs/06_SECURITY_AND_COMPAT.md) | 授权、配额、隐私、实验性兼容 | Astra |
-| [`docs/07_UI_SPEC.md`](docs/07_UI_SPEC.md) | 页面、组件、交互、设计令牌 | Opus 5.5 |
-| [`docs/08_RESEARCH_AND_DECISIONS.md`](docs/08_RESEARCH_AND_DECISIONS.md) | 已证实的事实、待查问题、决策记录 | 双方 |
-| [`docs/API_ADAPTER.md`](docs/API_ADAPTER.md) / [`docs/BACKEND_API_ADAPTER.md`](docs/BACKEND_API_ADAPTER.md) | 当前直连实现与 v3 接口交接资料 | 双方 |
-| [`prompts/ASTRA_BACKEND.md`](prompts/ASTRA_BACKEND.md) | 可直接交给 Astra 的任务指令 | Astra |
-| [`prompts/OPUS_FRONTEND.md`](prompts/OPUS_FRONTEND.md) | 可直接交给 Opus 5.5 的任务指令 | Opus 5.5 |
-| [`templates/THIRD_PARTY_NOTICES.md`](templates/THIRD_PARTY_NOTICES.md) | 项目公示用来源与署名模板 | 发布前维护 |
+## 界面预览
 
-## 建议开发顺序
+桌面文件浏览支持路径导航、排序、搜索、多标签、右键操作及明暗主题。下图使用应用内置的离线演示数据，保留了演示提示。
 
-- **Gate 0:** 先明确源码路径：若在 Piko Fork 上改写并沿用其代码，遵守其 AGPL-3.0-or-later；若独立建仓，仅复用 Apache/MIT 许可代码且未引入 AGPL 代码，可考虑 Apache-2.0。授权最终须基于**实际复用代码**决定。
-- **Gate 1:** 先冻结 `docs/03_CONTRACTS.md` 的类型、错误码和事件。Astra 建立可运行的 Rust Mock Backend，Opus 5.5 对 Mock 开发 UI。双方无需等待真实账号。
-- **Gate 2:** 实现最小实用闭环：授权/登录、文件列表、磁力云下载任务、下载进度、暂停恢复、断电恢复。
-- **Gate 3:** 单向同步、预览差异、冲突与配额；之后双向同步与 Cloud Files。
-- **Gate 4:** 真正的虚拟盘符（Windows WinFsp / Linux FUSE），作为可选模块和独立验收项目。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/desktop-files-dark.png">
+  <img src="docs/screenshots/readme/desktop-files-light.png" alt="NekoPak 桌面文件浏览：侧栏、路径导航和文件列表；离线演示数据" width="1440">
+</picture>
 
-## 重要边界
+手机使用 **文件／传输／我的** 底部导航。单击打开文件夹，长按多选；下载卡片同时显示字节、百分比和速度。
 
-- NekoPak 不是 PikPak 官方授权的软件；客户端接口可能变化，真实账号可用性必须实测。默认构建内置官网公开的 Web 登录标识与协议版本，不内置 client_secret、用户凭据或 Android 身份。
-- 配额必须按实际连接方式、账号和服务响应区分。Connected Apps 的公开规则仅适用于该类连接，不能未经验证直接套到客户端协议，也不能因更换接入方式宣称无限额。
-- 文件系统挂载与“同步文件夹”是两种不同机制。Windows Cloud Files API 提供同步根目录和占位文件，**不等于独立的 `P:` 盘符**；WinFsp 类驱动才能提供通常意义的独立挂载盘。
-- 任何性能、体积指标必须附构建 commit、配置、平台、测量步骤和测试数据。
+<p>
+  <img src="docs/screenshots/android/phone-files-fixture-390.png" alt="手机文件页：触屏文件列表；浏览器测试样例" width="30%">
+  <img src="docs/screenshots/android/progress-native-0.1.3.png" alt="Android 原生传输页：实际接收进度与速度；本地测试服务" width="30%">
+  <img src="docs/screenshots/android/release-public-update-0.1.3.png" alt="Android 0.1.3 发行版：关于页读取公开更新源" width="30%">
+</p>
 
-## 主要参考链接
+从左到右：手机布局样例、Android 原生下载测试、已签名发行版检查更新。后两张来自隔离模拟器；截图不包含真实账号，也不代表真实服务网速。[查看截图说明与更多页面 →](docs/SCREENSHOTS.md)
 
-- Piko: <https://github.com/NihilDigit/piko>
-- pikpaktui: <https://github.com/Bengerthelorf/pikpaktui>
-- pikpakcli 协议研究: <https://github.com/52funny/pikpakcli>
-- PikPak Connected Apps FAQ: <https://mypikpak.com/en-US/connect-apps-faq>
-- Rclone PikPak: <https://rclone.org/pikpak/>
-- Tauri Windows WebView2: <https://tauri.app/zh-cn/distribute/windows-installer/>
+## 当前功能
 
-进一步参考请见 `docs/04_SOURCES_LICENSES.md`。**未经许可证核查请勿复制第三方源码。**
+以下功能已接入代码并完成相应的离线或原生测试；服务端结果、账号权限与格式兼容性以实际使用为准。
 
-## 当前后端交付
+- **账号与文件**：应用内邮箱密码登录、记住账号、会话恢复、多账号切换；文件夹浏览、分页搜索、最近、星标、回收站和基础文件操作。
+- **本地下载**：原文件下载、暂停／继续、重启后校验续传、限速、同名目标保护；进度按实际接收字节刷新，断点按已校验落盘字节恢复。
+- **云下载**：链接／磁力任务，以及 `.torrent` 文件选择、预览和确认提交。种子支持 v1 与含 v1 信息的混合格式，最大 10 MiB；纯 v2 暂不支持。
+- **媒体与片段**：视频预览、起止时间选择、关键帧对齐和原文件／可用画质选择；原生媒体核心处理支持范围内的 MP4、MKV、TS。具体编码、容器和平台限制见[媒体说明](crates/nekopak-media/README.md)。
+- **桌面整理工具**：目录上传、批量重命名、重复文件检查、分享、归档、本地只读映射和同步已接入。Cloud Files 与可选 WinFsp 分别检测能力；驱动、真实服务及复杂操作的验收范围见[集成记录](docs/DESKTOP_INTEGRATION_REPORT.md)。
+- **应用体验**：简体中文、繁体中文、英语、日语、韩语；明暗主题；Windows 托盘与自启动；Android 系统文件导出和软键盘避让。
+- **应用更新**：公开预览通道、更新说明、下载／取消、确认安装，可选启动检查。清单签名、包长度与 SHA256 验证通过后才能安装。
 
-运行与打包见 [docs/RUNNING.md](docs/RUNNING.md)，实现边界与前端交接见
-[docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md)。Rust Core 可独立测试，
-Tauri 使用导入的 v3 产品界面，默认主连接为 `rust_compat`，没有后端选择或 CLI 安装页。
-邮箱密码、Windows 会话保存/刷新/退出、网盘独立 CAPTCHA 与人工验证恢复已实现。
-目录、最近、星标、回收站、搜索分页、分享列表、基础文件修改、容量/额度查询已接入 Rust。
-原文件下载写入实际字节，支持暂停、恢复、重启后校验续传、限速与不覆盖同名目标。
-默认登录无需配置环境变量；真实账号和验证码由用户在应用内操作。用户已反馈前版能建立
-会话但网盘验证受阻，本版针对该故障补齐 DRIVE 协议与恢复入口，不因此声称真实目录验收。
-后续已接云任务、上传、原生媒体选段/转封装、分享与归档、同步、Cloud Files及WinFsp适配。
-实际验证范围和仍需验收的格式/服务/平台边界见 [整体集成记录](docs/DESKTOP_INTEGRATION_REPORT.md)。
+### 手机当前限制
+
+Android 本地下载保存在应用私有目录，完成后使用 **导出文件**保存到系统选择的位置。**切到后台或锁屏会暂停本地传输，返回后需手动继续**；云端任务继续由服务端处理。
+
+Android 普通上传、共享目录同步、本地映射、外部播放器和前台持续下载服务尚未完成。Windows 托盘、Cloud Files 和 WinFsp 不适用于手机。完整平台说明见 [Android 文档](docs/ANDROID.md)。
+
+## 从这里开始
+
+1. 安装对应平台的包，在 NekoPak 中输入自己的账号。需要人工验证时，按应用提示完成后返回继续；无需配置开发者参数。
+2. Windows 在 **设置 → 下载与传输**选择下载目录；Android 下载完成后从任务卡片或菜单导出文件。
+3. 点击 **添加链接**，粘贴链接或切到 **种子文件**。检查目标目录与预览内容，确认后提交云下载。
+4. 在传输页查看任务。云下载保存到云盘，本地下载保存到设备；提交成功与下载完成是不同状态。
+
+详细操作、网络重连、版本升级和常见问题见[使用指南](docs/USER_GUIDE.md)。
+
+## 0.1.3 带来了什么
+
+- 接入可实际使用的公开更新源，支持 Windows 与 Android 的确认安装流程。
+- 修复“有下载速度但进度条不动”：当前网络块尚未落盘时，界面也能显示已收到的真实字节。
+- 包含 0.1.2 的吞吐、种子导入和手机键盘修复。相同本地 16 MiB 测试由约 9.26 秒降至 1.08 秒，文件 SHA256 一致；这不是实际服务网速承诺。
+
+[完整更新记录](CHANGELOG.md) · [更新与进度验收](docs/UPDATES_PROGRESS_REPORT.md) · [速度、种子及键盘修复](docs/SPEED_TORRENT_IME_REPORT.md)
+
+## 数据与安全
+
+密码仅用于当前请求。Windows 会话保存在系统凭据管理器，Android 使用 Keystore 密钥加密会话；不会把密码或令牌写入普通配置和任务日志。损坏任务库会报错并保留，不静默重置。
+
+普通文件浏览与下载由 Rust 直接访问社区客户端协议，无 PikPak CLI 安装或回退路径。可配置应用内代理，网络增强默认关闭，不修改系统 Hosts。配额以账号与服务响应为准。
+
+发行包包含许可证与依赖清单。更新使用 NekoPak 自己的 Ed25519 签名协议，Android 另有 APK 签名；**Windows 发布清单签名不等于 Authenticode 证书**。核验方法见[发布与签名](docs/RELEASE_SIGNING.md)。
+
+## 开发与验证
+
+Windows 开发需要 Rust 1.98+（MSVC）、Visual Studio C++ 工具、Windows SDK、Node.js 22+ 和 WebView2。Python 3.12+ 用于打包。
 
 ```powershell
 npm ci
-cargo test --workspace --locked
-npm run check
-npm test
 npm run build
 cargo run -p nekopak-app --locked
 ```
 
-浏览器 `npm run dev` 使用离线演示数据；桌面离线验收须显式设置
-`$env:NEKOPAK_BACKEND = 'mock'`。桌面不会回退到浏览器 Mock。
-当前 Windows 发行形式为 `dist/NekoPak-0.1.3-windows-x64-portable.zip`（解压为完整多文件目录）
-和 `dist/NekoPak-0.1.3-windows-x64-setup.exe`（安装/快捷方式/卸载）。目录中的
-`NekoPak/nekopak.exe` 是程序入口；无需单独复制程序以外的系统依赖。
-本轮目录选择、速度、语言、网络和托盘记录见
-[DESKTOP_UX_FIX_REPORT.md](docs/DESKTOP_UX_FIX_REPORT.md)。此前文件、登录与迁移记录保留在
-DRIVE_FILES_FIX_REPORT.md、LOGIN_FIX_REPORT.md 和 API_MIGRATION_REPORT.md。
+`npm run dev` 打开的是离线浏览器演示，不能登录真实账号。原生运行、模拟后端和打包命令见 [RUNNING.md](docs/RUNNING.md)；Android 使用单独的 [SDK / NDK 构建流程](docs/ANDROID.md)。
 
-本轮选择独立 Rust 仓库、MIT 许可。参考项目与实际依赖分别记录于
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。Bern 作为协议/引擎/宿主分层参考，
-没有复制其源码，也没有引入 Bern 运行时。
+```powershell
+cargo fmt --all --check
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+npm test
+npm run build
+python scripts/check_parity.py
+```
 
-发布仓库：[NekoPak/NikoPak](https://github.com/NekoPak/NikoPak)。持续集成与发布签名方案见
-[RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md)。私钥只保存在受保护的本机备份和 GitHub Actions Secrets，源码只包含公钥和工作流。
-当前可下载的[0.1.3预览版](https://github.com/NekoPak/NikoPak/releases/tag/v0.1.3)提供Windows
-安装器／便携ZIP和Android ARM64 APK，已发布签名更新源。
+0.1.3 已记录 Rust 194 项通过、20 项显式跳过，前端及接口 124 项通过、桌面浏览器 57 项、手机布局 12 项、Android 原生 17 项；更新原生测试两端各 7 项。另完成最终包验签、Windows 安装／卸载、APK 覆盖升级与冷启动、公开更新源检查。[测试证据](docs/evidence/updates-checks.json) · [签名构建](https://github.com/NekoPak/NikoPak/actions/runs/42836719725)
 
-## Android 构建与当前范围
+最终目标保留上游已发布功能，包括视频指定片段下载。**当前 24 组必需能力尚未全部验收**，预览发布不等于功能对齐完成。Windows 稳定性、其他平台适配和安全同步持续按[路线图](docs/05_ROADMAP_AND_TESTS.md)及[功能清单](docs/UPSTREAM_PARITY.md)推进。Windows Lite 的 ≤5 MiB 压缩目标仍是挑战值，不能据此牺牲 TLS、完整性或持久化。
 
-Android 7.0 / API24 起，首个手机发行目标为 ARM64；x86_64 用于模拟器验收。
-共享 Rust 登录、文件、云任务和媒体核心，使用系统 Android WebView，不捆绑浏览器或 JVM。
-APK 内包含原生代码、Android 宿主和第三方许可材料；手机包大小不套用 Windows Lite 的挑战值。
+## 文档与反馈
 
-`0.1.3` 在 **关于 → 应用更新** 接入公开预览版检查、更新说明、下载／取消与确认安装；可选
-启动时检查，默认关闭。Rust验证发布签名、长度和SHA256；Android交给系统安装器并保持原
-APK签名，Windows打开安装向导。`0.1.2`及更早版本需手动安装本版一次。普通下载进度条
-改用当前块已接收的真实字节，手机同时显示百分比和速度；断点恢复继续以校验落盘字节为准。
-实现、边界、测试与发布证据见 [0.1.3更新与进度记录](docs/UPDATES_PROGRESS_REPORT.md)。
+- [使用指南](docs/USER_GUIDE.md)：安装、登录、下载、种子、更新与常见问题。
+- [截图集](docs/SCREENSHOTS.md)：桌面明暗主题、任务、视频选段和 Android 页面。
+- [文档索引](docs/README.md)：构建、架构、契约、平台、研究与验收记录。
+- [提交问题](https://github.com/NekoPak/NikoPak/issues)：附版本、平台、复现步骤、预期和实际结果；截图与日志先隐藏个人信息，勿提交密码、令牌或带授权参数的链接。
 
-`0.1.2` 修复下载块被500ms轮询节奏限制的问题，复用经过验证的CDN连接，并在强ETag条件下
-短期复用资源信息。本地16MiB样本从9.26秒降到1.09秒，字节SHA256相同；这不是实际服务网速
-承诺。云下载弹窗新增 **种子文件**：选择`.torrent`、预览、确认后提交；支持v1／含v1信息的
-混合种子，最多10MiB。Android输入密码时隐藏底部主导航，关闭键盘后恢复。
-完整依据与真实测试见 [0.1.2修复记录](docs/SPEED_TORRENT_IME_REPORT.md)。
+## 许可与致谢
 
-`0.1.1` 使用独立的 **文件／传输／我的** 底部导航、单击打开／长按多选的文件列表、
-传输卡片与设置子页。桌面侧栏、标签页和多段工具栏不再进入手机组件树。Android 启动图标
-从项目猫箱图标生成，打包时核对 APK 中的实际像素和自适应／圆形／主题图标引用；跟随系统
-语言读取 Android 原生配置。修复与本轮验证见 [手机与连接恢复记录](docs/MOBILE_RECOVERY_REPORT.md)。
+NekoPak 主仓采用 [MIT License](LICENSE)。这是独立 Rust 项目，未复制 AGPL Piko 的实现代码。
 
-登录页支持 **记住账号／保持登录**，用户名及会话偏好由系统加密凭据库保存，密码仍只用于
-当前请求。代理恢复后可直接重试登录或重新连接；临时网络故障不会清除可恢复会话或统一显示
-为密码错误。设置中的域名选择和测速只针对固定认证／网盘 API，不改写下载链接。
-下载断线后有限自动重试，并遵守服务端等待时间；界面显示实际接收速度。已完成、失败、取消
-的任务可以移除记录，保留下载文件及任务回执，跨账号和损坏记录会被拒绝。
+感谢 [Piko](https://github.com/NihilDigit/piko)、[pikpaktui](https://github.com/Bengerthelorf/pikpaktui)、[pikpakcli](https://github.com/52funny/pikpakcli)、[pikpak-kotlin](https://github.com/NihilDigit/pikpak-kotlin)、[PikPak Enhancement Master](https://github.com/digbug82/PikPak_Enhancement_Master)、[MediaMP](https://github.com/open-ani/mediamp) 和 [Rclone](https://github.com/rclone/rclone) 提供的功能、协议或设计参考，以及 Tauri、Preact、Rust 生态和可选 WinFsp 平台能力。
 
-手机本地下载写入应用私有目录，完成后通过任务菜单的 **导出文件** 调用系统保存选择器。
-卸载应用会删除未导出的私有文件。应用切到后台会暂停本地任务，返回后手动继续；当前没有
-前台服务，不承诺锁屏连续下载。上传、共享目录同步、本地映射、桌面托盘／自启动、
-外部播放器和 Windows 挂载在 Android 上明确禁用，后续适配要求保留。
-
-开发环境需要 JDK21、SDK36、Build Tools36、NDK27.2.12479018，命令与验证证据见
-[docs/ANDROID.md](docs/ANDROID.md)。`android.yml` 生成明确标为 debug 的测试 APK；
-`release.yml` 分别构建 Windows ZIP/Setup.exe 与独立签名的 Android APK。
-Actions先分别构建和验签，再验证安装器、签入源码报告并发布完整的GitHub预览Release。
-未通过功能对齐门禁的版本仅可标为预览。
+参考研究、直接依赖与外部组件的关系、版本及许可分别记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 和[来源审计](docs/04_SOURCES_LICENSES.md)。Lite 不捆绑 JVM、Chromium、mpv/FFmpeg、Rclone、WinFsp 或 PikPak CLI。

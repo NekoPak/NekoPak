@@ -1,0 +1,50 @@
+{
+  "version": "0.1.3",
+  "source_commit": "764516846d9b5a6e770d6452afa2ce8b86a4cec9",
+  "captured_at": "2026-11-10T15:26:41.831Z",
+  "command": "npm run build && node scripts/capture-doc-screenshots.mjs",
+  "scope": "Built application UI in Edge/Chromium with existing offline demo data. No real accounts, network throughput claim, DOM retouching or image compositing.",
+  "screenshots": [
+    {
+      "file": "desktop-files-light.png",
+      "description": "Desktop files, light; existing offline demo folder",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bytes": 72118,
+      "sha256": "84a381a4203dc1ecf06f190dc30cedb90feee01e911c46fa7db134679d258216"
+    },
+    {
+      "file": "desktop-transfers.png",
+      "description": "Desktop transfer queue; simulated demo bytes and speeds",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bytes": 123400,
+      "sha256": "814f12cb2736e222ebbfc1013e01df333db4ef59119006a633135ef00bd0f193"
+    },
+    {
+      "file": "desktop-video-segment.png",
+      "description": "Video time selection; built-in demo preview, not decoded account media",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bytes": 99833,
+      "sha256": "a266e8d1bb1a364a8488a96b97100cb799998e4436f464bf5826333f25e356ca"
+    },
+    {
+      "file": "desktop-files-dark.png",
+      "description": "Desktop files, dark; existing offline demo folder",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bytes": 72763,
+      "sha256": "5c0e4cfed20319e1ad56c899befaa71488ea0347455610e4bb5157fdc84842fe"
+    }
+  ],
+  "errors": []
+}

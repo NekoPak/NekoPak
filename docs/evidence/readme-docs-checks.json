@@ -1,0 +1,27 @@
+{
+  "documents": 6,
+  "local_references": 113,
+  "images": 11,
+  "desktop_captures": 4,
+  "errors": [],
+  "date": "2026-11-10",
+  "scope": "Documentation and screenshots only; runtime test counts are linked historical 0.1.3 evidence",
+  "build": "npm run build: passed",
+  "capture": "node scripts/capture-doc-screenshots.mjs: four captures, no page errors or external requests",
+  "markdown_renderer": "GitHub Markdown API, gfm",
+  "layout": [
+    {
+      "width": 1200,
+      "images": 5,
+      "loaded": true,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "images": 5,
+      "loaded": true,
+      "overflow": false
+    }
+  ],
+  "new_screenshot_sha256_verified": true
+}
