@@ -1,0 +1,101 @@
+{
+  "date": "2026-11-10",
+  "run": "https://github.com/NekoPak/NikoPak/actions/runs/42770550171",
+  "installer_smoke": "https://github.com/NekoPak/NikoPak/actions/runs/42772343047",
+  "verified_locally": [
+    "Ed25519 manifest and all artifact SHA256",
+    "ZIP CRC",
+    "embedded EXE SHA256"
+  ],
+  "report": {
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "architecture": "AMD64",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "commit": "2a99844334c276c1e0a36e0ce4060f065fb54fbe",
+    "source_sha256": "9fadddadf65b777b420ee1470e4466436bc0b313cf474b2e16f42aac917179b3",
+    "git_worktree_dirty": false,
+    "cargo_lock_sha256": "2939ad434895d973ae1dfb5ca18ecd4523d957b935f2127470bf16406e20f172",
+    "npm_lock_sha256": "8e94379243a445f8fab76343cf9a94b17bf661154ebd3fdfdd46cc1efaac3e23",
+    "frontend_license_inventory": [
+      {
+        "name": "preact",
+        "version": "10.27.2",
+        "license": "MIT",
+        "files": [
+          "LICENSE"
+        ]
+      },
+      {
+        "name": "@tauri-apps/api",
+        "version": "2.12.4",
+        "license": "Apache-2.0 OR MIT",
+        "files": [
+          "LICENSE-APACHE-2.0",
+          "LICENSE-MIT",
+          "LICENSE.spdx"
+        ]
+      },
+      {
+        "name": "@material-symbols/svg-400",
+        "version": "0.48.1",
+        "license": "Apache-2.0",
+        "files": [
+          "LICENSE"
+        ]
+      },
+      {
+        "name": "@material/material-color-utilities",
+        "version": "0.4.0",
+        "license": "Apache-2.0",
+        "files": [
+          "LICENSE"
+        ]
+      }
+    ],
+    "frontend_assets_bytes": 936566,
+    "profile": "release, opt-level=s, LTO, codegen-units=1, strip",
+    "archive": "NekoPak-0.1.1-windows-x64-portable.zip",
+    "compression": "ZIP DEFLATE level 9; NekoPak directory with executable, notices and resolved dependency licenses",
+    "portable_directory": "dist/portable/NekoPak",
+    "portable_file_count": 919,
+    "runtime_layout": "Native executable with embedded frontend; no startup self-extraction. External system WebView2 is required.",
+    "executable_bytes": 13973504,
+    "archive_bytes": 7152739,
+    "executable_sha256": "7e56218fe6ce915464be154241a32a8c4011954626c4442cd453e0c45154a3cd",
+    "archive_sha256": "4e35343987de5140baf1fff0b0b82ba040f2a815f7d276d16183e8a62e45680a",
+    "external_requirements": [
+      "Windows x64",
+      "Microsoft Edge WebView2 Evergreen runtime (not bundled)"
+    ],
+    "not_bundled": [
+      "PikPak CLI",
+      "Rclone",
+      "WinFsp",
+      "Chromium",
+      "JVM",
+      "FFmpeg",
+      "mpv"
+    ],
+    "scope": "Desktop integration: native accounts/files/upload/cloud/share/archive/MP4-MKV-TS clips and remux/sync/local media/CloudFiles plus optional WinFsp and five-language desktop UX. Tests use synthetic accounts and isolated OS fixtures. Live account, full upstream parity and other-platform acceptance remain separately tracked. No CLI or bundled media runtime/driver.",
+    "runtime_measurement": "Not measured by this script; no memory/startup claim.",
+    "license_inventory_scope": "Cargo.lock resolved graph, including target-specific and build/test dependencies; not a legal certification.",
+    "license_text_unresolved": [
+      "libappindicator-sys@0.9.0",
+      "r-efi@5.3.0",
+      "r-efi@6.0.0",
+      "winapi-i686-pc-windows-gnu@0.4.0",
+      "winapi-x86_64-pc-windows-gnu@0.4.0"
+    ],
+    "windows_dependency_license_text_gaps": [],
+    "installer": {
+      "name": "NekoPak-0.1.1-windows-x64-setup.exe",
+      "bytes": 4125655,
+      "sha256": "caa2aaee9073fc547131405766f221f1c613aaa2def2bd053d38ff281046378e",
+      "type": "NSIS, per-user install, shortcuts and uninstall support",
+      "webview2": "Downloads Microsoft bootstrapper only if needed; runtime not bundled",
+      "authenticode": false,
+      "execution_test": "Not installed by this packaging script."
+    }
+  }
+}

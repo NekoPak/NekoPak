@@ -82,3 +82,18 @@ Android证书SHA256为 `3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c0357
 最终 `df2141c` 的 [Windows+Android签名发布](https://github.com/NekoPak/NikoPak/actions/runs/42617478011)
 两个job均成功，ZIP、安装器与APK已上传；随后[最终安装卸载测试](https://github.com/NekoPak/NikoPak/actions/runs/42619426755)通过。
 这些是预览构建与打包验收，没有解除功能对齐门禁或替代真实账号测试。
+
+## 0.1.1发布验证（2026-11-10）
+
+源码`2a99844334c276c1e0a36e0ce4060f065fb54fbe`的
+[Windows＋Android签名发布](https://github.com/NekoPak/NikoPak/actions/runs/42770550171)与
+[安装卸载检查](https://github.com/NekoPak/NikoPak/actions/runs/42772343047)均成功。
+便携ZIP为7,152,739字节，NSIS安装器4,125,655字节，ARM64 APK17,322,049字节。
+三个最终用户包均已下载到本机dist，并以仓库公钥重新验证清单及全部哈希。
+
+Android沿用原证书，versionCode由100升为101。实际从0.1.0覆盖安装后，两次冷启动通过，
+原生中文语言保持，应用信息页显示猫箱图标。APK SHA256为
+`391c1f723c4d0e8c32b7f387a4a8941dc80a87439ae35619febf105cf47cdb7c`。
+Maven POM许可证元数据的固定URL和哈希随包附带；原始文件与Git中一致，无新增运行时。
+证据为`evidence/mobile-recovery-actions-android.json`、`mobile-recovery-actions-windows.json`
+及`mobile-recovery-release-runtime.json`。Windows仍为清单签名，未宣称Authenticode。

@@ -30,7 +30,10 @@
     "provider": "synthetic loopback + in-memory test vault; separate actual Rust JNI Keystore checks",
     "debug_apk_sha256": "a4d3af457c4a27c41d84803b671b569c3365e9a35bd0f0894b14042420d86e1e",
     "debug_native_sha256": "fbe9488d4752a087f855f3fdf594b17cb251f7924b82180caa0da10d5a6b0b29",
-    "icons": "25 PNG variants and 4 adaptive resource graphs verified in actual APK"
+    "icons": "25 PNG variants and 4 adaptive resource graphs verified in actual APK",
+    "release_upgrade_and_cold_boots": 3,
+    "release_apk_sha256": "391c1f723c4d0e8c32b7f387a4a8941dc80a87439ae35619febf105cf47cdb7c",
+    "actual_system_icon": "Visually inspected Android app-info page after it loaded; NekoPak cat icon present"
   },
   "python": {
     "android_packaging_and_icons": 20,
@@ -53,5 +56,49 @@
       "Use a mutex countdown compatible with the minimum and latest Rust versions",
       "Hash-verified Maven Central child and parent POMs; missing/tampered license inputs still fail closed"
     ]
-  }
+  },
+  "source_commit": "2a99844334c276c1e0a36e0ce4060f065fb54fbe",
+  "status": "Requested phone and recovery fixes completed and packaged as0.1.1 preview; full parity and live user acceptance remain pending",
+  "ci": {
+    "release": {
+      "run": "https://github.com/NekoPak/NikoPak/actions/runs/42770550171",
+      "result": "success; Windows and Android"
+    },
+    "installer": {
+      "run": "https://github.com/NekoPak/NikoPak/actions/runs/42772343047",
+      "result": "success"
+    },
+    "windows_checks": {
+      "run": "https://github.com/NekoPak/NikoPak/actions/runs/42770549420",
+      "result": "success"
+    },
+    "android_preview": {
+      "run": "https://github.com/NekoPak/NikoPak/actions/runs/42770549437",
+      "result": "success"
+    },
+    "linux_macos_core": {
+      "run": "https://github.com/NekoPak/NikoPak/actions/runs/42770549765",
+      "result": "success"
+    }
+  },
+  "artifacts": [
+    {
+      "name": "NekoPak-0.1.1-android-arm64-v8a.apk",
+      "bytes": 17322049,
+      "sha256": "391c1f723c4d0e8c32b7f387a4a8941dc80a87439ae35619febf105cf47cdb7c",
+      "source": "downloaded signed GitHub Actions APK; locally verified and installed"
+    },
+    {
+      "name": "NekoPak-0.1.1-windows-x64-portable.zip",
+      "bytes": 7152739,
+      "source": "downloaded signed GitHub Actions ZIP; manifest and embedded EXE verified"
+    },
+    {
+      "name": "NekoPak-0.1.1-windows-x64-setup.exe",
+      "bytes": 4125655,
+      "sha256": "caa2aaee9073fc547131405766f221f1c613aaa2def2bd053d38ff281046378e",
+      "source": "downloaded signed GitHub Actions installer; independent install/uninstall CI passed"
+    }
+  ],
+  "license_cold_cache_audit": "All268 Rust/69 JVM/4 frontend records pass with only primary Maven POMs cached and audited parent POM fallback; 656 license files, zero gaps"
 }

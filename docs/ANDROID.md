@@ -168,3 +168,15 @@ license inheritance and tampered-metadata rejection. The APK checker verifies
 Screenshots from the installed WebView are named `screenshots/android/phone-*.png`;
 browser fixture screenshots are labeled separately. Signed release artifacts and
 their runtime checks are recorded in the corresponding package reports.
+
+The final [0.1.1 signed workflow](https://github.com/NekoPak/NikoPak/actions/runs/42770550171)
+passed on source `2a99844334c276c1e0a36e0ce4060f065fb54fbe`. Its ARM64 APK is
+17,322,049 bytes (16.52 MiB), SHA256
+`391c1f723c4d0e8c32b7f387a4a8941dc80a87439ae35619febf105cf47cdb7c`.
+After download, the manifest, certificate, native-library hash, 16KiB alignment,
+compiled icon pixels and embedded Maven license provenance were verified locally.
+That exact APK upgraded the signed 0.1.0 baseline and passed two minified cold boots
+with Chinese login and remembered-account controls. It ran through the emulator's
+ARM translation bridge; a physical ARM64 phone and real account remain user acceptance.
+Evidence: `evidence/mobile-recovery-actions-android.json` and
+`evidence/mobile-recovery-release-runtime.json`.

@@ -1,10 +1,10 @@
 {
-  "date": "2026-11-10T06:41:59.787Z",
+  "date": "2026-11-10T07:12:44.000Z",
   "scope": "Signed ARM64 APK on isolated API35 x86_64 emulator with ARM translation; no physical-device or account claim",
   "version": "0.1.1",
   "previous_version_code": 100,
   "version_code": "101",
-  "apk_sha256": "5c7003e4b725f48bab2a02402bd3fc5599e57c6300a720ea236da2f48a636ef5",
+  "apk_sha256": "391c1f723c4d0e8c32b7f387a4a8941dc80a87439ae35619febf105cf47cdb7c",
   "certificate_sha256": [
     "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
   ],
@@ -22,7 +22,7 @@
       "passed": true
     }
   ],
-  "accessibility_bridge_retries": 1,
+  "accessibility_bridge_retries": 0,
   "pending": [
     "physical ARM64 phone",
     "real account and CAPTCHA"

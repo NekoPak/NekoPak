@@ -52,12 +52,45 @@
   实际安装debug APK，检查原生中文语言、手机组件树、真实速度、HTTP503自动恢复、后台暂停、
   重启续传、SAF取消／保存与SHA256、清理记录持久化且字节保留。登录provider使用内存
   合成会话；实际Rust/JNI AndroidKeyStore的独立读写／篡改测试另有明确检查。
+- `node tests/e2e/android-release.mjs <0.1.1.apk> <0.1.0.apk>`：对从GitHub下载的签名ARM64
+  APK完成3/3检查：同证书原地升级保留原生语言、两次冷启动显示中文登录表单并保持进程。
+  运行环境使用模拟器ARM翻译桥；应用信息页另外经截图确认猫箱图标。APK摘要与测试记录
+  位于`evidence/mobile-recovery-release-runtime.json`，不是物理ARM64或真实账号验收。
 - `test_parity.py`：4/4；`test_release_signing.py`：1/1。功能清单仍为0/24完整组已验收。
 
 本轮摘要、原生截图和结构化结果在 `evidence/mobile-recovery-checks.json`、
 `evidence/mobile-recovery-android-native.json`、`evidence/mobile-recovery-ui.json`、
 `evidence/mobile-recovery-clip-preview.json` 与 `screenshots/android/phone-*.png`。
 发行包的准确大小、源码哈希、签名和实际编译条件由各包的发布报告及清单记录。
+
+## 最终发布构建
+
+源码提交`2a99844334c276c1e0a36e0ce4060f065fb54fbe`的
+[签名构建](https://github.com/NekoPak/NikoPak/actions/runs/42770550171)、
+[Windows安装卸载](https://github.com/NekoPak/NikoPak/actions/runs/42772343047)、
+[Windows日常检查](https://github.com/NekoPak/NikoPak/actions/runs/42770549420)、
+[Android预览](https://github.com/NekoPak/NikoPak/actions/runs/42770549437)及
+[Linux/macOS核心检查](https://github.com/NekoPak/NikoPak/actions/runs/42770549765)均通过。
+下载远端实际产物后再次核对Ed25519清单、APK证书、原生库／EXE哈希、16KiB与图标资源，
+并在模拟器运行远端APK。当前dist中的三个用户包均来自该工作流。
+
+- Android ARM64 APK：17,322,049字节，16.52MiB。
+- Windows便携ZIP：7,152,739字节，6.82MiB。
+- Windows NSIS安装器：4,125,655字节，3.93MiB。
+
+证据见`evidence/mobile-recovery-actions-android.json`和`evidence/mobile-recovery-actions-windows.json`。
+Windows签名为发布清单签名，尚无Authenticode证书；公开GitHub Release页面仍与Actions产物分开。
+
+## 主要变更文件
+
+- 手机界面：`src/app/MobileShell.tsx`、`src/components/MobileFileList.tsx`、
+  `src/styles/phone.css`，以及Auth／Files／Transfers／Settings页面。
+- 连接与任务：`crates/nekopak-provider-native/src/accounts.rs`、`http.rs`、`network.rs`、
+  `wire.rs`和`download.rs`；`crates/nekopak-core/src/history.rs`、`retry.rs`、`downloads.rs`与`media.rs`。
+- 原生与打包：`src-tauri/src/mobile.rs`、`catalog_commands.rs`、Android图标资源、
+  `scripts/android_project.py`、`scripts/package_android.py`、`licenses/maven-sources.json`。
+- 预览与验收：`src/components/ClipVideoPreview.tsx`、`tests/e2e/mobile.mjs`、
+  `android-native.mjs`、`android-release.mjs`、`clip-preview.mjs`，及Rust／Python回归测试。
 
 ## 许可与剩余边界
 

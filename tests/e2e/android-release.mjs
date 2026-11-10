@@ -28,6 +28,7 @@ assert.equal(device("emu", "avd", "name").split(/\r?\n/)[0].trim(), "nekopak-smo
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const checks = [];
 const dumpPaths = [];
+const dumpRun = Date.now();
 let bridgeRetries = 0;
 const pass = name => { checks.push({ name, passed: true }); console.log(`PASS ${name}`); };
 function screenshot(name) {
@@ -36,15 +37,15 @@ function screenshot(name) {
   }));
 }
 function hierarchy() {
-  const path = `/data/local/tmp/nekopak-release-window-${dumpPaths.length + 1}.xml`;
+  const path = `/data/local/tmp/nekopak-release-window-${dumpRun}-${dumpPaths.length + 1}.xml`;
   dumpPaths.push(path);
   const result = device("shell", "uiautomator", "dump", path);
   assert(result.includes("dumped to:"), "Android accessibility hierarchy is not ready.");
   return device("shell", "cat", path);
 }
-async function loginPage() {
+async function waitForHierarchy(ready, description) {
   const deadline = Date.now() + 40000;
-  let lastProblem = "Login form not visible";
+  let lastProblem = `${description} not visible`;
   while (Date.now() < deadline) {
     let xml;
     try { xml = hierarchy(); }
@@ -54,13 +55,17 @@ async function loginPage() {
       await delay(500);
       continue;
     }
-    if (xml.includes("登录 PikPak") && xml.includes("密码") && xml.includes("记住账号")) {
-      assert(!/凭据库.{0,30}(失败|损坏|不可用)/.test(xml), "Release must not show a credential vault error.");
-      return xml;
-    }
+    if (ready(xml)) return xml;
     await delay(500);
   }
-  throw new Error(`The minified signed APK did not display its Chinese login form. ${lastProblem}`);
+  throw new Error(`Timed out waiting for ${description}. ${lastProblem}`);
+}
+async function loginPage() {
+  const xml = await waitForHierarchy(
+    xml => xml.includes("登录 PikPak") && xml.includes("密码") && xml.includes("记住账号"),
+    "minified signed APK Chinese login form",
+  );
+  assert(!/凭据库.{0,30}(失败|损坏|不可用)/.test(xml), "Release must not show a credential vault error.");
 }
 
 try {
@@ -97,7 +102,7 @@ try {
     pass(`Minified ARM64 release cold boot ${boot}: native Chinese login and stable process`);
   }
   device("shell", "am", "start", "-a", "android.settings.APPLICATION_DETAILS_SETTINGS", "-d", `package:${pkg}`);
-  await delay(1500);
+  await waitForHierarchy(xml => xml.includes('text="NekoPak"') && xml.includes('package="com.android.settings"'), "NekoPak system app-info page");
   screenshot("release-app-info-icon.png");
   writeFileSync(join(output, "results.json"), JSON.stringify({
     date: new Date().toISOString(), scope: "Signed ARM64 APK on isolated API35 x86_64 emulator with ARM translation; no physical-device or account claim",

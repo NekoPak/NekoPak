@@ -1,5 +1,9 @@
 # Rust 直接 API 接入：当前实现
 
+> 0.1.1补充（2026-11-10）：Android、账号偏好、代理重连、固定域名测速、自动下载重试与
+> 视频选段预览的实际契约见`03_CONTRACTS.md` §14–§15，验证见`MOBILE_RECOVERY_REPORT.md`。
+> 本文以下首轮切片记录不构成功能上限，也不代表这些后续功能仍未接入。
+
 > 当前状态补充（2026-11-08）：本文件主体保留首轮登录切片边界；文件操作、DRIVE 验证、
 > 实际原文件下载、设置与配额已在后续接入。以 `03_CONTRACTS.md` §11 和
 > `DRIVE_FILES_FIX_REPORT.md` 为准。目录选择、速度、语言、网络和托盘的后续变更见
@@ -15,7 +19,9 @@
 不搜索 PATH，不启动 PikPak 外部可执行文件，不自动下载依赖，也没有备用 CLI 连接。
 `official_cli` 枚举仅为读取历史数据保留；旧 CLI 数据库不会删除、迁移或当作 Mock 使用。
 
-生产端点固定为 `https://user.mypikpak.com` 和 `https://api-drive.mypikpak.com`。
+默认生产端点为 `https://user.mypikpak.com` 和 `https://api-drive.mypikpak.com`。
+0.1.1可显式从固定的mypikpak.com／mypikpak.net／pikpak.me／pikpakdrive.com根域名选择；
+匿名测速的含义、允许主机和CDN不改写规则见`NETWORK_RECOVERY_RESEARCH.md`。
 前端 CSP 只放行本地 IPC；所有远端请求由 Rust 发起。HTTPS 证书校验保持启用，禁止
 自动跟随重定向；不接受来自 UI/配置的任意 API 主机。HTTP 测试服务器仅在测试编译中启用。
 

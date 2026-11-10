@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-10",
+  "scope": "Actual resolved Android runtime inventory with only primary POMs in an isolated Gradle cache; audited parent POM fallback",
+  "primary_poms": 69,
+  "result": {
+    "scope": "Resolved Android Rust normal dependencies, bundled frontend/assets and Android JVM runtime artifacts; not a legal certification.",
+    "rust_packages": 268,
+    "frontend_packages": 4,
+    "android_packages": 69,
+    "files": 656,
+    "license_text_gaps": []
+  }
+}

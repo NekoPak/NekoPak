@@ -1,5 +1,10 @@
 # 视频指定片段：当前实现与剩余验收
 
+> 2026-11-10状态说明：下文保留11月7日的外部FFmpeg本地实验与当时失败证据。
+> 现有产品已接入独立的纯Rust媒体索引／转封装、持久媒体队列与系统WebView选段预览，
+> 具体范围见`DESKTOP_INTEGRATION_REPORT.md`、`MOBILE_RECOVERY_REPORT.md`及契约§13–§15。
+> 旧文中的“能力始终为false”“未接入IPC”不代表当前构建；任意格式和真实服务仍逐项验收。
+
 2026-11-07。用户要求最终不少于上游，第三方 API 可参考。主行为基线是 Piko v1.4.0，
 固定 commit 和逐项证据见 UPSTREAM_PARITY_RESEARCH.md；本模块独立实现，没有复制 AGPL 代码。
 
