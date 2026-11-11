@@ -498,7 +498,8 @@ mod tests {
     fn preview_size_keeps_the_aspect_ratio() {
         assert_eq!(scaled(640, 360), (640, 360));
         assert_eq!(scaled(1920, 1080), (1280, 720));
-        assert_eq!(scaled(3840, 1600), (1280, 534));
-        assert_eq!(scaled(1080, 1920), (406, 720));
+        // Sizes are rounded down to even numbers.
+        assert_eq!(scaled(3840, 1600), (1280, 532));
+        assert_eq!(scaled(1080, 1920), (404, 720));
     }
 }
