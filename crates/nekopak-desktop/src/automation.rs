@@ -4,6 +4,7 @@
 //!   wait 300            pause in milliseconds
 //!   size 1280 760       resize the window (logical pixels)
 //!   click 100 200       left click      (also: rclick, dclick, move)
+//!   down 100 200        press the left button; `move` then `up` drags
 //!   type hello          type text into the focused element
 //!   key Return          named key (Return, Escape, Tab, Delete, F2, F5, ...)
 //!   ctrl a              Ctrl + character (also: shift+key via `shift Down`)
@@ -119,6 +120,17 @@ fn run(ctx: &Ctx, directory: &std::path::Path, step: &str) -> Option<Duration> {
         }
         "size" => window.set_size(slint::LogicalSize::new(numbers[0], numbers[1])),
         "move" => window.dispatch_event(WindowEvent::PointerMoved { position: point() }),
+        "down" => {
+            window.dispatch_event(WindowEvent::PointerMoved { position: point() });
+            window.dispatch_event(WindowEvent::PointerPressed {
+                position: point(),
+                button: PointerEventButton::Left,
+            });
+        }
+        "up" => window.dispatch_event(WindowEvent::PointerReleased {
+            position: point(),
+            button: PointerEventButton::Left,
+        }),
         "click" => click(PointerEventButton::Left, 1),
         "dclick" => click(PointerEventButton::Left, 2),
         "rclick" => click(PointerEventButton::Right, 1),

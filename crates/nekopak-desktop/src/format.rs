@@ -148,6 +148,17 @@ pub fn media_time(milliseconds: u64) -> String {
     }
 }
 
+/// Like [`media_time`], keeping tenths of a second when there are any, in a
+/// form the clip dialog parses back (`01:02.5`).
+pub fn media_time_precise(milliseconds: u64) -> String {
+    let tenths = milliseconds % 1000 / 100;
+    if tenths == 0 {
+        media_time(milliseconds)
+    } else {
+        format!("{}.{tenths}", media_time(milliseconds))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

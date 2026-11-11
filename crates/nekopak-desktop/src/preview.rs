@@ -34,6 +34,11 @@ struct Video {
     playing: bool,
     /// A scrub in progress: frames from before it are not shown.
     dragging: bool,
+    /// Media time of the frame on screen.
+    at_ms: u64,
+    /// Clip marks chosen on the preview.
+    clip_from: Option<u64>,
+    clip_to: Option<u64>,
 }
 
 #[derive(Default)]
@@ -336,6 +341,16 @@ pub fn open_video(ctx: &Ctx, entry: &RemoteEntry) {
     viewer.set_time_label("00:00".into());
     viewer.set_duration_label(Default::default());
     viewer.set_zoom(1.0);
+    viewer.set_clip_from(-1.0);
+    viewer.set_clip_to(-1.0);
+    viewer.set_clip_from_label(Default::default());
+    viewer.set_clip_to_label(Default::default());
+    // Headless UI tests exercise the marks with synthetic frames.
+    let scripted =
+        cfg!(feature = "automation") && std::env::var_os("NEKOPAK_FAKE_FRAMES").is_some();
+    viewer.set_can_clip(
+        scripted || entry.id.starts_with("local:") || ctx.can(Operation::ClipDownload),
+    );
     viewer
         .set_can_external(ctx.feature("media_external") && files::source_of(&entry.id) != "shared");
     viewer.set_can_download(files::source_of(&entry.id) == "drive" && ctx.can(Operation::Download));
@@ -417,6 +432,9 @@ pub fn open_video(ctx: &Ctx, entry: &RemoteEntry) {
                 .unwrap_or(0),
             playing: false,
             dragging: false,
+            at_ms: 0,
+            clip_from: None,
+            clip_to: None,
         });
         while let Some(event) = inbox.recv().await {
             if stale(&ctx) {
@@ -443,12 +461,13 @@ pub fn open_video(ctx: &Ctx, entry: &RemoteEntry) {
                         viewer.set_can_frames(true);
                         viewer.set_phase("ready".into());
                     }
-                    let dragging = ctx
-                        .viewer
-                        .borrow()
-                        .video
-                        .as_ref()
-                        .is_some_and(|video| video.dragging);
+                    let dragging = {
+                        let mut state = ctx.viewer.borrow_mut();
+                        state.video.as_mut().is_some_and(|video| {
+                            video.at_ms = at;
+                            video.dragging
+                        })
+                    };
                     if !dragging {
                         push_time(&ctx, at);
                     }
@@ -531,6 +550,55 @@ fn seek(ctx: &Ctx, position: f32, released: bool) {
     viewer.set_position(position.clamp(0.0, 1.0));
 }
 
+/// Marks the frame on screen as the start or the end of a clip.
+fn mark(ctx: &Ctx, start: bool) {
+    let viewer = ctx.ui.global::<Viewer>();
+    let mut state = ctx.viewer.borrow_mut();
+    let Some(video) = state.video.as_mut() else {
+        return;
+    };
+    if video.duration_ms == 0 {
+        return;
+    }
+    let at = video.at_ms.min(video.duration_ms);
+    if start {
+        video.clip_from = Some(at);
+        // A start after the end invalidates the end.
+        if video.clip_to.is_some_and(|end| end <= at) {
+            video.clip_to = None;
+        }
+    } else {
+        video.clip_to = Some(at);
+        if video.clip_from.is_some_and(|from| from >= at) {
+            video.clip_from = None;
+        }
+    }
+    let duration = video.duration_ms as f32;
+    let fraction = |value: Option<u64>| value.map(|ms| ms as f32 / duration).unwrap_or(-1.0);
+    let label = |value: Option<u64>| value.map(format::media_time).unwrap_or_default();
+    viewer.set_clip_from(fraction(video.clip_from));
+    viewer.set_clip_to(fraction(video.clip_to));
+    viewer.set_clip_from_label(label(video.clip_from).into());
+    viewer.set_clip_to_label(label(video.clip_to).into());
+}
+
+/// Hands the marked range to the clip download dialog.
+fn clip(ctx: &Ctx) {
+    let range = {
+        let state = ctx.viewer.borrow();
+        state
+            .video
+            .as_ref()
+            .and_then(|video| Some((video.clip_from?, video.clip_to?)))
+    };
+    let (Some(range), Some(entry)) = (range, current(ctx)) else {
+        return;
+    };
+    ctx.close_viewer();
+    let task = ctx.clone();
+    ctx.spawn(async move { crate::media::clip_dialog_with(&task, entry, Some(range)).await });
+}
+
 /// Moves the video by a number of seconds (arrow keys).
 fn nudge(ctx: &Ctx, seconds: i64) {
     let (position, duration) = {
@@ -585,6 +653,10 @@ pub fn key(ctx: &Ctx, text: &str, ctrl: bool) -> bool {
             (state.at as i32, state.items.len() as i32)
         };
         step(ctx, count - 1 - at);
+    } else if video && text.eq_ignore_ascii_case("i") {
+        mark(ctx, true);
+    } else if video && text.eq_ignore_ascii_case("o") {
+        mark(ctx, false);
     } else if (text == "+" || text == "=") && !video {
         viewer.set_zoom((viewer.get_zoom() * 1.5).min(8.0));
     } else if text == "-" && !video {
@@ -614,6 +686,8 @@ pub fn install(ctx: &Ctx) {
     viewer.on_close(handler!(|ctx| ctx.close_viewer()));
     viewer.on_step(handler!(|ctx, delta| step(&ctx, delta)));
     viewer.on_toggle_play(handler!(|ctx| toggle_play(&ctx)));
+    viewer.on_mark(handler!(|ctx, start| mark(&ctx, start)));
+    viewer.on_clip(handler!(|ctx| clip(&ctx)));
     viewer.on_seek(handler!(|ctx, position, released| seek(
         &ctx, position, released
     )));

@@ -52,6 +52,7 @@ component Row inherits Rectangle {
     in property <FileRow> item;
     in property <bool> focused;
     in property <bool> any-selected;
+    callback drag-started();
     callback clicked(bool, bool);
     callback toggled();
     callback activated();
@@ -60,10 +61,10 @@ component Row inherits Rectangle {
     property <bool> shift;
     height: Tk.row-h;
     border-radius: Tk.r-sm;
-    background: item.selected ? Tk.selected : ta.has-hover ? Tk.hover : transparent;
-    border-width: focused ? 1px : 0px;
-    border-color: Pal.primary.with-alpha(0.55);
-    opacity: item.cut ? 0.5 : 1;
+    background: drop.has-drag ? Pal.primary-container : item.selected ? Tk.selected : ta.has-hover ? Tk.hover : transparent;
+    border-width: drop.has-drag ? 2px : focused ? 1px : 0px;
+    border-color: drop.has-drag ? Pal.primary : Pal.primary.with-alpha(0.55);
+    opacity: item.cut || drag.dragging ? 0.5 : 1;
     accessible-role: list-item;
     accessible-label: item.name;
     accessible-item-selected: item.selected;
@@ -71,21 +72,50 @@ component Row inherits Rectangle {
     accessible-action-default => {
         root.activated();
     }
-    ta := TouchArea {
-        pointer-event(event) => {
-            if (event.kind == PointerEventKind.down) {
-                root.ctrl = event.modifiers.control || event.modifiers.meta;
-                root.shift = event.modifiers.shift;
-            }
-            if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
-                root.context(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+    drag := DragArea {
+        enabled: Files.can-drag;
+        data: Files.drag-data;
+        allow-move: true;
+        allow-copy: true;
+        drag-image: Icons.folder-move;
+        drag-image-offset-x: -14;
+        drag-image-offset-y: -14;
+        changed dragging => {
+            if (self.dragging) {
+                root.drag-started();
             }
         }
-        clicked => {
-            root.clicked(root.ctrl, root.shift);
+        drag-finished(action) => {
+            Files.drag-finished();
         }
-        double-clicked => {
-            root.activated();
+        ta := TouchArea {
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down) {
+                    root.ctrl = event.modifiers.control || event.modifiers.meta;
+                    root.shift = event.modifiers.shift;
+                }
+                if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
+                    root.context(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+                }
+            }
+            clicked => {
+                root.clicked(root.ctrl, root.shift);
+            }
+            double-clicked => {
+                root.activated();
+            }
+        }
+    }
+
+    // Folders accept dragged rows.
+    drop := DropArea {
+        enabled: root.item.folder && Files.can-drag;
+        can-drop(event) => {
+            return Files.can-drop-on(root.item.id) ? event.proposed-action : DragAction.none;
+        }
+        dropped(event) => {
+            Files.dropped-on(root.item.id, event.proposed-action == DragAction.copy);
+            return event.proposed-action;
         }
     }
 
@@ -195,6 +225,7 @@ component Cell inherits Rectangle {
     in property <FileRow> item;
     in property <bool> focused;
     in property <length> icon-size;
+    callback drag-started();
     callback clicked(bool, bool);
     callback toggled();
     callback activated();
@@ -202,28 +233,56 @@ component Cell inherits Rectangle {
     property <bool> ctrl;
     property <bool> shift;
     border-radius: Tk.r-md;
-    background: item.selected ? Tk.selected : ta.has-hover ? Tk.hover : transparent;
-    border-width: focused ? 1px : 0px;
-    border-color: Pal.primary.with-alpha(0.55);
-    opacity: item.cut ? 0.5 : 1;
+    background: drop.has-drag ? Pal.primary-container : item.selected ? Tk.selected : ta.has-hover ? Tk.hover : transparent;
+    border-width: drop.has-drag ? 2px : focused ? 1px : 0px;
+    border-color: drop.has-drag ? Pal.primary : Pal.primary.with-alpha(0.55);
+    opacity: item.cut || drag.dragging ? 0.5 : 1;
     accessible-role: list-item;
     accessible-label: item.name;
     accessible-item-selected: item.selected;
-    ta := TouchArea {
-        pointer-event(event) => {
-            if (event.kind == PointerEventKind.down) {
-                root.ctrl = event.modifiers.control || event.modifiers.meta;
-                root.shift = event.modifiers.shift;
-            }
-            if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
-                root.context(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+    drag := DragArea {
+        enabled: Files.can-drag;
+        data: Files.drag-data;
+        allow-move: true;
+        allow-copy: true;
+        drag-image: Icons.folder-move;
+        drag-image-offset-x: -14;
+        drag-image-offset-y: -14;
+        changed dragging => {
+            if (self.dragging) {
+                root.drag-started();
             }
         }
-        clicked => {
-            root.clicked(root.ctrl, root.shift);
+        drag-finished(action) => {
+            Files.drag-finished();
         }
-        double-clicked => {
-            root.activated();
+        ta := TouchArea {
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down) {
+                    root.ctrl = event.modifiers.control || event.modifiers.meta;
+                    root.shift = event.modifiers.shift;
+                }
+                if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
+                    root.context(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+                }
+            }
+            clicked => {
+                root.clicked(root.ctrl, root.shift);
+            }
+            double-clicked => {
+                root.activated();
+            }
+        }
+    }
+
+    drop := DropArea {
+        enabled: root.item.folder && Files.can-drag;
+        can-drop(event) => {
+            return Files.can-drop-on(root.item.id) ? event.proposed-action : DragAction.none;
+        }
+        dropped(event) => {
+            Files.dropped-on(root.item.id, event.proposed-action == DragAction.copy);
+            return event.proposed-action;
         }
     }
 
@@ -313,7 +372,7 @@ component AddressBar inherits Rectangle {
                         Rectangle {
                             height: 32px;
                             border-radius: 16px;
-                            background: !last && crumb-ta.has-hover ? Tk.hover : transparent;
+                            background: crumb-drop.has-drag ? Pal.primary-container : !last && crumb-ta.has-hover ? Tk.hover : transparent;
                             accessible-role: button;
                             accessible-label: crumb.name;
                             HorizontalLayout {
@@ -342,6 +401,18 @@ component AddressBar inherits Rectangle {
                                 mouse-cursor: pointer;
                                 clicked => {
                                     Files.crumb(crumb.id);
+                                }
+                            }
+
+                            // Dropping on an ancestor moves the rows up there.
+                            crumb-drop := DropArea {
+                                enabled: !last && Files.can-drag && Files.mode == "files";
+                                can-drop(event) => {
+                                    return Files.can-drop-on(crumb.id) ? event.proposed-action : DragAction.none;
+                                }
+                                dropped(event) => {
+                                    Files.dropped-on(crumb.id, event.proposed-action == DragAction.copy);
+                                    return event.proposed-action;
                                 }
                             }
                         }
@@ -919,6 +990,9 @@ export component FilesPage inherits Rectangle {
                             item: row;
                             focused: index == Files.focus-index;
                             any-selected: Files.selected-count > 0;
+                            drag-started => {
+                                Files.drag-started(index);
+                            }
                             clicked(ctrl, shift) => {
                                 scope.focus();
                                 Files.row-clicked(index, ctrl, shift);
@@ -965,6 +1039,9 @@ export component FilesPage inherits Rectangle {
                                 item: cell;
                                 icon-size: Files.grid-size == 0 ? 44px : Files.grid-size == 2 ? 88px : 64px;
                                 focused: line.first + offset == Files.focus-index;
+                                drag-started => {
+                                    Files.drag-started(line.first + offset);
+                                }
                                 clicked(ctrl, shift) => {
                                     scope.focus();
                                     Files.row-clicked(line.first + offset, ctrl, shift);

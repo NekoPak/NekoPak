@@ -209,6 +209,11 @@ pub fn parse_time(text: &str) -> Option<u64> {
 
 /// Time-range download: probe, pick a range, show keyframe alignment, submit.
 pub async fn clip_dialog(ctx: &Ctx, entry: RemoteEntry) {
+    clip_dialog_with(ctx, entry, None).await;
+}
+
+/// Like [`clip_dialog`], starting from a range marked on the frame preview.
+pub async fn clip_dialog_with(ctx: &Ctx, entry: RemoteEntry, marked: Option<(u64, u64)>) {
     if !entry.id.starts_with("local:") {
         if let Err(reason) = ctx.gate(Operation::ClipDownload) {
             return ctx.toast(reason, "info");
@@ -260,10 +265,22 @@ pub async fn clip_dialog(ctx: &Ctx, entry: RemoteEntry) {
             ),
             "info",
         ),
-        Field::text("start", tr("开始时间"), "00:00")
-            .placeholder("mm:ss")
-            .focus(),
-        Field::text("end", tr("结束时间"), format::media_time(duration)).placeholder("mm:ss"),
+        Field::text(
+            "start",
+            tr("开始时间"),
+            format::media_time_precise(marked.map(|range| range.0).unwrap_or(0)),
+        )
+        .placeholder("mm:ss")
+        .focus(),
+        Field::text(
+            "end",
+            tr("结束时间"),
+            match marked {
+                Some((_, end)) => format::media_time_precise(end),
+                None => format::media_time(duration),
+            },
+        )
+        .placeholder("mm:ss"),
         Field::select("quality", tr("画质"), quality_label(&quality)).disabled(qualities.len() < 2),
         Field::note(
             "align",

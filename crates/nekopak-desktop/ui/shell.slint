@@ -4,7 +4,7 @@ import { Pal } from "generated/palette.slint";
 import { Icons } from "generated/icons.slint";
 import { Tk, Tr } from "tokens.slint";
 import { Btn, IconBtn, Icon, FocusRing, Tip } from "widgets.slint";
-import { Shell, NavEntry, TabEntry } from "state.slint";
+import { Shell, Files, NavEntry, TabEntry } from "state.slint";
 
 component NavItem inherits Rectangle {
     in property <NavEntry> entry;
@@ -13,7 +13,7 @@ component NavItem inherits Rectangle {
     callback context(length, length);
     height: 46px;
     border-radius: 23px;
-    background: entry.active ? Pal.secondary-container : ta.has-hover ? Tk.hover : transparent;
+    background: drop.has-drag ? Pal.primary-container : entry.active ? Pal.secondary-container : ta.has-hover ? Tk.hover : transparent;
     accessible-role: list-item;
     accessible-label: entry.label;
     accessible-item-selected: entry.active;
@@ -79,6 +79,18 @@ component NavItem inherits Rectangle {
                 return accept;
             }
             return reject;
+        }
+    }
+
+    // The drive root and pinned folders take rows dragged from the list.
+    drop := DropArea {
+        enabled: Files.can-drag && (root.entry.id == "files" || root.entry.pinned);
+        can-drop(event) => {
+            return Files.can-drop-on("nav:" + root.entry.id) ? event.proposed-action : DragAction.none;
+        }
+        dropped(event) => {
+            Files.dropped-on("nav:" + root.entry.id, event.proposed-action == DragAction.copy);
+            return event.proposed-action;
         }
     }
 

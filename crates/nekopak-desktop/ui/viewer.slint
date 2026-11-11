@@ -69,6 +69,9 @@ component VBtn inherits Rectangle {
 component Scrubber inherits Rectangle {
     in property <float> value;
     in property <bool> enabled: true;
+    // Selected range (clip), drawn under the progress; negative when unset.
+    in property <float> range-from: -1;
+    in property <float> range-to: -1;
     callback moved(float);
     callback released(float);
     property <float> shown: ta.pressed ? Math.clamp(ta.mouse-x / self.width, 0, 1) : value;
@@ -82,6 +85,14 @@ component Scrubber inherits Rectangle {
         background: #ffffff3d;
     }
 
+    if root.range-from >= 0 && root.range-to > root.range-from: Rectangle {
+        x: root.width * root.range-from;
+        y: (parent.height - self.height) / 2;
+        width: root.width * (root.range-to - root.range-from);
+        height: 10px;
+        border-radius: 3px;
+        background: Pal.inverse-primary.with-alpha(0.55);
+    }
     Rectangle {
         x: 0;
         y: (parent.height - self.height) / 2;
@@ -89,6 +100,21 @@ component Scrubber inherits Rectangle {
         height: 4px;
         border-radius: 2px;
         background: #ffffff;
+    }
+
+    if root.range-from >= 0: Rectangle {
+        x: Math.clamp(root.width * root.range-from - 1px, 0px, root.width - 2px);
+        y: (parent.height - self.height) / 2;
+        width: 2px;
+        height: 16px;
+        background: Pal.inverse-primary;
+    }
+    if root.range-to >= 0: Rectangle {
+        x: Math.clamp(root.width * root.range-to - 1px, 0px, root.width - 2px);
+        y: (parent.height - self.height) / 2;
+        width: 2px;
+        height: 16px;
+        background: Pal.inverse-primary;
     }
 
     Rectangle {
@@ -428,6 +454,8 @@ export component ViewerLayer inherits Rectangle {
             alignment: center;
             Scrubber {
                 value: Viewer.position;
+                range-from: Viewer.clip-from;
+                range-to: Viewer.clip-to;
                 moved(value) => {
                     Viewer.seek(value, false);
                 }
@@ -442,6 +470,39 @@ export component ViewerLayer inherits Rectangle {
             color: #ffffffa8;
             font-size: Tk.fs-sm;
             vertical-alignment: center;
+        }
+
+        if Viewer.can-clip: VerticalLayout {
+            alignment: center;
+            VBtn {
+                text: Viewer.clip-from-label != "" ? Tr.x("起点 {0}", Viewer.clip-from-label) : Tr.t("设为起点");
+                tip: Tr.t("把当前画面设为片段起点（I）");
+                clicked => {
+                    Viewer.mark(true);
+                }
+            }
+        }
+        if Viewer.can-clip: VerticalLayout {
+            alignment: center;
+            VBtn {
+                text: Viewer.clip-to-label != "" ? Tr.x("终点 {0}", Viewer.clip-to-label) : Tr.t("设为终点");
+                tip: Tr.t("把当前画面设为片段终点（O）");
+                clicked => {
+                    Viewer.mark(false);
+                }
+            }
+        }
+        if Viewer.can-clip: VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.clip;
+                text: Tr.t("下载片段…");
+                filled: Viewer.clip-from >= 0 && Viewer.clip-to > Viewer.clip-from;
+                enabled: Viewer.clip-from >= 0 && Viewer.clip-to > Viewer.clip-from;
+                clicked => {
+                    Viewer.clip();
+                }
+            }
         }
     }
 }

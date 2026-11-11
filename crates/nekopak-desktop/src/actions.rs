@@ -503,6 +503,12 @@ async fn send_to(
     .await
 }
 
+/// Rows dropped onto a folder: move them there, or copy with Ctrl held.
+pub async fn drop_into(ctx: &Ctx, entries: Vec<RemoteEntry>, folder: String, copy: bool) {
+    let op = if copy { MutateOp::Copy } else { MutateOp::Move };
+    send_to(ctx, op, entries, folder).await;
+}
+
 async fn move_or_copy(ctx: &Ctx, op: MutateOp, entries: Vec<RemoteEntry>) {
     let count = entries.len().to_string();
     let (title, confirm) = if op == MutateOp::Move {

@@ -105,6 +105,8 @@ pub struct FilesState {
     /// Folder id → cloud path, for the location column of flat result lists.
     locations: HashMap<String, String>,
     locations_pending: HashSet<String>,
+    /// Rows being dragged right now.
+    dragged: Vec<RemoteEntry>,
 }
 
 impl FilesState {
@@ -233,6 +235,30 @@ pub fn install(ctx: &Ctx) {
             }
         }};
     }
+    {
+        let mut data = slint::DataTransfer::default();
+        data.set_user_data(Rc::new(RowDrag));
+        files.set_drag_data(data);
+    }
+    files.on_drag_started(handler!(|ctx, index| drag_started(
+        &ctx,
+        index.max(0) as usize
+    )));
+    files.on_drag_finished(handler!(|ctx| {
+        // The drop handler runs first and takes the rows; this covers a
+        // cancelled drag.
+        let ctx = ctx.clone();
+        slint::Timer::single_shot(std::time::Duration::from_millis(1), move || {
+            ctx.files.borrow_mut().dragged.clear();
+        });
+    }));
+    files.on_can_drop_on({
+        let weak = weak.clone();
+        move |target| weak.upgrade().is_some_and(|ctx| can_drop_on(&ctx, &target))
+    });
+    files.on_dropped_on(handler!(|ctx, target, copy| dropped_on(
+        &ctx, &target, copy
+    )));
     files.on_back(handler!(|ctx| ctx.navigate_history(-1)));
     files.on_forward(handler!(|ctx| ctx.navigate_history(1)));
     files.on_up(handler!(|ctx| go_up(&ctx)));
@@ -1023,6 +1049,12 @@ pub fn push_chrome(ctx: &Ctx) {
             .into(),
     );
     files.set_show_location(state.mode.shows_location());
+    files.set_can_drag(
+        matches!(
+            state.mode,
+            Mode::Files | Mode::Search | Mode::Recent | Mode::Starred
+        ) && (ctx.can(Operation::Move) || ctx.can(Operation::Copy)),
+    );
     let drive = state.mode == Mode::Files;
     files.set_can_write(drive && ctx.can(Operation::Mkdir));
     files.set_can_upload(drive && ctx.can(Operation::Upload) && ctx.feature("upload"));
@@ -1275,6 +1307,60 @@ fn row_clicked(ctx: &Ctx, index: usize, ctrl: bool, shift: bool) {
         selection
     };
     set_selection(ctx, selection, Some(index));
+}
+
+/// Marker payload: the dragged rows themselves stay in `FilesState`.
+struct RowDrag;
+
+/// A drag started on `index`: the whole selection when that row is part of
+/// it, otherwise just the row.
+fn drag_started(ctx: &Ctx, index: usize) {
+    let mut state = ctx.files.borrow_mut();
+    let Some(entry) = state.visible(index).cloned() else {
+        return;
+    };
+    state.dragged = if state.selected.contains(&entry.id) {
+        state.selected_entries()
+    } else {
+        vec![entry]
+    };
+}
+
+/// Resolves a drop target (`<folder id>` or `nav:<sidebar id>`) to a folder id.
+fn drop_folder(target: &str) -> Option<String> {
+    match target.strip_prefix("nav:") {
+        None => Some(target.to_owned()),
+        Some("files") => Some(ROOT_ID.to_owned()),
+        Some(nav) => nav.strip_prefix("pin:").map(str::to_owned),
+    }
+}
+
+fn can_drop_on(ctx: &Ctx, target: &str) -> bool {
+    let Some(folder) = drop_folder(target) else {
+        return false;
+    };
+    let state = ctx.files.borrow();
+    !state.dragged.is_empty()
+        && source_of(&folder) == "drive"
+        // Not onto itself, and not a no-op "move" into where everything already is.
+        && state.dragged.iter().all(|entry| entry.id != folder)
+        && state
+            .dragged
+            .iter()
+            .any(|entry| entry.parent_id.as_deref().unwrap_or(ROOT_ID) != folder)
+}
+
+fn dropped_on(ctx: &Ctx, target: &str, copy: bool) {
+    let Some(folder) = drop_folder(target) else {
+        return;
+    };
+    let entries = std::mem::take(&mut ctx.files.borrow_mut().dragged);
+    if entries.is_empty() {
+        return;
+    }
+    let ctx = ctx.clone();
+    ctx.clone()
+        .spawn(async move { actions::drop_into(&ctx, entries, folder, copy).await });
 }
 
 /// Palette command: the media library of the listed folder.

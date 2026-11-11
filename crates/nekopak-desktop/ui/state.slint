@@ -275,6 +275,14 @@ export global Files {
     in-out property <length> viewport-y;
     in-out property <length> visible-height;
     in-out property <int> columns: 4;
+    // Dragging rows onto folders moves them (Ctrl copies).
+    in property <bool> can-drag;
+    in property <data-transfer> drag-data;
+    callback drag-started(int);
+    callback drag-finished();
+    // Target folder id, or `nav:<sidebar id>`.
+    callback can-drop-on(string) -> bool;
+    callback dropped-on(string, bool);
     callback back();
     callback forward();
     callback up();
@@ -431,6 +439,14 @@ export global Viewer {
     in property <float> position;
     in property <string> time-label;
     in property <string> duration-label;
+    // Clip selection on the frame preview: marks as 0..1, -1 when unset.
+    in property <bool> can-clip;
+    in property <float> clip-from: -1;
+    in property <float> clip-to: -1;
+    in property <string> clip-from-label;
+    in property <string> clip-to-label;
+    callback mark(bool);
+    callback clip();
     callback close();
     callback step(int);
     callback download();
