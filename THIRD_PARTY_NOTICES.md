@@ -231,3 +231,18 @@ update protocol, not the Tauri updater plugin/signature format or Authenticode.
 The Python cryptography package remains build tooling and is not shipped in the app.
 Source/behavior references and tested security boundaries are recorded in
 docs/UPDATES_PROGRESS_REPORT.md and docs/RELEASE_SIGNING.md.
+
+## 原生桌面界面（crates/nekopak-desktop）
+
+| 组件 | 用途 | 许可 |
+|---|---|---|
+| [Slint](https://slint.dev) | 原生界面工具包与渲染器 | Slint Royalty-free Desktop, Mobile, and Web Applications License v2.0（另有 GPL-3.0 与商业许可可选）。按该许可要求，在“设置 → 关于”中标明并链接 Slint。 |
+| winit、femtovg、fontique/parley 等 | Slint 的窗口、渲染与文字排版依赖 | 各自的 MIT / Apache-2.0 等许可，随发行包的 `DEPENDENCY_LICENSES.json` 列出 |
+| rfd | 系统文件对话框 | MIT |
+| tray-icon / muda | Windows 系统托盘与菜单 | MIT OR Apache-2.0 |
+| open | 用系统默认应用打开链接与文件夹 | MIT |
+| chrono | 本地时间显示 | MIT OR Apache-2.0 |
+| png | 托盘图标解码与测试截图 | MIT OR Apache-2.0 |
+| Material Symbols | 界面图标（仅提取用到的字形路径） | Apache-2.0 |
+
+原生界面使用系统字体，不嵌入字体文件；不内嵌浏览器内核。

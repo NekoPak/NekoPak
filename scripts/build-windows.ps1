@@ -5,7 +5,7 @@ Push-Location $taskRoot
 try {
     npm run build
     if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
-    cargo build --locked --release -p nekopak-app
+    cargo build --locked --release -p nekopak-desktop
     if ($LASTEXITCODE -ne 0) { throw 'Windows release build failed.' }
     if ($Package) {
         python scripts/package_release.py

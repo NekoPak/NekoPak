@@ -772,8 +772,16 @@ async fn handle(ctx: &Ctx, section: &str, event: Event) {
             }
         }
         "player" => {
-            match crate::platform::pick_file(ctx, &tr("选择播放器"), ("Application", &["exe"]))
-                .await
+            match crate::platform::pick_file(
+                ctx,
+                &tr("选择播放器"),
+                if cfg!(windows) {
+                    ("Application", &["exe"])
+                } else {
+                    ("Application", &["*"])
+                },
+            )
+            .await
             {
                 Some(path) => {
                     update_settings(

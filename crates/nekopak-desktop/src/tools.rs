@@ -436,7 +436,7 @@ fn references(ctx: &Ctx) {
                 let mut rows = vec![Row::note(tr("清单记录文件的内容指纹。归档会把原文件移入回收站；恢复时按指纹重新取回，结果取决于服务端是否仍保留内容。"), "info")];
                 for manifest in &list {
                     let (label, tone) = reference_state(&manifest.state);
-                    let bytes: u64 = manifest.entries.iter().map(|item| item.entry.size_bytes.0).sum();
+                    let bytes = manifest.entries.iter().map(|item| item.entry.size_bytes.0).fold(0u64, u64::saturating_add);
                     rows.push(
                         Row::item(&manifest.manifest_id, manifest.roots.first().cloned().unwrap_or_else(|| manifest.manifest_id.clone()))
                             .icon("archive")

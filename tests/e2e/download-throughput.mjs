@@ -48,7 +48,7 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 origin = `http://127.0.0.1:${server.address().port}`;
 const reserve = createServer(); await new Promise(resolve => reserve.listen(0, "127.0.0.1", resolve));
 const port = reserve.address().port; await new Promise(resolve => reserve.close(resolve));
-const child = spawn(join(root,"target/debug/nekopak.exe"), [], {cwd:root,windowsHide:true,stdio:"ignore",env:{...process.env,NEKOPAK_BACKEND:"rust_compat",NEKOPAK_TEST_API_ORIGIN:origin,NEKOPAK_TEST_DATA_DIR:directory,NEKOPAK_TEST_HIDE_WINDOW:"1",WEBVIEW2_USER_DATA_FOLDER:join(directory,"webview"),WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`}});
+const child = spawn(join(root,"target/debug/nekopak-webview.exe"), [], {cwd:root,windowsHide:true,stdio:"ignore",env:{...process.env,NEKOPAK_BACKEND:"rust_compat",NEKOPAK_TEST_API_ORIGIN:origin,NEKOPAK_TEST_DATA_DIR:directory,NEKOPAK_TEST_HIDE_WINDOW:"1",WEBVIEW2_USER_DATA_FOLDER:join(directory,"webview"),WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`}});
 let browser;
 async function waitFor(action, check, timeout=40000) {
   const end=Date.now()+timeout;

@@ -1053,7 +1053,7 @@ fn push_selection(ctx: &Ctx) {
             .iter()
             .filter(|entry| entry.kind == EntryKind::File)
             .map(|entry| entry.size_bytes.0)
-            .sum();
+            .fold(0u64, u64::saturating_add);
         let any_file = entries.iter().any(|entry| entry.kind == EntryKind::File);
         (
             entries.len(),

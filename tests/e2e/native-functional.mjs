@@ -84,7 +84,7 @@ await new Promise(ok=>server.listen(0,'127.0.0.1',ok));origin=`http://127.0.0.1:
 const portServer=createServer();await new Promise(ok=>portServer.listen(0,'127.0.0.1',ok));const cdpPort=portServer.address().port;await new Promise(ok=>portServer.close(ok));
 const env={...process.env,NEKOPAK_BACKEND:'rust_compat',NEKOPAK_TEST_API_ORIGIN:origin,NEKOPAK_TEST_DATA_DIR:data,NEKOPAK_TEST_HIDE_WINDOW:'1',WEBVIEW2_USER_DATA_FOLDER:join(data,'webview'),WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-port=${cdpPort} --remote-debugging-address=127.0.0.1`};
 delete env.NEKOPAK_API_CLIENT_ID;delete env.NEKOPAK_API_CLIENT_SECRET;
-const child=spawn(join(root,'target/debug/nekopak.exe'),[],{cwd:root,env,windowsHide:true,stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',b=>{stderr=(stderr+b).slice(-4096);});
+const child=spawn(join(root,'target/debug/nekopak-webview.exe'),[],{cwd:root,env,windowsHide:true,stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',b=>{stderr=(stderr+b).slice(-4096);});
 let browser;let page;const results=[];
 const wait=async(fn,ms=20000)=>{const end=Date.now()+ms;while(Date.now()<end){if(await fn())return;await new Promise(ok=>setTimeout(ok,100));}throw new Error('Timed out');};
 const test=async(name,run)=>{await run();results.push({name,passed:true});console.log(`PASS ${name}`);};

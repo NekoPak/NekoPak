@@ -35,6 +35,11 @@ export component AppWindow inherits Window {
     }
     // Clipboard bridge: Slint only exposes the clipboard through text inputs.
     in-out property <string> clipboard-text <=> clipboard.text;
+    // Menus and dialogs take keyboard focus; give it back when they close so
+    // window shortcuts keep working without another click.
+    public function focus-root() {
+        keys.focus();
+    }
     public function clipboard-copy() {
         clipboard.select-all();
         clipboard.copy();

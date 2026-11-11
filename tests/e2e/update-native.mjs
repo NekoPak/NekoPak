@@ -68,7 +68,7 @@ try{
     invoke=async(command,args={})=>{const result=await cdp("Runtime.evaluate",{expression:`window.__TAURI__.core.invoke(${JSON.stringify(command)},${JSON.stringify(args)})`,awaitPromise:true,returnByValue:true});if(result.exceptionDetails)throw new Error(JSON.stringify(result.exceptionDetails));return result.result.value;};
   }else{
     const reserve=createServer();await new Promise(r=>reserve.listen(0,"127.0.0.1",r));const port=reserve.address().port;await new Promise(r=>reserve.close(r));
-    child=spawn(join(root,"target/debug/nekopak.exe"),[],{cwd:root,windowsHide:true,stdio:"ignore",env:{...process.env,NEKOPAK_TEST_HIDE_WINDOW:"1",NEKOPAK_TEST_DATA_DIR:data,NEKOPAK_BACKEND:"rust_compat",WEBVIEW2_USER_DATA_FOLDER:join(data,"webview"),WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`}});
+    child=spawn(join(root,"target/debug/nekopak-webview.exe"),[],{cwd:root,windowsHide:true,stdio:"ignore",env:{...process.env,NEKOPAK_TEST_HIDE_WINDOW:"1",NEKOPAK_TEST_DATA_DIR:data,NEKOPAK_BACKEND:"rust_compat",WEBVIEW2_USER_DATA_FOLDER:join(data,"webview"),WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`}});
     await until(async()=>await(await fetch(`http://127.0.0.1:${port}/json/list`)).json(),p=>p.some(v=>v.url.startsWith("http://tauri.localhost")));
     browser=await chromium.connectOverCDP(`http://127.0.0.1:${port}`);const page=await until(()=>browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().startsWith("http://tauri.localhost")),Boolean);
     page.on("pageerror",error=>errors.push(error.message));invoke=(command,args={})=>page.evaluate(({command,args})=>window.__TAURI_INTERNALS__.invoke(command,args),{command,args});

@@ -239,14 +239,20 @@ component Cell inherits Rectangle {
             }
         }
 
-        Text {
-            text: root.item.name;
-            color: Pal.on-surface;
-            font-size: Tk.fs-sm;
-            horizontal-alignment: center;
-            wrap: word-wrap;
-            overflow: elide;
-            max-height: 36px;
+        // Two lines at most; longer names are clipped and shown in full by the list view.
+        Rectangle {
+            height: 34px;
+            clip: true;
+            Text {
+                y: 0px;
+                width: parent.width;
+                text: root.item.name;
+                color: Pal.on-surface;
+                font-size: Tk.fs-sm;
+                horizontal-alignment: center;
+                vertical-alignment: top;
+                wrap: char-wrap;
+            }
         }
 
         Text {

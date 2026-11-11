@@ -34,7 +34,8 @@ jobs:
       - run: npx playwright install chromium
       - run: npm run e2e
       - run: cargo run --locked -p nekopak-core --example mock_smoke
-      - run: npm run tauri -- build --no-bundle
+      - run: node scripts/gen-native-assets.mjs --check
+      - run: cargo build --release --locked -p nekopak-desktop
       - run: cargo fetch --locked
       - run: python scripts/package_release.py
       - run: python scripts/package_installer.py

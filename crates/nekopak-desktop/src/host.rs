@@ -81,15 +81,19 @@ pub fn start() -> Result<Host, String> {
         };
         (Arc::new(MockProvider::new(scenario)), "tasks.sqlite3")
     } else {
+        // The loopback fixture provider only exists in debug builds.
+        #[cfg(debug_assertions)]
         let synthetic = test_override("NEKOPAK_TEST_API_ORIGIN")
             .filter(|_| test_override("NEKOPAK_TEST_DATA_DIR").is_some())
             .and_then(|origin| origin.into_string().ok());
+        #[cfg(debug_assertions)]
         let provider = match synthetic {
-            // Loopback-only fixture origin used by the end-to-end harness.
             Some(origin) => NativeProvider::synthetic_loopback(&origin),
             None => NativeProvider::from_environment(&directory.to_string_lossy()),
-        }
-        .map_err(|error| error.message)?;
+        };
+        #[cfg(not(debug_assertions))]
+        let provider = NativeProvider::from_environment(&directory.to_string_lossy());
+        let provider = provider.map_err(|error| error.message)?;
         (Arc::new(provider), "api-preview.sqlite3")
     };
     let service = Arc::new(AppService::with_provider(

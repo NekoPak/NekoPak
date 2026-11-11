@@ -4,7 +4,7 @@
 
 # NekoPak
 
-轻量的 PikPak 桌面与 Android 客户端。用 Rust 处理文件、传输和任务恢复，以 Tauri + Preact 提供桌面窗口和独立手机界面。
+轻量的 PikPak 桌面与 Android 客户端。用 Rust 处理文件、传输和任务恢复。**桌面版是原生界面**（Slint 直接绘制，GPU 渲染并可回退到 CPU），不内嵌浏览器、不依赖 WebView2；Android 版仍使用系统 WebView 承载手机界面。
 
 *A lightweight, Rust-powered PikPak client for Windows and Android.*
 
@@ -18,7 +18,7 @@
 - **Windows 便携版**：[ZIP · 7.00 MiB](https://github.com/NekoPak/NikoPak/releases/download/v0.1.3/NekoPak-0.1.3-windows-x64-portable.zip)。完整解压，运行 `NekoPak/nekopak.exe`，保留同目录许可文件。
 - **Android ARM64**：[APK · 16.84 MiB](https://github.com/NekoPak/NikoPak/releases/download/v0.1.3/NekoPak-0.1.3-android-arm64-v8a.apk)。Android 7.0 / API 24 起，使用系统 Android WebView。
 
-Windows 需要 x64 系统和 Microsoft Edge WebView2；安装版可在缺少 WebView2 时下载微软引导器。Linux / macOS 目前完成核心 CI，尚无经过桌面验收的发行包。上述大小来自 [0.1.3 的实际构建](docs/UPDATES_PROGRESS_REPORT.md)，不含系统运行时。
+0.1.3 及更早的 Windows 包需要 Microsoft Edge WebView2。**主干上的桌面版已改为原生界面，只需要 Windows 10 及以上的 x64 系统，不再需要 WebView2**；这一变化随下一个版本发布，见[原生桌面说明](docs/NATIVE_DESKTOP.md)。Linux / macOS 目前完成核心 CI，尚无经过桌面验收的发行包。上述大小来自 [0.1.3 的实际构建](docs/UPDATES_PROGRESS_REPORT.md)，不含系统运行时。
 
 **从 0.1.2 或更早版本升级，需要手动安装 0.1.3 一次。** 后续在 Windows **设置 → 关于**、Android **我的 → 关于 → 应用更新**检查新版本。Android 直接覆盖安装原签名版本即可；卸载会删除应用私有下载和登录数据。
 
@@ -86,12 +86,11 @@ Android 普通上传、共享目录同步、本地映射、外部播放器和前
 
 ## 开发与验证
 
-Windows 开发需要 Rust 1.98+（MSVC）、Visual Studio C++ 工具、Windows SDK、Node.js 22+ 和 WebView2。Python 3.12+ 用于打包。
+Windows 开发需要 Rust 1.98+（MSVC）、Visual Studio C++ 工具和 Windows SDK。Node.js 22+ 仅用于手机界面和资源生成，Python 3.12+ 用于打包。
 
 ```powershell
-npm ci
-npm run build
-cargo run -p nekopak-app --locked
+cargo run -p nekopak-desktop --locked            # 原生桌面版
+$env:NEKOPAK_BACKEND='mock'; cargo run -p nekopak-desktop   # 离线演示数据
 ```
 
 `npm run dev` 打开的是离线浏览器演示，不能登录真实账号。原生运行、模拟后端和打包命令见 [RUNNING.md](docs/RUNNING.md)；Android 使用单独的 [SDK / NDK 构建流程](docs/ANDROID.md)。
@@ -112,6 +111,7 @@ python scripts/check_parity.py
 ## 文档与反馈
 
 - [使用指南](docs/USER_GUIDE.md)：安装、登录、下载、种子、更新与常见问题。
+- [原生桌面说明](docs/NATIVE_DESKTOP.md)：桌面版的结构、运行与测试方法、已验证范围和尚未移植的功能。
 - [截图集](docs/SCREENSHOTS.md)：桌面明暗主题、任务、视频选段和 Android 页面。
 - [文档索引](docs/README.md)：构建、架构、契约、平台、研究与验收记录。
 - [提交问题](https://github.com/NekoPak/NikoPak/issues)：附版本、平台、复现步骤、预期和实际结果；截图与日志先隐藏个人信息，勿提交密码、令牌或带授权参数的链接。

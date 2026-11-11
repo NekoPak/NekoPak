@@ -324,7 +324,12 @@ impl App {
     }
 
     pub fn finish_menu(&self, choice: Option<String>) {
-        self.ui.global::<Menu>().set_open(false);
+        if self.ui.global::<Menu>().get_open() {
+            self.ui.global::<Menu>().set_open(false);
+            if !self.dialog_open() {
+                self.ui.invoke_focus_root();
+            }
+        }
         let sender = {
             let mut overlays = self.overlays.borrow_mut();
             overlays.menu_items.clear();
@@ -398,6 +403,9 @@ impl App {
             .find(|row| model.row_data(*row).is_some_and(|spec| spec.id == id))
         {
             model.remove(row);
+        }
+        if model.row_count() == 0 {
+            self.ui.invoke_focus_root();
         }
     }
 

@@ -444,7 +444,10 @@ pub fn render(ctx: &Ctx) {
                 TaskKind::Download | TaskKind::SegmentDownload => {
                     down += rate;
                     match task.total_bytes {
-                        Some(total) => remaining += total.0.saturating_sub(done_bytes(task)),
+                        Some(total) => {
+                            remaining =
+                                remaining.saturating_add(total.0.saturating_sub(done_bytes(task)))
+                        }
                         None => eta_known = false,
                     }
                 }
