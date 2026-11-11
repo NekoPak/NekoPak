@@ -121,7 +121,8 @@ x64，Windows 10 1709 或更新版本。可执行文件静态导入 `cldapi.dll`
 
 - OpenGL 一栏的内存主要是 Mesa 软件光栅器本身，不代表有真实显卡驱动时的占用；
   有参考意义的是 CPU 渲染器的数字和“空闲时不占 CPU”。
-- Linux 可执行文件 27.4 MiB（未压缩）。Windows 的体积见 CI 产物 `dist/size-report.json`。
+- 体积（CI run 43057240688，Windows Server 2025 x64，提交 6f05a55）：`nekopak.exe` 25.7 MiB，
+  便携 ZIP 13.3 MiB，NSIS 安装器 7.97 MiB。Linux 可执行文件 26.1 MiB。
 - Windows 上的出窗时间与内存由 CI 步骤 “Launch the release build and measure start-up
   and memory” 输出（托管运行器无显卡、波动大，只记录不设阈值）。
 - 列表与媒体库都是虚拟化的：只创建可见行；缩略图同时最多解码 3 张、缓存 160 张。
