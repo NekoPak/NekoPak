@@ -121,6 +121,15 @@ impl FilesState {
             .collect()
     }
 
+    /// Everything listed, in display order (for stepping through pictures).
+    pub fn listed_entries(&self) -> Vec<RemoteEntry> {
+        self.order
+            .iter()
+            .filter_map(|at| self.items.get(*at))
+            .cloned()
+            .collect()
+    }
+
     pub fn sibling_names(&self) -> Vec<String> {
         self.items.iter().map(|entry| entry.name.clone()).collect()
     }

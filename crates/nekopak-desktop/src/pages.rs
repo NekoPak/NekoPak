@@ -6,6 +6,7 @@ pub fn enter(ctx: &Ctx, route: &Route) {
         "files" => crate::files::enter(ctx, route),
         "transfers" => crate::transfers::enter(ctx, route),
         "settings" => crate::settings::enter(ctx, route),
+        "gallery" => crate::gallery::enter(ctx, route),
         _ => crate::tools::enter(ctx, route),
     }
 }

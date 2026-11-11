@@ -806,7 +806,7 @@ pub async fn upload_paths(ctx: &Ctx, paths: Vec<String>, folder: String) {
     }
 }
 
-async fn properties(ctx: &Ctx, entry: RemoteEntry) {
+pub async fn properties(ctx: &Ctx, entry: RemoteEntry) {
     let path = ctx.files.borrow().path_for(&entry);
     // Read fresh metadata; fall back to the listed entry when the lookup fails.
     let fresh = ctx
@@ -881,6 +881,17 @@ pub fn open_entry(ctx: &Ctx, entry: RemoteEntry) {
         }
         return ctx.navigate(Route::Files { folder: entry.id });
     }
+    // Pictures and (where frames can be decoded) videos open in the viewer.
+    let shared = files::source_of(&entry.id) == "shared";
+    if !shared && ctx.feature("media_session") {
+        if crate::preview::can_view_image(&entry) {
+            let siblings = ctx.files.borrow().listed_entries();
+            return crate::preview::open_image(ctx, &entry, siblings);
+        }
+        if is_video(&entry) && crate::frames::available() {
+            return crate::preview::open_video(ctx, &entry);
+        }
+    }
     let ctx = ctx.clone();
     ctx.clone().spawn(async move {
         if is_playable(&entry)
@@ -905,16 +916,35 @@ pub fn add_link(ctx: &Ctx, prefill: Option<String>) {
         .spawn(async move { crate::cloud::add_link_dialog(&ctx, prefill).await });
 }
 
-/// Shows only the videos of the current folder, sorted like the list.
+/// Opens the media library (thumbnail wall) of the listed folder.
 pub fn open_media_library(ctx: &Ctx) {
-    let mut state = ctx.files.borrow_mut();
-    state.kind_filter = if state.kind_filter == Some(names::KIND_VIDEO) {
-        None
-    } else {
-        Some(names::KIND_VIDEO)
+    let (folder, videos, images) = {
+        let state = ctx.files.borrow();
+        let count = |wanted: i32| {
+            state
+                .items
+                .iter()
+                .filter(|entry| {
+                    names::file_kind(&entry.name, entry.kind, entry.mime_type.as_deref()) == wanted
+                })
+                .count()
+        };
+        (
+            state.folder.clone(),
+            count(names::KIND_VIDEO),
+            count(names::KIND_IMAGE),
+        )
     };
-    drop(state);
-    files::rebuild(ctx);
+    // Start on whichever kind the folder actually holds.
+    let mode = if images == 0 && videos > 0 {
+        "videos"
+    } else {
+        "images"
+    };
+    ctx.navigate(Route::Gallery {
+        folder,
+        mode: mode.into(),
+    });
 }
 
 pub async fn batch_rename(ctx: &Ctx, entries: Vec<RemoteEntry>) {
@@ -1027,12 +1057,20 @@ pub fn entry_menu(ctx: &Ctx, mode: Mode, entries: &[RemoteEntry]) -> Vec<MenuIte
         if let Some(entry) = one {
             if entry.kind == EntryKind::Folder {
                 items.push(MenuItem::new("open", tr("打开")).icon("folder-open"));
-            } else if is_playable(entry) {
-                items.push(
-                    MenuItem::new("play", tr("用外部播放器打开"))
-                        .icon("play-circle")
-                        .gate(ctx.gate(Operation::ExternalPlayer)),
-                );
+            } else {
+                if mode != Mode::Shared
+                    && (crate::preview::can_view_image(entry)
+                        || (is_video(entry) && crate::frames::available()))
+                {
+                    items.push(MenuItem::new("preview", tr("预览")).icon("visibility"));
+                }
+                if is_playable(entry) {
+                    items.push(
+                        MenuItem::new("play", tr("用外部播放器打开"))
+                            .icon("play-circle")
+                            .gate(ctx.gate(Operation::ExternalPlayer)),
+                    );
+                }
             }
             if is_video(entry) {
                 items.push(MenuItem::new("download-clip", tr("下载指定段落…")).icon("clip"));
@@ -1080,6 +1118,16 @@ pub fn entry_menu(ctx: &Ctx, mode: Mode, entries: &[RemoteEntry]) -> Vec<MenuIte
                 .icon("archive")
                 .hint("Enter")
                 .gate(ctx.gate(Operation::Archive)),
+        );
+    }
+    if one.is_some_and(|entry| {
+        crate::preview::can_view_image(entry) || (is_video(entry) && crate::frames::available())
+    }) && ctx.feature("media_session")
+    {
+        items.push(
+            MenuItem::new("preview", tr("预览"))
+                .icon("visibility")
+                .hint("Enter"),
         );
     }
     if one.is_some_and(is_playable) {
@@ -1248,6 +1296,10 @@ pub async fn run(ctx: &Ctx, id: &str, entries: Vec<RemoteEntry>, _x: f32, _y: f3
             ctx.open_tab(Route::Files { folder: first.id }, Some(first.name));
         }
         "play" => crate::media::play(ctx, first).await,
+        "preview" => {
+            let siblings = ctx.files.borrow().listed_entries();
+            crate::gallery::activate(ctx, first, siblings);
+        }
         "download" => download(ctx, entries).await,
         "download-quality" => crate::media::download_quality(ctx, entries).await,
         "download-clip" => crate::media::clip_dialog(ctx, first).await,

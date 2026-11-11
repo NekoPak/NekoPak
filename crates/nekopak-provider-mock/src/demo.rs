@@ -4,6 +4,8 @@
 use crate::FIXTURE_TIME;
 use nekopak_domain::*;
 
+/// The fixture video: listed and sized, but without decodable content.
+pub const SAMPLE_VIDEO: &str = "file-1";
 /// Folder that holds the generated pictures.
 pub const PHOTOS: &str = "demo-photos";
 

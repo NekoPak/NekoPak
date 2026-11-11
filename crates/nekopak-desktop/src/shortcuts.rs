@@ -21,6 +21,10 @@ fn handle(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
     if ctx.dialog_open() {
         return is(Key::Escape) && ctx.cancel_top_dialog();
     }
+    if ctx.viewer_open() {
+        // The viewer owns the keyboard even when focus fell back to the window.
+        return crate::preview::key(ctx, text, ctrl);
+    }
     if ctx.palette_open() {
         if is(Key::Escape) {
             ctx.close_palette();
@@ -80,6 +84,7 @@ pub fn refresh(ctx: &Ctx) {
     match ctx.route().page() {
         "files" => files::reload(ctx),
         "transfers" => crate::transfers::request_reload(ctx),
+        "gallery" => crate::gallery::reload(ctx),
         _ => crate::pages::enter(ctx, &ctx.route()),
     }
 }

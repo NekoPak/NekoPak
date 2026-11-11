@@ -232,6 +232,9 @@ pub fn clear_account_data(ctx: &Ctx) {
         prefs.account_id = None;
     }
     ctx.files.borrow_mut().clear_session();
+    crate::gallery::clear_session(ctx);
+    ctx.close_viewer();
+    ctx.close_palette();
     *ctx.undo.borrow_mut() = None;
     ctx.cancel_top_dialog();
     ctx.finish_menu(None);

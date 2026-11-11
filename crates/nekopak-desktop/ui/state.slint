@@ -408,3 +408,80 @@ export global Palette {
     callback activate(int);
     callback dismissed();
 }
+
+// In-app viewer for pictures and videos.
+export global Viewer {
+    in property <bool> open;
+    // image | video
+    in property <string> kind: "image";
+    in property <string> title;
+    in property <string> subtitle;
+    // loading | ready | error | info (a video without a frame decoder)
+    in property <string> phase: "loading";
+    in property <string> note;
+    in property <image> picture;
+    in-out property <float> zoom: 1;
+    in property <bool> can-prev;
+    in property <bool> can-next;
+    in property <bool> can-download;
+    in property <bool> can-external;
+    // Video frame preview (platform decoder present).
+    in property <bool> can-frames;
+    in property <bool> playing;
+    in property <float> position;
+    in property <string> time-label;
+    in property <string> duration-label;
+    callback close();
+    callback step(int);
+    callback download();
+    callback external();
+    callback properties();
+    callback toggle-play();
+    // position 0..1; `true` once the pointer is released
+    callback seek(float, bool);
+    callback key(string, bool) -> bool;
+}
+
+// One tile of the media library; the thumbnail arrives after the listing.
+export struct GalleryTile {
+    id: string,
+    name: string,
+    kind: int,
+    detail: string,
+    thumb: image,
+    loaded: bool,
+    failed: bool,
+}
+
+export struct GalleryRow {
+    tiles: [GalleryTile],
+    first: int,
+}
+
+export global Gallery {
+    in property <string> title;
+    // images | videos
+    in property <string> mode: "images";
+    // loading | ready | error | empty
+    in property <string> phase: "loading";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <bool> state-error;
+    in property <[GalleryRow]> rows;
+    in property <string> count-label;
+    in property <string> images-count;
+    in property <string> videos-count;
+    in property <bool> has-more;
+    in property <bool> loading-more;
+    in-out property <length> viewport-y;
+    in-out property <length> visible-height;
+    callback back();
+    callback set-mode(string);
+    callback open(int);
+    callback context(int, length, length);
+    callback columns-changed(int);
+    callback scrolled();
+    callback near-end();
+    callback retry();
+    callback refresh();
+}

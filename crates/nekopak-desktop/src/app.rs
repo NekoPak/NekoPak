@@ -46,6 +46,8 @@ pub struct App {
     /// Last clipboard link that was offered, so it is not offered twice.
     pub last_clipboard_link: RefCell<String>,
     pub palette: RefCell<crate::palette::PaletteState>,
+    pub viewer: RefCell<crate::preview::ViewerState>,
+    pub gallery: RefCell<crate::gallery::GalleryState>,
 }
 
 /// Default deadline for one backend request, matching the web host.
@@ -81,6 +83,8 @@ impl App {
             scan: RefCell::new(None),
             last_clipboard_link: RefCell::default(),
             palette: RefCell::default(),
+            viewer: RefCell::default(),
+            gallery: RefCell::default(),
         })
     }
 

@@ -50,6 +50,11 @@ pub enum Route {
         parent: String,
         title: String,
     },
+    /// Media library of one folder; `mode` is `images` or `videos`.
+    Gallery {
+        folder: String,
+        mode: String,
+    },
 }
 
 impl Route {
@@ -78,6 +83,7 @@ impl Route {
             Self::Duplicates { .. } => "duplicates",
             Self::Space { .. } => "space",
             Self::Archive { .. } => "archive",
+            Self::Gallery { .. } => "gallery",
         }
     }
 
@@ -100,6 +106,7 @@ impl Route {
             Self::Space { .. } => tr("空间分布"),
             Self::Archive { .. } => tr("压缩包"),
             Self::SharedFolder { title, .. } => title.clone(),
+            Self::Gallery { .. } => tr("媒体库"),
         }
     }
 }
@@ -469,7 +476,7 @@ impl App {
             tr("网盘"),
             "cloud",
             (matches!(route, Route::Files { .. }) && !pin_active)
-                || matches!(route, Route::Search { .. }),
+                || matches!(route, Route::Search { .. } | Route::Gallery { .. }),
             "Ctrl+1",
         )];
         for pin in &prefs.account.pins {

@@ -94,6 +94,39 @@ impl AppService {
             json!({"session_id":session_id,"url":format!("http://127.0.0.1:{port}{path}"),"mime_type":mime,"name":name}),
         )
     }
+    /// Reads a whole small media file (a picture to preview) through the same
+    /// validated source as playback. Files larger than `limit` are refused
+    /// before any byte is read, so a preview can never fill memory.
+    pub async fn media_bytes(
+        self: &Arc<Self>,
+        id: &str,
+        limit: u64,
+        ctx: &RequestContext,
+    ) -> Result<Vec<u8>, ClientError> {
+        let epoch = self.stream_epoch.load(std::sync::atomic::Ordering::SeqCst);
+        let source = self.media_source(id, "original", ctx).await?;
+        let len = source.len();
+        if len > limit {
+            return Err(ClientError::new(
+                ErrorCode::Unsupported,
+                "文件太大，无法在应用内预览。",
+            ));
+        }
+        let mut bytes = Vec::with_capacity(len as usize);
+        let mut at = 0u64;
+        while at < len {
+            let size = (len - at).min(1024 * 1024) as usize;
+            bytes.extend_from_slice(&ctx.run(source.read_exact(at, size)).await?);
+            at += size as u64;
+            if self.stream_epoch.load(std::sync::atomic::Ordering::SeqCst) != epoch {
+                return Err(ClientError::new(
+                    ErrorCode::Cancelled,
+                    "账号或映射已改变，预览已停止。",
+                ));
+            }
+        }
+        Ok(bytes)
+    }
     pub fn media_session_close(&self, id: &str) -> Result<(), ClientError> {
         if let Some(control) = self
             .streams

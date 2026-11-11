@@ -504,13 +504,15 @@ impl ProviderPort for MockProvider {
             return Err(unsupported());
         }
         self.check(Operation::Stat).await?;
-        if demo::picture_bytes(id).is_none() {
+        let entry = self.stat(id).await?;
+        // Pictures are drawn on demand; the sample video has a size but no
+        // real content, so a player or decoder reports it as unreadable.
+        if demo::picture_bytes(id).is_none() && id != demo::SAMPLE_VIDEO {
             return Err(ClientError::new(
                 ErrorCode::Unsupported,
                 "离线演示只能预览“照片”文件夹里的示例图片。",
             ));
         }
-        let entry = self.stat(id).await?;
         Ok(DownloadInfo {
             identity: format!(
                 "{}:{}",
@@ -530,9 +532,20 @@ impl ProviderPort for MockProvider {
         length: u64,
         observer: DownloadObserver,
     ) -> Result<DownloadChunk, ClientError> {
-        let bytes = demo::picture_bytes(id)
-            .filter(|_| self.rich)
-            .ok_or_else(unsupported)?;
+        if !self.rich {
+            return Err(unsupported());
+        }
+        if id == demo::SAMPLE_VIDEO {
+            let total = self.stat(id).await?.size_bytes.0;
+            let to = start.saturating_add(length).min(total);
+            let count = to.saturating_sub(start.min(total)) as usize;
+            observer.received(count as u64);
+            return Ok(DownloadChunk {
+                bytes: vec![0; count],
+                total,
+            });
+        }
+        let bytes = demo::picture_bytes(id).ok_or_else(unsupported)?;
         let total = bytes.len() as u64;
         let from = start.min(total) as usize;
         let to = start.saturating_add(length).min(total) as usize;
