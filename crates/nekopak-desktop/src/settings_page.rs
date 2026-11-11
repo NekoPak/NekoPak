@@ -132,6 +132,15 @@ fn general_rows(ctx: &Ctx) -> Vec<Row> {
         Row::toggle("reduce-motion", tr("减少动画"), prefs.device.reduce_motion).icon("motion"),
         Row::header(tr("行为")),
         Row::toggle(
+            "clipboard-watch",
+            tr("检测剪贴板中的链接"),
+            prefs.device.clipboard_watch,
+        )
+        .icon("link")
+        .detail(tr(
+            "切回 NekoPak 时，如果剪贴板里有磁力或 http(s) 链接，询问是否添加。",
+        )),
+        Row::toggle(
             "tray",
             tr("关闭窗口时最小化到托盘"),
             core.settings["close_to_tray"] == true,
@@ -643,6 +652,10 @@ async fn handle(ctx: &Ctx, section: &str, event: Event) {
             update_device_prefs(ctx, |prefs| prefs.reduce_motion = !prefs.reduce_motion);
             true
         }
+        "clipboard-watch" => {
+            update_device_prefs(ctx, |prefs| prefs.clipboard_watch = !prefs.clipboard_watch);
+            true
+        }
         "tray" => {
             update_settings(
                 ctx,
@@ -1012,6 +1025,8 @@ async fn probe(ctx: &Ctx) {
 
 pub async fn shortcuts(ctx: &Ctx) {
     let rows = [
+        ("Ctrl+K", "命令面板"),
+        ("F1", "查看全部快捷键"),
         ("Ctrl+1 … Ctrl+8", "切换页面"),
         ("Ctrl+T / Ctrl+W", "新建 / 关闭标签页"),
         ("Ctrl+Tab", "切换标签页"),

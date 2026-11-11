@@ -176,6 +176,9 @@ export global Shell {
     in property <string> banner;
     in property <string> banner-tone: "info";
     in property <string> banner-action;
+    // Shown while files from the system hover over the window.
+    in property <string> drop-hint;
+    in property <bool> drop-ok;
     callback navigate(string);
     callback nav-context(string, length, length);
     callback toggle-sidebar();
@@ -190,8 +193,6 @@ export global Shell {
     callback retry-boot();
     // Global shortcut; returns true when handled.
     callback shortcut(string, bool, bool, bool) -> bool;
-    callback mouse-nav(int);
-    callback window-focused();
 }
 
 export global Menu {
@@ -385,4 +386,25 @@ export global Transfers {
     callback primary(string);
     callback menu(string, length, length);
     callback activated(string);
+}
+
+// One line of the command palette; headers are not selectable.
+export struct PaletteItem {
+    label: string,
+    hint: string,
+    shortcut: string,
+    icon: image,
+    header: bool,
+}
+
+export global Palette {
+    in property <bool> open;
+    in-out property <string> query;
+    in property <[PaletteItem]> items;
+    in property <int> current: -1;
+    callback edited(string);
+    callback move(int);
+    callback hover(int);
+    callback activate(int);
+    callback dismissed();
 }

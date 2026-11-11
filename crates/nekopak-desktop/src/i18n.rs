@@ -115,13 +115,103 @@ pub fn tr(source: &str) -> String {
         .unwrap_or_else(|| source.to_owned())
 }
 
+/// English nouns that follow a count in the catalogs, with their singular.
+const SINGULAR: [(&str, &str); 16] = [
+    ("items", "item"),
+    ("files", "file"),
+    ("folders", "folder"),
+    ("paths", "path"),
+    ("shares", "share"),
+    ("links", "link"),
+    ("tasks", "task"),
+    ("uploads", "upload"),
+    ("downloads", "download"),
+    ("transfers", "transfer"),
+    ("tabs", "tab"),
+    ("groups", "group"),
+    ("images", "image"),
+    ("videos", "video"),
+    ("accounts", "account"),
+    ("entries", "entry"),
+];
+
+/// "1 items" reads wrong in English; the source language has no plural forms,
+/// so the count's noun is singularised when the count is exactly one.
+fn singularise(template: &str, placeholder: &str) -> Option<String> {
+    let at = template.find(placeholder)? + placeholder.len();
+    let rest = template[at..].strip_prefix(' ')?;
+    let word: &str = rest
+        .split(|c: char| !c.is_ascii_alphabetic())
+        .next()
+        .unwrap_or_default();
+    // An adjective may sit between the count and its noun ("{0} duplicate files").
+    let (skip, noun) = match SINGULAR.iter().find(|(plural, _)| *plural == word) {
+        Some(_) => (0, word),
+        None => {
+            let after = rest[word.len()..].strip_prefix(' ')?;
+            let next = after
+                .split(|c: char| !c.is_ascii_alphabetic())
+                .next()
+                .unwrap_or_default();
+            (word.len() + 1, next)
+        }
+    };
+    let (_, singular) = SINGULAR.iter().find(|(plural, _)| *plural == noun)?;
+    let start = at + 1 + skip;
+    Some(format!(
+        "{}{}{}",
+        &template[..start],
+        singular,
+        &template[start + noun.len()..]
+    ))
+}
+
 /// Translates the template first, then inserts `{0}`, `{1}`… values verbatim.
 pub fn tx(source: &str, values: &[&str]) -> String {
     let mut text = tr(source);
+    if locale() == Locale::En {
+        for (index, value) in values.iter().enumerate() {
+            if *value == "1" {
+                if let Some(fixed) = singularise(&text, &format!("{{{index}}}")) {
+                    text = fixed;
+                }
+            }
+        }
+    }
     for (index, value) in values.iter().enumerate() {
         text = text.replace(&format!("{{{index}}}"), value);
     }
     text
+}
+
+fn has_cjk(text: &str) -> bool {
+    text.chars()
+        .any(|c| ('\u{3040}'..='\u{30ff}').contains(&c) || ('\u{3400}'..='\u{9fff}').contains(&c))
+}
+
+/// Text produced by the core (errors, skip reasons). Most of it is authored in
+/// Chinese like the UI copy; older layers answer in English. Both are mapped
+/// to the active language, and unknown text is shown unchanged.
+pub fn message(text: &str) -> String {
+    if has_cjk(text) {
+        return tr(text);
+    }
+    static TABLE: OnceLock<HashMap<String, HashMap<String, String>>> = OnceLock::new();
+    let key = match locale() {
+        Locale::En => return text.to_owned(),
+        Locale::ZhCn => "zh-CN",
+        Locale::ZhTw => "zh-TW",
+        Locale::Ja => "ja",
+        Locale::Ko => "ko",
+    };
+    TABLE
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("../locales/core-messages.json")).unwrap_or_default()
+        })
+        .get(text)
+        .and_then(|translations| translations.get(key))
+        .cloned()
+        .unwrap_or_else(|| text.to_owned())
 }
 
 #[cfg(test)]
@@ -213,6 +303,37 @@ mod tests {
             missing.len(),
             &missing[..missing.len().min(8)]
         );
+    }
+
+    #[test]
+    fn english_counts_of_one_are_singular() {
+        assert_eq!(singularise("{0} items", "{0}").as_deref(), Some("{0} item"));
+        assert_eq!(
+            singularise("Move {0} duplicate files to Trash?", "{0}").as_deref(),
+            Some("Move {0} duplicate file to Trash?")
+        );
+        assert_eq!(
+            singularise("Queued {0} uploads{1}", "{0}").as_deref(),
+            Some("Queued {0} upload{1}")
+        );
+        assert_eq!(singularise("{0} selected", "{0}"), None);
+        assert_eq!(singularise("{0} need attention", "{0}"), None);
+    }
+
+    #[test]
+    fn english_core_messages_have_every_translation() {
+        let table: HashMap<String, HashMap<String, String>> =
+            serde_json::from_str(include_str!("../locales/core-messages.json")).unwrap();
+        assert!(!table.is_empty());
+        for (source, translations) in &table {
+            assert!(!has_cjk(source), "{source}");
+            for key in ["zh-CN", "zh-TW", "ja", "ko"] {
+                assert!(
+                    translations.get(key).is_some_and(|text| !text.is_empty()),
+                    "{key} missing for {source}"
+                );
+            }
+        }
     }
 
     #[test]

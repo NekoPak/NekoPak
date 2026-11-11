@@ -1024,5 +1024,209 @@
   "zh-TW": "預設關閉。開啟後計畫中的刪除仍需逐次確認。",
   "ja": "既定でオフ。オンにしてもプラン内の削除は毎回確認が必要です。",
   "ko": "기본적으로 꺼져 있습니다. 켜더라도 계획의 삭제는 매번 확인이 필요합니다."
+ },
+ "只影响下一次对应的请求，之后恢复正常。": {
+  "en": "Affects only the next matching request; everything returns to normal afterwards.",
+  "zh-TW": "只影響下一次對應的請求，之後恢復正常。",
+  "ja": "次の該当リクエストにのみ影響し、その後は通常に戻ります。",
+  "ko": "다음 해당 요청에만 영향을 주며 이후에는 정상으로 돌아갑니다."
+ },
+ "场景": {
+  "en": "Scenario",
+  "zh-TW": "情境",
+  "ja": "シナリオ",
+  "ko": "시나리오"
+ },
+ "已切换到演示场景“{0}”": {
+  "en": "Switched to the “{0}” demo scenario",
+  "zh-TW": "已切換到示範情境「{0}」",
+  "ja": "デモシナリオ「{0}」に切り替えました",
+  "ko": "데모 시나리오 “{0}”(으)로 전환했습니다"
+ },
+ "已注入一次故障": {
+  "en": "Injected one fault",
+  "zh-TW": "已注入一次故障",
+  "ja": "障害を 1 回注入しました",
+  "ko": "오류를 한 번 주입했습니다"
+ },
+ "当前连接的是真实服务，演示控制不可用": {
+  "en": "Connected to the real service; demo controls are unavailable",
+  "zh-TW": "目前連線的是真實服務，示範控制無法使用",
+  "ja": "実際のサービスに接続中のため、デモ用の操作は使用できません",
+  "ko": "실제 서비스에 연결되어 있어 데모 제어를 사용할 수 없습니다"
+ },
+ "打开一个网盘文件夹后，可以把文件拖进来上传": {
+  "en": "Open a drive folder, then drag files in to upload them",
+  "zh-TW": "開啟一個雲端硬碟資料夾後，可以把檔案拖進來上傳",
+  "ja": "クラウドのフォルダーを開くと、ファイルをドラッグしてアップロードできます",
+  "ko": "드라이브 폴더를 연 다음 파일을 끌어다 놓아 업로드할 수 있습니다"
+ },
+ "打开媒体库": {
+  "en": "Open media library",
+  "zh-TW": "開啟媒體庫",
+  "ja": "メディアライブラリを開く",
+  "ko": "미디어 라이브러리 열기"
+ },
+ "松开即可上传到“{0}”": {
+  "en": "Drop to upload to “{0}”",
+  "zh-TW": "放開即可上傳到「{0}」",
+  "ja": "ドロップして「{0}」にアップロード",
+  "ko": "놓으면 “{0}”에 업로드됩니다"
+ },
+ "注入一次故障": {
+  "en": "Inject one fault",
+  "zh-TW": "注入一次故障",
+  "ja": "障害を 1 回注入",
+  "ko": "오류 한 번 주입"
+ },
+ "演示场景与故障注入": {
+  "en": "Demo scenarios and fault injection",
+  "zh-TW": "示範情境與故障注入",
+  "ja": "デモシナリオと障害注入",
+  "ko": "데모 시나리오 및 오류 주입"
+ },
+ "请先关闭当前对话框": {
+  "en": "Close the current dialog first",
+  "zh-TW": "請先關閉目前的對話方塊",
+  "ja": "先に現在のダイアログを閉じてください",
+  "ko": "먼저 현재 대화 상자를 닫으세요"
+ },
+ "这些控制只存在于离线演示：切换示例数据或注入一次故障，用来查看各种状态下的界面。不会连接 PikPak，也不会写入任何文件。": {
+  "en": "These controls exist only in the offline demo: switch the sample data or inject a single fault to see the interface in each state. Nothing connects to PikPak and no file is written.",
+  "zh-TW": "這些控制只存在於離線示範：切換範例資料或注入一次故障，用來查看各種狀態下的介面。不會連線 PikPak，也不會寫入任何檔案。",
+  "ja": "これらの操作はオフラインデモ専用です。サンプルデータを切り替えたり障害を 1 回注入したりして、各状態の画面を確認できます。PikPak には接続せず、ファイルも書き込みません。",
+  "ko": "이 제어는 오프라인 데모에만 있습니다. 샘플 데이터를 바꾸거나 오류를 한 번 주입해 각 상태의 화면을 확인할 수 있습니다. PikPak에 연결하지 않으며 파일도 기록하지 않습니다."
+ },
+ "免费账户": {
+  "en": "Free account",
+  "zh-TW": "免費帳戶",
+  "ja": "無料アカウント",
+  "ko": "무료 계정"
+ },
+ "免费账号的示例目录与配额": {
+  "en": "Sample folders and quota of a free account",
+  "zh-TW": "免費帳號的範例目錄與配額",
+  "ja": "無料アカウントのサンプルフォルダーとクォータ",
+  "ko": "무료 계정의 샘플 폴더와 할당량"
+ },
+ "Premium 账号的示例目录与配额": {
+  "en": "Sample folders and quota of a Premium account",
+  "zh-TW": "Premium 帳號的範例目錄與配額",
+  "ja": "Premium アカウントのサンプルフォルダーとクォータ",
+  "ko": "Premium 계정의 샘플 폴더와 할당량"
+ },
+ "未授权": {
+  "en": "Not authorised",
+  "zh-TW": "未授權",
+  "ja": "未認証",
+  "ko": "미인증"
+ },
+ "远端请求返回未登录": {
+  "en": "Remote requests answer “not signed in”",
+  "zh-TW": "遠端請求傳回未登入",
+  "ja": "リモートリクエストが未ログインを返します",
+  "ko": "원격 요청이 로그인되지 않음을 반환합니다"
+ },
+ "限额耗尽": {
+  "en": "Quota exhausted",
+  "zh-TW": "配額用盡",
+  "ja": "クォータ超過",
+  "ko": "할당량 소진"
+ },
+ "下载、上传与云下载配额用尽，列表仍可查看": {
+  "en": "Download, upload and cloud-download quota are used up; lists stay readable",
+  "zh-TW": "下載、上傳與雲端下載配額用盡，清單仍可查看",
+  "ja": "ダウンロード・アップロード・クラウドダウンロードのクォータを使い切った状態。一覧は表示できます",
+  "ko": "다운로드, 업로드, 클라우드 다운로드 할당량이 소진된 상태이며 목록은 볼 수 있습니다"
+ },
+ "网络中断": {
+  "en": "Network down",
+  "zh-TW": "網路中斷",
+  "ja": "ネットワーク切断",
+  "ko": "네트워크 끊김"
+ },
+ "所有远端请求返回网络错误": {
+  "en": "Every remote request fails with a network error",
+  "zh-TW": "所有遠端請求傳回網路錯誤",
+  "ja": "すべてのリモートリクエストがネットワークエラーになります",
+  "ko": "모든 원격 요청이 네트워크 오류를 반환합니다"
+ },
+ "目录超大": {
+  "en": "Huge folder",
+  "zh-TW": "目錄超大",
+  "ja": "巨大フォルダー",
+  "ko": "초대형 폴더"
+ },
+ "根目录包含大量项目，用于检查分页与滚动": {
+  "en": "The root holds a very large number of items, to check paging and scrolling",
+  "zh-TW": "根目錄包含大量項目，用於檢查分頁與捲動",
+  "ja": "ルートに大量の項目があり、ページングとスクロールを確認できます",
+  "ko": "루트에 매우 많은 항목이 있어 페이징과 스크롤을 확인할 수 있습니다"
+ },
+ "名称冲突": {
+  "en": "Name conflicts",
+  "zh-TW": "名稱衝突",
+  "ja": "名前の競合",
+  "ko": "이름 충돌"
+ },
+ "重名、大小写与 Unicode 归一化冲突": {
+  "en": "Duplicate names, case and Unicode normalisation conflicts",
+  "zh-TW": "重複名稱、大小寫與 Unicode 正規化衝突",
+  "ja": "同名、大文字小文字、Unicode 正規化の競合",
+  "ko": "중복 이름, 대소문자 및 유니코드 정규화 충돌"
+ },
+ "下载到 37% 断线": {
+  "en": "Disconnect at 37%",
+  "zh-TW": "下載到 37% 斷線",
+  "ja": "37% で切断",
+  "ko": "37%에서 연결 끊김"
+ },
+ "任务在 37% 失败，可手动重试": {
+  "en": "The task fails at 37% and can be retried manually",
+  "zh-TW": "任務在 37% 失敗，可手動重試",
+  "ja": "タスクは 37% で失敗し、手動で再試行できます",
+  "ko": "작업이 37%에서 실패하며 직접 다시 시도할 수 있습니다"
+ },
+ "下载到 100% 后校验失败": {
+  "en": "Verification fails after the download reaches 100%",
+  "zh-TW": "下載到 100% 後驗證失敗",
+  "ja": "100% までダウンロードした後、検証に失敗します",
+  "ko": "100%까지 다운로드한 뒤 검증에 실패합니다"
+ },
+ "磁盘已满": {
+  "en": "Disk full",
+  "zh-TW": "磁碟已滿",
+  "ja": "ディスクがいっぱい",
+  "ko": "디스크 가득 참"
+ },
+ "下载开始后报告磁盘空间不足": {
+  "en": "Reports insufficient disk space once a download starts",
+  "zh-TW": "下載開始後回報磁碟空間不足",
+  "ja": "ダウンロード開始後にディスク容量不足を報告します",
+  "ko": "다운로드를 시작하면 디스크 공간 부족을 보고합니다"
+ },
+ "下一次列目录返回登录过期": {
+  "en": "Next folder listing answers “sign-in expired”",
+  "zh-TW": "下一次列出目錄傳回登入過期",
+  "ja": "次のフォルダー一覧取得でログイン期限切れを返す",
+  "ko": "다음 폴더 목록 요청이 로그인 만료를 반환"
+ },
+ "下一次列目录返回服务不可用": {
+  "en": "Next folder listing answers “service unavailable”",
+  "zh-TW": "下一次列出目錄傳回服務無法使用",
+  "ja": "次のフォルダー一覧取得でサービス利用不可を返す",
+  "ko": "다음 폴더 목록 요청이 서비스 사용 불가를 반환"
+ },
+ "下一次下载报告磁盘已满": {
+  "en": "Next download reports a full disk",
+  "zh-TW": "下一次下載回報磁碟已滿",
+  "ja": "次のダウンロードでディスクがいっぱいと報告",
+  "ko": "다음 다운로드가 디스크 가득 참을 보고"
+ },
+ "下一次下载校验失败": {
+  "en": "Next download fails verification",
+  "zh-TW": "下一次下載驗證失敗",
+  "ja": "次のダウンロードで検証に失敗",
+  "ko": "다음 다운로드가 검증에 실패"
  }
 }

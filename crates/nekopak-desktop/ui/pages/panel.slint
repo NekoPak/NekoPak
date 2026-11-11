@@ -94,7 +94,7 @@ component Row inherits Rectangle {
 
         body := HorizontalLayout {
             padding-left: 12px;
-            padding-right: 8px;
+            padding-right: 14px;
             spacing: 14px;
             if root.item.file-kind >= 0: VerticalLayout {
                 alignment: center;
@@ -173,7 +173,7 @@ component Row inherits Rectangle {
             }
             if root.item.kind == "toggle": VerticalLayout {
                 alignment: center;
-                padding-right: 8px;
+                padding-right: 2px;
                 Toggle {
                     checked: root.item.checked;
                     enabled: root.item.enabled;

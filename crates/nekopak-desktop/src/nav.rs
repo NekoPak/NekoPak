@@ -178,6 +178,7 @@ pub fn install(ctx: &Ctx) {
     shell.on_open_settings(handler!(|ctx| ctx.navigate(Route::Settings {
         section: "general".into()
     })));
+    shell.on_open_demo(handler!(|ctx| crate::demo::open(&ctx)));
     shell.on_tab_activate(handler!(|ctx, id| ctx.activate_tab(id)));
     shell.on_tab_close(handler!(|ctx, id| ctx.close_tab(Some(id))));
     shell.on_tab_new(handler!(|ctx| {

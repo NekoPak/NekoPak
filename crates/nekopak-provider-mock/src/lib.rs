@@ -53,7 +53,8 @@ pub enum Fault {
 }
 
 pub struct MockProvider {
-    scenario: Scenario,
+    /// Switchable at runtime so the demo panel can change scenario in place.
+    scenario: Mutex<Scenario>,
     data: Mutex<MockData>,
 }
 struct MockData {
@@ -66,7 +67,7 @@ struct MockData {
 impl MockProvider {
     pub fn new(scenario: Scenario) -> Self {
         Self {
-            scenario,
+            scenario: Mutex::new(scenario),
             data: Mutex::new(MockData {
                 entries: entries(scenario),
                 generation: 1,
@@ -74,6 +75,18 @@ impl MockProvider {
                 disconnected: BTreeSet::new(),
             }),
         }
+    }
+    pub fn scenario(&self) -> Scenario {
+        *self.scenario.lock().unwrap_or_else(|e| e.into_inner())
+    }
+    /// Replaces the scenario and its fixture tree. Existing cursors go stale.
+    pub fn set_scenario(&self, scenario: Scenario) {
+        *self.scenario.lock().unwrap_or_else(|e| e.into_inner()) = scenario;
+        let mut data = self.data.lock().unwrap_or_else(|e| e.into_inner());
+        data.entries = entries(scenario);
+        data.generation += 1;
+        data.faults.clear();
+        data.disconnected.clear();
     }
     pub fn inject(&self, operation: Operation, fault: Fault) {
         self.data
@@ -97,7 +110,7 @@ impl MockProvider {
         Ok(())
     }
     async fn check(&self, operation: Operation) -> Result<(), ClientError> {
-        match self.scenario {
+        match self.scenario() {
             Scenario::Unauthorized => return Err(ClientError::from_http(401, BackendId::Mock)),
             Scenario::Offline => {
                 return Err(ClientError::new(
@@ -166,9 +179,9 @@ impl ProviderPort for MockProvider {
     async fn discover(&self) -> Result<CapabilityReport, ClientError> {
         Ok(CapabilityReport {
             backend: BackendId::Mock,
-            status: if self.scenario == Scenario::Unauthorized { BackendStatus::NeedsLogin } else { BackendStatus::Ready },
+            status: if self.scenario() == Scenario::Unauthorized { BackendStatus::NeedsLogin } else { BackendStatus::Ready },
             operations: [Operation::List, Operation::Stat, Operation::Download, Operation::CloudTask, Operation::Quota].into_iter().map(|op| (op, true)).chain([(Operation::ReadRange, false), (Operation::SegmentDownload, false), (Operation::Upload, false), (Operation::Trash, false)]).collect(),
-            account_tier: Some(if self.scenario == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free }),
+            account_tier: Some(if self.scenario() == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free }),
             version: Some("mock-0.1".into()),
             limitations: vec!["OFFLINE SIMULATION: all entries, quotas and transfers are synthetic; no file is downloaded.".into(), "Real providers, random reads, sync and mounting are not implemented.".into()],
             checked_at: FIXTURE_TIME.into(),
@@ -240,10 +253,10 @@ impl ProviderPort for MockProvider {
     }
     async fn quota(&self) -> Result<QuotaReport, ClientError> {
         self.check(Operation::Quota).await?;
-        let exhausted = self.scenario == Scenario::QuotaExhausted;
+        let exhausted = self.scenario() == Scenario::QuotaExhausted;
         Ok(QuotaReport {
             backend: BackendId::Mock,
-            account_tier: if self.scenario == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free },
+            account_tier: if self.scenario() == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free },
             source: "mock".into(),
             dimensions: ["download", "upload", "cloud_download"].into_iter().map(|dimension| QuotaDimension {
                 used_bytes: None,
@@ -279,7 +292,7 @@ impl ProviderPort for MockProvider {
         match task.state {
             TaskState::Queued | TaskState::Retrying => next.state = TaskState::Running,
             TaskState::Running => {
-                if self.scenario == Scenario::DiskFull {
+                if self.scenario() == Scenario::DiskFull {
                     return Err(ClientError::new(
                         ErrorCode::DiskFull,
                         "Simulated disk exhaustion; no files were written.",
@@ -289,7 +302,7 @@ impl ProviderPort for MockProvider {
                 let breakpoint = ((total as u128 * 37) / 100) as u64;
                 let increment = (total / 10).max(1);
                 let proposed = current.saturating_add(increment).min(total);
-                if self.scenario == Scenario::DisconnectAt37
+                if self.scenario() == Scenario::DisconnectAt37
                     && current < breakpoint
                     && proposed >= breakpoint
                     && data.disconnected.insert(task.id.clone())
@@ -308,7 +321,7 @@ impl ProviderPort for MockProvider {
                 }
             }
             TaskState::Verifying => {
-                if self.scenario == Scenario::IntegrityFailure {
+                if self.scenario() == Scenario::IntegrityFailure {
                     return Err(ClientError::new(
                         ErrorCode::IntegrityFailed,
                         "Simulated integrity check failed.",

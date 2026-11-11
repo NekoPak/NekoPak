@@ -1,0 +1,278 @@
+{
+ "This provider does not support the requested operation.": {
+  "zh-CN": "当前连接方式不支持这项操作。",
+  "zh-TW": "目前的連線方式不支援這項操作。",
+  "ja": "現在の接続方式はこの操作に対応していません。",
+  "ko": "현재 연결 방식은 이 작업을 지원하지 않습니다."
+ },
+ "Authorize this backend before continuing.": {
+  "zh-CN": "请先登录后再继续。",
+  "zh-TW": "請先登入後再繼續。",
+  "ja": "続行する前にログインしてください。",
+  "ko": "계속하려면 먼저 로그인하세요."
+ },
+ "The request was cancelled.": {
+  "zh-CN": "请求已取消。",
+  "zh-TW": "請求已取消。",
+  "ja": "リクエストはキャンセルされました。",
+  "ko": "요청이 취소되었습니다."
+ },
+ "The provider request timed out.": {
+  "zh-CN": "请求超时，请稍后重试。",
+  "zh-TW": "請求逾時，請稍後再試。",
+  "ja": "リクエストがタイムアウトしました。しばらくしてからもう一度お試しください。",
+  "ko": "요청 시간이 초과되었습니다. 잠시 후 다시 시도하세요."
+ },
+ "Authorization expired; authorize again.": {
+  "zh-CN": "登录已过期，请重新登录。",
+  "zh-TW": "登入已過期，請重新登入。",
+  "ja": "ログインの有効期限が切れました。もう一度ログインしてください。",
+  "ko": "로그인이 만료되었습니다. 다시 로그인하세요."
+ },
+ "The account lacks permission for this operation.": {
+  "zh-CN": "当前账号没有执行这项操作的权限。",
+  "zh-TW": "目前的帳號沒有執行這項操作的權限。",
+  "ja": "このアカウントにはこの操作を行う権限がありません。",
+  "ko": "이 계정에는 이 작업을 수행할 권한이 없습니다."
+ },
+ "The requested entry no longer exists.": {
+  "zh-CN": "这个项目已不存在，请刷新后重试。",
+  "zh-TW": "這個項目已不存在，請重新整理後再試。",
+  "ja": "この項目はもう存在しません。更新してからもう一度お試しください。",
+  "ko": "이 항목은 더 이상 존재하지 않습니다. 새로 고친 후 다시 시도하세요."
+ },
+ "The service is temporarily unavailable or rate limited.": {
+  "zh-CN": "服务暂时不可用或请求过于频繁，请稍后重试。",
+  "zh-TW": "服務暫時無法使用或請求過於頻繁，請稍後再試。",
+  "ja": "サービスが一時的に利用できないか、リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+  "ko": "서비스를 일시적으로 사용할 수 없거나 요청이 너무 많습니다. 잠시 후 다시 시도하세요."
+ },
+ "The provider returned an unexpected response.": {
+  "zh-CN": "服务端返回了无法识别的响应。",
+  "zh-TW": "伺服器傳回了無法辨識的回應。",
+  "ja": "サーバーから予期しない応答が返されました。",
+  "ko": "서버가 예상하지 못한 응답을 반환했습니다."
+ },
+ "Idempotency key must be 1–128 ASCII letters, digits, dash, dot, colon or underscore.": {
+  "zh-CN": "请求标识无效，请重试这次操作。",
+  "zh-TW": "請求識別碼無效，請重試這次操作。",
+  "ja": "リクエスト識別子が無効です。操作をやり直してください。",
+  "ko": "요청 식별자가 올바르지 않습니다. 작업을 다시 시도하세요."
+ },
+ "Enter a valid HTTP(S) URL without credentials or a magnet URI with an info hash.": {
+  "zh-CN": "请输入不含账号密码的 http(s) 链接，或带有 info hash 的磁力链接。",
+  "zh-TW": "請輸入不含帳號密碼的 http(s) 連結，或帶有 info hash 的磁力連結。",
+  "ja": "認証情報を含まない http(s) の URL、または info hash 付きのマグネットリンクを入力してください。",
+  "ko": "계정 정보가 없는 http(s) 링크 또는 info hash가 포함된 마그넷 링크를 입력하세요."
+ },
+ "Use an absolute local path without traversal, reserved device names or special Windows path prefixes.": {
+  "zh-CN": "请使用本机的绝对路径，路径中不能包含“..”、保留设备名或特殊前缀。",
+  "zh-TW": "請使用本機的絕對路徑，路徑中不能包含「..」、保留裝置名稱或特殊前置字元。",
+  "ja": "「..」や予約済みデバイス名、特殊なプレフィックスを含まないローカルの絶対パスを指定してください。",
+  "ko": "‘..’, 예약된 장치 이름, 특수 접두사가 없는 로컬 절대 경로를 사용하세요."
+ },
+ "The task changed; refresh its snapshot before applying another update.": {
+  "zh-CN": "任务状态已变化，请刷新后再操作。",
+  "zh-TW": "任務狀態已變更，請重新整理後再操作。",
+  "ja": "タスクの状態が変わりました。更新してから操作してください。",
+  "ko": "작업 상태가 변경되었습니다. 새로 고친 후 다시 시도하세요."
+ },
+ "Another NekoPak process owns this task database. Close that process before reopening.": {
+  "zh-CN": "另一个 NekoPak 进程正在使用任务数据库，请先关闭它再重新打开。",
+  "zh-TW": "另一個 NekoPak 處理程序正在使用任務資料庫，請先將其關閉再重新開啟。",
+  "ja": "別の NekoPak プロセスがタスクデータベースを使用しています。そちらを終了してから開き直してください。",
+  "ko": "다른 NekoPak 프로세스가 작업 데이터베이스를 사용 중입니다. 해당 프로세스를 종료한 후 다시 여세요."
+ },
+ "This idempotency key was already used for a different request.": {
+  "zh-CN": "这次请求与之前的请求冲突，请重试。",
+  "zh-TW": "這次請求與先前的請求衝突，請重試。",
+  "ja": "このリクエストは以前のリクエストと競合しています。もう一度お試しください。",
+  "ko": "이 요청이 이전 요청과 충돌합니다. 다시 시도하세요."
+ },
+ "The previous process stopped during this task; progress was retained. Resume explicitly.": {
+  "zh-CN": "上次运行在这个任务进行中结束，进度已保留，请手动继续。",
+  "zh-TW": "上次執行在這個任務進行中結束，進度已保留，請手動繼續。",
+  "ja": "前回の実行がこのタスクの途中で終了しました。進捗は保持されています。手動で再開してください。",
+  "ko": "이전 실행이 이 작업 도중 종료되었습니다. 진행 상황은 유지되었으니 직접 다시 시작하세요."
+ },
+ "The remote ancestry is cyclic or exceeds the safe depth.": {
+  "zh-CN": "云端目录层级异常（循环或过深），已停止处理。",
+  "zh-TW": "雲端目錄層級異常（循環或過深），已停止處理。",
+  "ja": "クラウドのフォルダー階層が異常です（循環または深すぎます）。処理を中止しました。",
+  "ko": "클라우드 폴더 구조가 비정상적입니다(순환 또는 너무 깊음). 처리를 중단했습니다."
+ },
+ "The provider did not supply the parent needed to resolve this path.": {
+  "zh-CN": "服务端没有提供解析这个路径所需的上级文件夹。",
+  "zh-TW": "伺服器沒有提供解析這個路徑所需的上層資料夾。",
+  "ja": "このパスの解決に必要な親フォルダーがサーバーから提供されませんでした。",
+  "ko": "서버가 이 경로를 확인하는 데 필요한 상위 폴더를 제공하지 않았습니다."
+ },
+ "Task storage failed validation; preserve the original database for recovery.": {
+  "zh-CN": "任务数据库校验失败，请保留原数据库文件以便恢复。",
+  "zh-TW": "任務資料庫驗證失敗，請保留原資料庫檔案以便復原。",
+  "ja": "タスクデータベースの検証に失敗しました。復旧のため元のデータベースファイルを保管してください。",
+  "ko": "작업 데이터베이스 검증에 실패했습니다. 복구를 위해 원본 데이터베이스 파일을 보관하세요."
+ },
+ "Provider progress failed length or transition validation.": {
+  "zh-CN": "传输进度校验失败。",
+  "zh-TW": "傳輸進度驗證失敗。",
+  "ja": "転送の進捗の検証に失敗しました。",
+  "ko": "전송 진행 상태 검증에 실패했습니다."
+ },
+ "Storage unavailable.": {
+  "zh-CN": "本机存储暂不可用。",
+  "zh-TW": "本機儲存空間暫時無法使用。",
+  "ja": "ローカルストレージを利用できません。",
+  "ko": "로컬 저장소를 사용할 수 없습니다."
+ },
+ "Task storage is unavailable; restart without deleting its database.": {
+  "zh-CN": "任务数据库暂不可用，请重启应用，不要删除数据库文件。",
+  "zh-TW": "任務資料庫暫時無法使用，請重新啟動應用程式，不要刪除資料庫檔案。",
+  "ja": "タスクデータベースを利用できません。データベースファイルを削除せずにアプリを再起動してください。",
+  "ko": "작업 데이터베이스를 사용할 수 없습니다. 데이터베이스 파일을 삭제하지 말고 앱을 다시 시작하세요."
+ },
+ "The transfer task does not exist.": {
+  "zh-CN": "找不到这个传输任务。",
+  "zh-TW": "找不到這個傳輸任務。",
+  "ja": "この転送タスクが見つかりません。",
+  "ko": "이 전송 작업을 찾을 수 없습니다."
+ },
+ "The database directory is inaccessible.": {
+  "zh-CN": "无法访问数据目录。",
+  "zh-TW": "無法存取資料目錄。",
+  "ja": "データフォルダーにアクセスできません。",
+  "ko": "데이터 폴더에 접근할 수 없습니다."
+ },
+ "Cannot open the task database ownership lock.": {
+  "zh-CN": "无法锁定任务数据库。",
+  "zh-TW": "無法鎖定任務資料庫。",
+  "ja": "タスクデータベースをロックできません。",
+  "ko": "작업 데이터베이스를 잠글 수 없습니다."
+ },
+ "Cannot inspect the task database.": {
+  "zh-CN": "无法读取任务数据库。",
+  "zh-TW": "無法讀取任務資料庫。",
+  "ja": "タスクデータベースを読み取れません。",
+  "ko": "작업 데이터베이스를 읽을 수 없습니다."
+ },
+ "Folder downloads are not implemented.": {
+  "zh-CN": "暂不支持下载文件夹。",
+  "zh-TW": "暫不支援下載資料夾。",
+  "ja": "フォルダーのダウンロードにはまだ対応していません。",
+  "ko": "폴더 다운로드는 아직 지원하지 않습니다."
+ },
+ "Real transfer execution is not implemented in M0.": {
+  "zh-CN": "当前模式不执行真实传输。",
+  "zh-TW": "目前的模式不會執行真實傳輸。",
+  "ja": "現在のモードでは実際の転送は行われません。",
+  "ko": "현재 모드에서는 실제 전송을 수행하지 않습니다."
+ },
+ "The database was created by a newer NekoPak version.": {
+  "zh-CN": "数据库由更新版本的 NekoPak 创建，请升级后再打开。",
+  "zh-TW": "資料庫由較新版本的 NekoPak 建立，請升級後再開啟。",
+  "ja": "データベースは新しいバージョンの NekoPak で作成されています。アップデートしてから開いてください。",
+  "ko": "데이터베이스가 더 최신 버전의 NekoPak에서 만들어졌습니다. 업데이트한 후 여세요."
+ },
+ "The task cannot perform this action in its current state.": {
+  "zh-CN": "任务在当前状态下不能执行这个操作。",
+  "zh-TW": "任務在目前狀態下無法執行這個操作。",
+  "ja": "現在の状態ではこのタスクでこの操作を実行できません。",
+  "ko": "현재 상태에서는 이 작업을 수행할 수 없습니다."
+ },
+ "Page limit must be between 1 and 500.": {
+  "zh-CN": "每页数量必须在 1 到 500 之间。",
+  "zh-TW": "每頁數量必須在 1 到 500 之間。",
+  "ja": "1 ページの件数は 1〜500 の範囲で指定してください。",
+  "ko": "페이지당 항목 수는 1에서 500 사이여야 합니다."
+ },
+ "Media export cancelled.": {
+  "zh-CN": "媒体导出已取消。",
+  "zh-TW": "媒體匯出已取消。",
+  "ja": "メディアの書き出しはキャンセルされました。",
+  "ko": "미디어 내보내기가 취소되었습니다."
+ },
+ "The media container, timeline or source identity failed validation.": {
+  "zh-CN": "媒体文件的容器、时间轴或来源校验失败。",
+  "zh-TW": "媒體檔案的容器、時間軸或來源驗證失敗。",
+  "ja": "メディアファイルのコンテナー、タイムライン、またはソースの検証に失敗しました。",
+  "ko": "미디어 파일의 컨테이너, 타임라인 또는 원본 검증에 실패했습니다."
+ },
+ "Mock account is restricted.": {
+  "zh-CN": "演示：账号受限。",
+  "zh-TW": "示範：帳號受限。",
+  "ja": "デモ：アカウントが制限されています。",
+  "ko": "데모: 계정이 제한되었습니다."
+ },
+ "Invalid or stale page/entry; refresh from the first page.": {
+  "zh-CN": "列表已过期，请刷新后重试。",
+  "zh-TW": "清單已過期，請重新整理後再試。",
+  "ja": "一覧が古くなっています。更新してからもう一度お試しください。",
+  "ko": "목록이 오래되었습니다. 새로 고친 후 다시 시도하세요."
+ },
+ "Mock disk is full.": {
+  "zh-CN": "演示：磁盘已满。",
+  "zh-TW": "示範：磁碟已滿。",
+  "ja": "デモ：ディスクがいっぱいです。",
+  "ko": "데모: 디스크가 가득 찼습니다."
+ },
+ "Simulated disk exhaustion; no files were written.": {
+  "zh-CN": "演示：磁盘空间不足，没有写入任何文件。",
+  "zh-TW": "示範：磁碟空間不足，沒有寫入任何檔案。",
+  "ja": "デモ：ディスクの空き容量が不足しています。ファイルは書き込まれていません。",
+  "ko": "데모: 디스크 공간이 부족합니다. 파일이 기록되지 않았습니다."
+ },
+ "Mock integrity verification failed.": {
+  "zh-CN": "演示：完整性校验失败。",
+  "zh-TW": "示範：完整性驗證失敗。",
+  "ja": "デモ：整合性の検証に失敗しました。",
+  "ko": "데모: 무결성 검증에 실패했습니다."
+ },
+ "Simulated integrity check failed.": {
+  "zh-CN": "演示：完整性校验失败。",
+  "zh-TW": "示範：完整性驗證失敗。",
+  "ja": "デモ：整合性の検証に失敗しました。",
+  "ko": "데모: 무결성 검증에 실패했습니다."
+ },
+ "Mock state is unavailable.": {
+  "zh-CN": "演示数据暂不可用。",
+  "zh-TW": "示範資料暫時無法使用。",
+  "ja": "デモデータを利用できません。",
+  "ko": "데모 데이터를 사용할 수 없습니다."
+ },
+ "Mock entry was not found.": {
+  "zh-CN": "演示：找不到这个项目。",
+  "zh-TW": "示範：找不到這個項目。",
+  "ja": "デモ：この項目が見つかりません。",
+  "ko": "데모: 이 항목을 찾을 수 없습니다."
+ },
+ "Mock quota is exhausted.": {
+  "zh-CN": "演示：配额已用尽。",
+  "zh-TW": "示範：配額已用盡。",
+  "ja": "デモ：クォータを使い切りました。",
+  "ko": "데모: 할당량을 모두 사용했습니다."
+ },
+ "Mock network is offline.": {
+  "zh-CN": "演示：网络已断开。",
+  "zh-TW": "示範：網路已中斷。",
+  "ja": "デモ：ネットワークがオフラインです。",
+  "ko": "데모: 네트워크가 오프라인입니다."
+ },
+ "Simulated connection loss at 37%; explicit retry is available.": {
+  "zh-CN": "演示：下载到 37% 时连接中断，可以手动重试。",
+  "zh-TW": "示範：下載到 37% 時連線中斷，可以手動重試。",
+  "ja": "デモ：37% で接続が切れました。手動で再試行できます。",
+  "ko": "데모: 37%에서 연결이 끊겼습니다. 직접 다시 시도할 수 있습니다."
+ },
+ "Quota exhausted.": {
+  "zh-CN": "配额已用尽。",
+  "zh-TW": "配額已用盡。",
+  "ja": "クォータを使い切りました。",
+  "ko": "할당량을 모두 사용했습니다."
+ },
+ "Mock mode uses no account or credentials.": {
+  "zh-CN": "演示模式不使用任何账号或凭据。",
+  "zh-TW": "示範模式不使用任何帳號或憑證。",
+  "ja": "デモモードではアカウントや認証情報を使用しません。",
+  "ko": "데모 모드에서는 계정이나 자격 증명을 사용하지 않습니다."
+ }
+}

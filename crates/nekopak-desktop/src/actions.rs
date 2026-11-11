@@ -666,7 +666,7 @@ pub async fn download(ctx: &Ctx, entries: Vec<RemoteEntry>) {
                 );
             }
             if let Some(skipped) = batch.skipped.first() {
-                ctx.toast(tr(&skipped.reason), "warning");
+                ctx.toast(crate::i18n::message(&skipped.reason), "warning");
             }
             crate::transfers::request_reload(ctx);
         }
@@ -704,15 +704,6 @@ pub async fn upload(ctx: &Ctx, directory: bool) {
         return;
     }
     let session = ctx.session();
-    // The account may change while the system dialog is open; bind the upload
-    // to the account that was active when the user asked for it.
-    let scope = match ctx
-        .call(|service| async move { service.account_scope(&request()).await })
-        .await
-    {
-        Ok(scope) => scope,
-        Err(error) => return ctx.toast_error(&error),
-    };
     let paths: Vec<String> = if directory {
         crate::platform::pick_folder(ctx, &tr("上传文件夹"), "")
             .await
@@ -724,6 +715,27 @@ pub async fn upload(ctx: &Ctx, directory: bool) {
     if paths.is_empty() || session != ctx.session() {
         return;
     }
+    upload_paths(ctx, paths, folder).await;
+}
+
+/// Queues local files and folders (picked or dropped) for upload into `folder`.
+pub async fn upload_paths(ctx: &Ctx, paths: Vec<String>, folder: String) {
+    if let Err(reason) = ctx.gate(Operation::Upload) {
+        return ctx.toast(reason, "info");
+    }
+    let session = ctx.session();
+    // Bind the upload to the account that is active right now; it may change
+    // while the tree is being read.
+    let scope = match ctx
+        .call(|service| async move { service.account_scope(&request()).await })
+        .await
+    {
+        Ok(scope) => scope,
+        Err(error) => return ctx.toast_error(&error),
+    };
+    if session != ctx.session() {
+        return;
+    }
     let result = ctx
         .call(move |service| async move {
             let mut batch = BatchRef {
@@ -732,52 +744,65 @@ pub async fn upload(ctx: &Ctx, directory: bool) {
                 expanded_files: 0,
                 group_id: None,
             };
+            let mut folders = false;
             for path in paths {
-                if directory {
-                    return service
+                let skip = |error: ClientError| SkippedEntry {
+                    id: String::new(),
+                    name: std::path::Path::new(&path)
+                        .file_name()
+                        .map(|name| name.to_string_lossy().into_owned()),
+                    reason: error.message,
+                };
+                if std::path::Path::new(&path).is_dir() {
+                    folders = true;
+                    match service
                         .upload_directory_start_at(&path, &folder, &new_key(), &scope, &request())
-                        .await;
-                }
-                match service
-                    .upload_start_at(&path, &folder, &new_key(), &scope, &request())
-                    .await
-                {
-                    Ok(task) => batch.task_ids.push(task.task_id),
-                    Err(error) => batch.skipped.push(SkippedEntry {
-                        id: String::new(),
-                        name: std::path::Path::new(&path)
-                            .file_name()
-                            .map(|name| name.to_string_lossy().into_owned()),
-                        reason: error.message,
-                    }),
+                        .await
+                    {
+                        Ok(tree) => {
+                            batch.task_ids.extend(tree.task_ids);
+                            batch.skipped.extend(tree.skipped);
+                        }
+                        Err(error) => batch.skipped.push(skip(error)),
+                    }
+                } else {
+                    match service
+                        .upload_start_at(&path, &folder, &new_key(), &scope, &request())
+                        .await
+                    {
+                        Ok(task) => batch.task_ids.push(task.task_id),
+                        Err(error) => batch.skipped.push(skip(error)),
+                    }
                 }
             }
-            Ok(batch)
+            (batch, folders)
         })
         .await;
     if session != ctx.session() {
         return;
     }
-    match result {
-        Ok(batch) => {
-            if !batch.task_ids.is_empty() {
-                ctx.toast(
-                    tx(
-                        "已加入上传队列 {0} 项",
-                        &[&batch.task_ids.len().to_string()],
-                    ),
-                    "success",
-                );
-                crate::transfers::request_reload(ctx);
-            }
-            if let Some(skipped) = batch.skipped.first() {
-                ctx.toast(tr(&skipped.reason), "warning");
-            }
-            if directory {
-                files::reload(ctx);
-            }
-        }
-        Err(error) => ctx.toast_error(&error),
+    let (batch, folders) = result;
+    if !batch.task_ids.is_empty() {
+        ctx.toast_action(
+            tx(
+                "已加入上传队列 {0} 项",
+                &[&batch.task_ids.len().to_string()],
+            ),
+            "success",
+            tr("查看"),
+            |ctx| {
+                ctx.navigate(Route::Transfers {
+                    tab: "upload".into(),
+                })
+            },
+        );
+        crate::transfers::request_reload(ctx);
+    }
+    if let Some(skipped) = batch.skipped.first() {
+        ctx.toast(crate::i18n::message(&skipped.reason), "warning");
+    }
+    if folders {
+        files::reload(ctx);
     }
 }
 

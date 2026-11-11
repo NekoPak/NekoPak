@@ -71,7 +71,7 @@ pub async fn add_link_dialog(ctx: &Ctx, prefill: Option<String>) {
             }
             FormEvent::Alt => {
                 form.close();
-                return torrent_dialog(ctx, target, target_path).await;
+                return torrent_dialog(ctx, target, target_path, None).await;
             }
             FormEvent::Submit => {
                 let links = links_of(&form.value("links"));
@@ -144,8 +144,49 @@ pub async fn add_link_dialog(ctx: &Ctx, prefill: Option<String>) {
     form.close();
 }
 
+/// Offers a link found on the clipboard when the window regains focus.
+/// Opt-in (off by default); the same link is only offered once.
+pub fn clipboard_check(ctx: &Ctx) {
+    if !ctx.prefs.borrow().device.clipboard_watch
+        || ctx.dialog_open()
+        || !ctx.can(Operation::CloudTask)
+    {
+        return;
+    }
+    ctx.ui.invoke_clipboard_paste();
+    let text = ctx.ui.get_clipboard_text().trim().to_owned();
+    ctx.ui.set_clipboard_text(Default::default());
+    if text.len() > 4096 || !is_link(&text) {
+        return;
+    }
+    {
+        let mut last = ctx.last_clipboard_link.borrow_mut();
+        if *last == text {
+            return;
+        }
+        *last = text.clone();
+    }
+    ctx.toast_action(
+        tr("剪贴板中有一个链接"),
+        "info",
+        tr("添加"),
+        move |ctx| crate::actions::add_link(ctx, Some(text)),
+    );
+}
+
+/// Imports a torrent that was dropped onto the window.
+pub async fn import_torrent(ctx: &Ctx, path: std::path::PathBuf) {
+    let (target, target_path) = current_target(ctx);
+    torrent_dialog(ctx, target, target_path, Some(path)).await;
+}
+
 /// Reads a .torrent, shows what it contains and submits only after confirmation.
-async fn torrent_dialog(ctx: &Ctx, target: String, target_path: String) {
+async fn torrent_dialog(
+    ctx: &Ctx,
+    target: String,
+    target_path: String,
+    chosen: Option<std::path::PathBuf>,
+) {
     let session = ctx.session();
     let scope = match ctx
         .call(|service| async move { service.account_scope(&request()).await })
@@ -154,10 +195,17 @@ async fn torrent_dialog(ctx: &Ctx, target: String, target_path: String) {
         Ok(scope) => scope,
         Err(error) => return ctx.toast_error(&error),
     };
-    let Some(path) =
-        crate::platform::pick_file(ctx, &tr("选择种子文件"), ("BitTorrent", &["torrent"])).await
-    else {
-        return;
+    let path = match chosen {
+        Some(path) => path,
+        None => {
+            let Some(path) =
+                crate::platform::pick_file(ctx, &tr("选择种子文件"), ("BitTorrent", &["torrent"]))
+                    .await
+            else {
+                return;
+            };
+            path
+        }
     };
     if session != ctx.session() {
         return;

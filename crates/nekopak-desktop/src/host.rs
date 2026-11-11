@@ -31,6 +31,8 @@ pub struct Host {
     pub service: Arc<AppService>,
     pub updater: Option<Arc<UpdateService>>,
     pub mock: bool,
+    /// The offline simulator, kept so the demo panel can switch scenarios.
+    pub demo: Option<Arc<MockProvider>>,
     pub directory: PathBuf,
 }
 
@@ -73,13 +75,16 @@ pub fn start() -> Result<Host, String> {
         Ok("rust_compat") | Err(std::env::VarError::NotPresent) => false,
         _ => return Err("NEKOPAK_BACKEND must be rust_compat or mock.".into()),
     };
+    let mut demo = None;
     let (provider, database): (Arc<dyn ProviderPort>, &str) = if mock {
         let scenario = match std::env::var("NEKOPAK_MOCK_SCENARIO") {
             Ok(value) => serde_json::from_value::<Scenario>(serde_json::Value::String(value))
                 .map_err(|_| "Unknown mock scenario.".to_owned())?,
             Err(_) => Scenario::Free,
         };
-        (Arc::new(MockProvider::new(scenario)), "tasks.sqlite3")
+        let provider = Arc::new(MockProvider::new(scenario));
+        demo = Some(provider.clone());
+        (provider, "tasks.sqlite3")
     } else {
         // The loopback fixture provider only exists in debug builds.
         #[cfg(debug_assertions)]
@@ -110,6 +115,7 @@ pub fn start() -> Result<Host, String> {
         service,
         updater,
         mock,
+        demo,
         directory,
     })
 }

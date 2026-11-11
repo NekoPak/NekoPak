@@ -306,6 +306,9 @@ export component Sidebar inherits Rectangle {
 
         ScrollView {
             vertical-stretch: 1;
+            // The rail is too narrow for a scroll bar; the wheel still scrolls it.
+            vertical-scrollbar-policy: root.rail ? ScrollBarPolicy.always-off : ScrollBarPolicy.as-needed;
+            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
             VerticalLayout {
                 alignment: start;
                 spacing: 2px;
@@ -351,10 +354,23 @@ export component Sidebar inherits Rectangle {
             }
         }
 
+        // The rail has no room beside the avatar, so settings sits above it.
+        if root.rail: HorizontalLayout {
+            alignment: center;
+            padding-top: 4px;
+            IconBtn {
+                icon: Shell.settings-active ? Icons.settings-fill : Icons.settings;
+                active: Shell.settings-active;
+                tip: Tr.t("设置（Ctrl+,）");
+                clicked => {
+                    Shell.open-settings();
+                }
+            }
+        }
         // Account footer
         HorizontalLayout {
             spacing: 4px;
-            padding-top: 6px;
+            padding-top: root.rail ? 2px : 6px;
             acct := Rectangle {
                 horizontal-stretch: 1;
                 height: 52px;

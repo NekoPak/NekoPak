@@ -348,7 +348,7 @@ async fn plan_and_apply(ctx: &Ctx, config: SyncConfig) {
                 if action.reason.is_empty() {
                     String::new()
                 } else {
-                    format!("（{}）", tr(&action.reason))
+                    format!("（{}）", crate::i18n::message(&action.reason))
                 }
             ),
             false,

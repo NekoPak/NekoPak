@@ -81,6 +81,8 @@ pub async fn boot(ctx: &Ctx) {
     refresh_auth(ctx).await;
     refresh_quota(ctx).await;
     shell.set_boot("ready".into());
+    // Window shortcuts must work before the first click.
+    ctx.ui.invoke_focus_root();
     ctx.route_changed();
     crate::transfers::request_reload(ctx);
     if !ctx.signed_in() && !ctx.mock {

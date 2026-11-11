@@ -60,6 +60,7 @@ fn named_key(name: &str) -> SharedString {
         "End" => Key::End,
         "PageDown" => Key::PageDown,
         "PageUp" => Key::PageUp,
+        "F1" => Key::F1,
         "F2" => Key::F2,
         "F5" => Key::F5,
         "Space" => return " ".into(),

@@ -34,6 +34,14 @@ pub enum Mode {
 }
 
 impl Mode {
+    /// Flat lists gather items from many folders, so each row says where it lives.
+    pub fn shows_location(self) -> bool {
+        matches!(
+            self,
+            Mode::Search | Mode::Recent | Mode::Starred | Mode::Trash
+        )
+    }
+
     fn id(self) -> &'static str {
         match self {
             Self::Files => "files",
@@ -94,6 +102,9 @@ pub struct FilesState {
     scroll_memory: HashMap<String, f32>,
     type_ahead: String,
     type_ahead_at: Option<std::time::Instant>,
+    /// Folder id → cloud path, for the location column of flat result lists.
+    locations: HashMap<String, String>,
+    locations_pending: HashSet<String>,
 }
 
 impl FilesState {
@@ -128,7 +139,21 @@ impl FilesState {
     }
 
     pub fn path_for(&self, entry: &RemoteEntry) -> String {
-        format!("{}/{}", self.crumb_path().trim_end_matches('/'), entry.name)
+        let folder = if self.mode.shows_location() {
+            self.location_of(entry).unwrap_or_default()
+        } else {
+            self.crumb_path()
+        };
+        format!("{}/{}", folder.trim_end_matches('/'), entry.name)
+    }
+
+    /// Cloud path of the folder that holds `entry`, once it has been resolved.
+    fn location_of(&self, entry: &RemoteEntry) -> Option<String> {
+        match entry.parent_id.as_deref() {
+            None => None,
+            Some(ROOT_ID) | Some("") => Some("/".to_owned()),
+            Some(parent) => self.locations.get(parent).cloned(),
+        }
     }
 
     pub fn crumbs(&self) -> Vec<(String, String)> {
@@ -136,6 +161,8 @@ impl FilesState {
     }
 
     pub fn clear_session(&mut self) {
+        self.locations.clear();
+        self.locations_pending.clear();
         self.crumb_cache.clear();
         self.recent_folders.clear();
         self.selection_memory.clear();
@@ -725,9 +752,102 @@ pub fn rebuild(ctx: &Ctx) {
     }
     push_rows(ctx);
     push_chrome(ctx);
+    resolve_locations(ctx);
 }
 
-fn row_for(entry: &RemoteEntry, selected: bool, cut: bool) -> FileRow {
+/// Resolves the folder path of flat-list rows (search, recent, starred,
+/// trash) in the background and fills the location column as answers arrive.
+fn resolve_locations(ctx: &Ctx) {
+    const BATCH: usize = 4;
+    let (token, wanted) = {
+        let mut state = ctx.files.borrow_mut();
+        if !state.mode.shows_location() || state.phase != Phase::Ready {
+            return;
+        }
+        if state.locations.len() > 4000 {
+            state.locations.clear();
+        }
+        let mut wanted: Vec<String> = Vec::new();
+        for at in &state.order {
+            let Some(parent) = state.items[*at].parent_id.as_deref() else {
+                continue;
+            };
+            if parent.is_empty()
+                || parent == ROOT_ID
+                || state.locations.contains_key(parent)
+                || state.locations_pending.contains(parent)
+                || wanted.iter().any(|known| known == parent)
+            {
+                continue;
+            }
+            wanted.push(parent.to_owned());
+            // Bounded per pass; scrolling further loads more and resolves again.
+            if wanted.len() >= 60 {
+                break;
+            }
+        }
+        state.locations_pending.extend(wanted.iter().cloned());
+        (state.token, wanted)
+    };
+    if wanted.is_empty() {
+        return;
+    }
+    let ctx = ctx.clone();
+    ctx.clone().spawn(async move {
+        let session = ctx.session();
+        for chunk in wanted.chunks(BATCH) {
+            let ids = chunk.to_vec();
+            let resolved = ctx
+                .call(move |service| async move {
+                    let mut out = Vec::with_capacity(ids.len());
+                    for id in ids {
+                        let path = service.files_path(&id, &request()).await.ok().map(|chain| {
+                            format!(
+                                "/{}",
+                                chain
+                                    .iter()
+                                    .map(|entry| entry.name.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join("/")
+                            )
+                        });
+                        out.push((id, path));
+                    }
+                    out
+                })
+                .await;
+            if session != ctx.session() {
+                return;
+            }
+            let mut state = ctx.files.borrow_mut();
+            for (id, path) in resolved {
+                state.locations_pending.remove(&id);
+                // A parent that cannot be read (deleted, no access) stays blank.
+                state
+                    .locations
+                    .insert(id, path.unwrap_or_else(|| tr("（位置不可用）")));
+            }
+            if state.token != token {
+                continue;
+            }
+            if let Some(model) = state.rows.clone() {
+                for (visible, at) in state.order.iter().enumerate() {
+                    let Some(location) = state.location_of(&state.items[*at]) else {
+                        continue;
+                    };
+                    if let Some(mut row) = model.row_data(visible) {
+                        if row.location != location.as_str() {
+                            row.location = location.into();
+                            model.set_row_data(visible, row);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+fn row_for(entry: &RemoteEntry, selected: bool, cut: bool, location: Option<String>) -> FileRow {
     let kind = names::file_kind(&entry.name, entry.kind, entry.mime_type.as_deref());
     let folder = entry.kind == EntryKind::Folder;
     let issues = names::windows_issues(&entry.name);
@@ -743,7 +863,7 @@ fn row_for(entry: &RemoteEntry, selected: bool, cut: bool) -> FileRow {
         },
         modified: format::date_time(entry.modified_at.as_deref()).into(),
         type_label: names::kind_label(kind).into(),
-        location: Default::default(),
+        location: location.unwrap_or_default().into(),
         starred: entry.starred == Some(true),
         selected,
         cut,
@@ -757,6 +877,7 @@ fn row_for(entry: &RemoteEntry, selected: bool, cut: bool) -> FileRow {
 
 fn push_rows(ctx: &Ctx) {
     let state = ctx.files.borrow();
+    let show_location = state.mode.shows_location();
     let cut: HashSet<&str> = match &state.clip {
         Some((ClipMode::Cut, entries)) => entries.iter().map(|entry| entry.id.as_str()).collect(),
         _ => HashSet::new(),
@@ -770,6 +891,7 @@ fn push_rows(ctx: &Ctx) {
                 entry,
                 state.selected.contains(&entry.id),
                 cut.contains(entry.id.as_str()),
+                show_location.then(|| state.location_of(entry)).flatten(),
             )
         })
         .collect();
@@ -891,7 +1013,7 @@ pub fn push_chrome(ctx: &Ctx) {
             .unwrap_or_default()
             .into(),
     );
-    files.set_show_location(false);
+    files.set_show_location(state.mode.shows_location());
     let drive = state.mode == Mode::Files;
     files.set_can_write(drive && ctx.can(Operation::Mkdir));
     files.set_can_upload(drive && ctx.can(Operation::Upload) && ctx.feature("upload"));
@@ -1146,6 +1268,24 @@ fn row_clicked(ctx: &Ctx, index: usize, ctrl: bool, shift: bool) {
     set_selection(ctx, selection, Some(index));
 }
 
+/// Palette command: the media library of the listed folder.
+pub fn open_gallery(ctx: &Ctx) {
+    actions::open_media_library(ctx);
+}
+
+/// Selects every listed item (palette command).
+pub fn select_all(ctx: &Ctx) {
+    let selection = {
+        let state = ctx.files.borrow();
+        state
+            .order
+            .iter()
+            .map(|at| state.items[*at].id.clone())
+            .collect()
+    };
+    set_selection(ctx, selection, None);
+}
+
 fn toggle_all(ctx: &Ctx) {
     let selection = {
         let state = ctx.files.borrow();
@@ -1197,7 +1337,7 @@ fn close_search(ctx: &Ctx) {
     }
 }
 
-fn set_view(ctx: &Ctx, view: &str) {
+pub fn set_view(ctx: &Ctx, view: &str) {
     if ctx.prefs.borrow().account.view == view {
         return;
     }

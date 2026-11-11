@@ -12,6 +12,7 @@ mod automation;
 mod autostart;
 mod cloud;
 mod collate;
+mod demo;
 mod desktop;
 mod files;
 mod format;
@@ -29,6 +30,7 @@ mod names;
 mod nav;
 mod overlay;
 mod pages;
+mod palette;
 mod panel;
 mod platform;
 mod prefs;
@@ -39,6 +41,7 @@ mod sync_mount;
 mod tools;
 mod transfers;
 mod updates;
+mod window_events;
 
 use app::App;
 use host::HostEvent;
@@ -94,6 +97,8 @@ fn main() {
     panel::install(&ctx);
     transfers::install(&ctx);
     shortcuts::install(&ctx);
+    palette::install(&ctx);
+    window_events::install(&ctx);
     ctx.ui.on_scheme_changed({
         let weak = Rc::downgrade(&ctx);
         move |_| {

@@ -749,7 +749,7 @@ export component FilesPage inherits Rectangle {
                     }
 
                     Text {
-                        text: Tr.t("已选") + " " + Files.selected-count + " " + Tr.t("项") + (Files.selection-summary != "" ? " · " + Files.selection-summary : "");
+                        text: Tr.x("已选 {0} 项", Files.selected-count) + (Files.selection-summary != "" ? " · " + Files.selection-summary : "");
                         color: Pal.on-secondary-container;
                         font-size: Tk.fs-md;
                         font-weight: 600;

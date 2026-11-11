@@ -3,15 +3,16 @@
 import { Pal } from "generated/palette.slint";
 import { Icons } from "generated/icons.slint";
 import { Tk, Tr } from "tokens.slint";
-import { Btn, Busy, Banner, EmptyState, Tip } from "widgets.slint";
-import { Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers } from "state.slint";
+import { Btn, Busy, Banner, EmptyState, Icon, Tip } from "widgets.slint";
+import { Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers, Palette } from "state.slint";
 import { Sidebar, TabStrip } from "shell.slint";
 import { MenuLayer, DialogLayer, ToastLayer, TipLayer } from "overlays.slint";
+import { PaletteLayer } from "palette.slint";
 import { FilesPage } from "pages/files.slint";
 import { PanelPage } from "pages/panel.slint";
 import { TransfersPage } from "pages/transfers.slint";
 
-export { Pal, Tk, Tr, Icons, Tip, Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers }
+export { Pal, Tk, Tr, Icons, Tip, Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers, Palette }
 
 export component AppWindow inherits Window {
     title: Shell.demo ? "NekoPak — Offline Mock" : "NekoPak";
@@ -124,6 +125,42 @@ export component AppWindow inherits Window {
         height: 0px;
     }
 
+    // Files dragged in from the system: say where they would go before the drop.
+    if Shell.drop-hint != "": Rectangle {
+        background: Tk.scrim;
+        Rectangle {
+            x: 16px;
+            y: 16px;
+            width: parent.width - 32px;
+            height: parent.height - 32px;
+            border-radius: Tk.r-xl;
+            border-width: 2px;
+            border-color: Shell.drop-ok ? Pal.primary : Pal.outline;
+            background: Shell.drop-ok ? Pal.primary-container.with-alpha(0.94) : Pal.surface-container.with-alpha(0.96);
+            VerticalLayout {
+                alignment: center;
+                spacing: 14px;
+                HorizontalLayout {
+                    alignment: center;
+                    Icon {
+                        source: Shell.drop-ok ? Icons.upload : Icons.block;
+                        size: 48px;
+                        tint: Shell.drop-ok ? Pal.on-primary-container : Pal.on-surface-variant;
+                    }
+                }
+
+                Text {
+                    text: Shell.drop-hint;
+                    color: Shell.drop-ok ? Pal.on-primary-container : Pal.on-surface;
+                    font-size: Tk.fs-lg;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+    if Palette.open: PaletteLayer { }
     if Dialogs.stack.length > 0: DialogLayer { }
     if Menu.open: MenuLayer { }
     ToastLayer { }

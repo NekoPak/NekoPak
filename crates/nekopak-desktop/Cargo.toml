@@ -20,7 +20,9 @@ gpu = ["slint/renderer-femtovg"]
 automation = []
 
 [dependencies]
-slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software", "accessibility"] }
+# `unstable-winit-030` exposes window focus, system file drops and the extra
+# mouse buttons; it may change between minor releases, hence the `~` pin.
+slint = { version = "~1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software", "accessibility", "unstable-winit-030"] }
 nekopak-core.workspace = true
 nekopak-domain.workspace = true
 nekopak-provider.workspace = true

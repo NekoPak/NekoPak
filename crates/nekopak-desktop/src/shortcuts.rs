@@ -21,9 +21,17 @@ fn handle(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
     if ctx.dialog_open() {
         return is(Key::Escape) && ctx.cancel_top_dialog();
     }
+    if ctx.palette_open() {
+        if is(Key::Escape) {
+            ctx.close_palette();
+        }
+        return true;
+    }
     let lower = text.to_lowercase();
     if ctrl && !alt {
         match lower.as_str() {
+            "k" => ctx.open_palette(),
+            "p" if shift => ctx.open_palette(),
             "t" => {
                 ctx.open_tab(Route::root(), None);
             }
@@ -58,6 +66,9 @@ fn handle(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
         ctx.navigate_history(1);
     } else if is(Key::F5) {
         refresh(ctx);
+    } else if is(Key::F1) {
+        let task = ctx.clone();
+        ctx.spawn(async move { crate::settings_page::shortcuts(&task).await });
     } else {
         // Keys the focused control did not use still drive the file list.
         return ctx.route().page() == "files" && files::key(ctx, text, ctrl, shift, alt);
@@ -65,7 +76,7 @@ fn handle(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
     true
 }
 
-fn refresh(ctx: &Ctx) {
+pub fn refresh(ctx: &Ctx) {
     match ctx.route().page() {
         "files" => files::reload(ctx),
         "transfers" => crate::transfers::request_reload(ctx),

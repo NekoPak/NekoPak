@@ -31,6 +31,7 @@ pub struct App {
     pub svc: Arc<AppService>,
     pub updater: Option<Arc<UpdateService>>,
     pub mock: bool,
+    pub demo: Option<Arc<nekopak_provider_mock::MockProvider>>,
     runtime: tokio::runtime::Handle,
     pub core: RefCell<Core>,
     pub prefs: RefCell<Prefs>,
@@ -42,6 +43,9 @@ pub struct App {
     pub panel: RefCell<crate::panel::PanelState>,
     /// Identifier of the duplicates scan shown on the page.
     pub scan: RefCell<Option<String>>,
+    /// Last clipboard link that was offered, so it is not offered twice.
+    pub last_clipboard_link: RefCell<String>,
+    pub palette: RefCell<crate::palette::PaletteState>,
 }
 
 /// Default deadline for one backend request, matching the web host.
@@ -61,6 +65,7 @@ impl App {
             svc: host.service,
             updater: host.updater,
             mock: host.mock,
+            demo: host.demo,
             runtime,
             core: RefCell::new(Core {
                 settings: serde_json::Value::Null,
@@ -74,6 +79,8 @@ impl App {
             transfers: RefCell::new(Default::default()),
             panel: RefCell::new(Default::default()),
             scan: RefCell::new(None),
+            last_clipboard_link: RefCell::default(),
+            palette: RefCell::default(),
         })
     }
 
@@ -251,7 +258,7 @@ pub fn error_text(error: &ClientError) -> String {
     };
     match headline {
         Some(text) if error.message.is_empty() => i18n::tr(text),
-        _ => i18n::tr(&error.message),
+        _ => i18n::message(&error.message),
     }
 }
 

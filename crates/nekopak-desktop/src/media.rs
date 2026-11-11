@@ -177,7 +177,7 @@ pub async fn download_quality(ctx: &Ctx, entries: Vec<RemoteEntry>) {
                 );
             }
             if let Some(skipped) = batch.skipped.first() {
-                ctx.toast(tr(&skipped.reason), "warning");
+                ctx.toast(crate::i18n::message(&skipped.reason), "warning");
             }
             crate::transfers::request_reload(ctx);
         }

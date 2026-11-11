@@ -11,6 +11,9 @@ pub struct DevicePrefs {
     pub sidebar_collapsed: bool,
     pub reduce_motion: bool,
     pub disclaimer_accepted: bool,
+    /// Offer a magnet / http(s) link found on the clipboard when the window
+    /// regains focus. Off by default.
+    pub clipboard_watch: bool,
     pub window_width: f32,
     pub window_height: f32,
 }
@@ -22,6 +25,7 @@ impl Default for DevicePrefs {
             sidebar_collapsed: false,
             reduce_motion: false,
             disclaimer_accepted: false,
+            clipboard_watch: false,
             window_width: 0.0,
             window_height: 0.0,
         }

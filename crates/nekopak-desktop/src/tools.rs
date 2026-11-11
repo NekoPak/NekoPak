@@ -232,6 +232,11 @@ fn parse_share(text: &str) -> Option<(String, String)> {
     .then_some((id, code))
 }
 
+/// Palette entry: paste a share link from anywhere.
+pub async fn open_share_link(ctx: &Ctx) {
+    open_share(ctx).await;
+}
+
 async fn open_share(ctx: &Ctx) {
     let fields = vec![
         Field::text("link", tr("分享链接"), "")
