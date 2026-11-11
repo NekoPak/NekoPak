@@ -15,18 +15,24 @@ impl SortKey {
     pub fn new(text: &str) -> Self {
         #[cfg(windows)]
         {
-            Self { wide: text.encode_utf16().collect() }
+            Self {
+                wide: text.encode_utf16().collect(),
+            }
         }
         #[cfg(not(windows))]
         {
-            Self { folded: text.to_lowercase() }
+            Self {
+                folded: text.to_lowercase(),
+            }
         }
     }
 
     pub fn compare(&self, other: &Self) -> Ordering {
         #[cfg(windows)]
         {
-            use windows_sys::Win32::Globalization::{CompareStringEx, LINGUISTIC_IGNORECASE, SORT_DIGITSASNUMBERS};
+            use windows_sys::Win32::Globalization::{
+                CompareStringEx, LINGUISTIC_IGNORECASE, SORT_DIGITSASNUMBERS,
+            };
             // CSTR_LESS_THAN = 1, CSTR_EQUAL = 2, CSTR_GREATER_THAN = 3; 0 means failure.
             let result = unsafe {
                 CompareStringEx(
@@ -89,7 +95,10 @@ pub fn natural(a: &str, b: &str) -> Ordering {
 
 #[cfg_attr(windows, allow(dead_code))]
 fn trim_zeros(digits: &[u8]) -> &[u8] {
-    let first = digits.iter().position(|d| *d != b'0').unwrap_or(digits.len().saturating_sub(1));
+    let first = digits
+        .iter()
+        .position(|d| *d != b'0')
+        .unwrap_or(digits.len().saturating_sub(1));
     &digits[first..]
 }
 
@@ -99,11 +108,35 @@ mod tests {
 
     #[test]
     fn digits_sort_by_value() {
-        let mut names = vec!["第10讲.mp4", "第2讲.mp4", "第1讲.mp4", "a100", "a20", "a020", "A3"];
+        let mut names = vec![
+            "第10讲.mp4",
+            "第2讲.mp4",
+            "第1讲.mp4",
+            "a100",
+            "a20",
+            "a020",
+            "A3",
+        ];
         names.sort_by(|a, b| natural(&a.to_lowercase(), &b.to_lowercase()));
-        assert_eq!(names, ["a3", "a20", "a020", "a100", "第1讲.mp4", "第2讲.mp4", "第10讲.mp4"].map(|n| {
-            if n == "a3" { "A3" } else { n }
-        }));
+        assert_eq!(
+            names,
+            [
+                "a3",
+                "a20",
+                "a020",
+                "a100",
+                "第1讲.mp4",
+                "第2讲.mp4",
+                "第10讲.mp4"
+            ]
+            .map(|n| {
+                if n == "a3" {
+                    "A3"
+                } else {
+                    n
+                }
+            })
+        );
         assert_eq!(natural("file", "file2"), Ordering::Less);
         assert_eq!(natural("9", "10"), Ordering::Less);
         assert_eq!(natural("007", "7"), Ordering::Equal);

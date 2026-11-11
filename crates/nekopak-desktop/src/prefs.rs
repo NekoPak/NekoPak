@@ -10,7 +10,6 @@ pub struct DevicePrefs {
     pub accent: String,
     pub sidebar_collapsed: bool,
     pub reduce_motion: bool,
-    pub clipboard_watch: bool,
     pub disclaimer_accepted: bool,
     pub window_width: f32,
     pub window_height: f32,
@@ -22,7 +21,6 @@ impl Default for DevicePrefs {
             accent: "mist".into(),
             sidebar_collapsed: false,
             reduce_motion: false,
-            clipboard_watch: false,
             disclaimer_accepted: false,
             window_width: 0.0,
             window_height: 0.0,
@@ -59,7 +57,10 @@ impl Default for AccountPrefs {
         Self {
             pins: Vec::new(),
             view: "list".into(),
-            sort: SortSpec { key: "name".into(), dir: "asc".into() },
+            sort: SortSpec {
+                key: "name".into(),
+                dir: "asc".into(),
+            },
             density: "comfortable".into(),
             grid_size: "m".into(),
             folders_first: true,
@@ -81,12 +82,16 @@ impl AccountPrefs {
         if !matches!(prefs.grid_size.as_str(), "s" | "m" | "l") {
             prefs.grid_size = defaults.grid_size;
         }
-        if !matches!(prefs.sort.key.as_str(), "name" | "size" | "modified" | "kind")
-            || !matches!(prefs.sort.dir.as_str(), "asc" | "desc")
+        if !matches!(
+            prefs.sort.key.as_str(),
+            "name" | "size" | "modified" | "kind"
+        ) || !matches!(prefs.sort.dir.as_str(), "asc" | "desc")
         {
             prefs.sort = defaults.sort;
         }
-        prefs.pins.retain(|pin| !pin.id.is_empty() && !pin.name.is_empty());
+        prefs
+            .pins
+            .retain(|pin| !pin.id.is_empty() && !pin.name.is_empty());
         prefs
     }
 }
@@ -107,7 +112,12 @@ impl Prefs {
             .ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
-        Self { device, account: AccountPrefs::default(), account_id: None, path }
+        Self {
+            device,
+            account: AccountPrefs::default(),
+            account_id: None,
+            path,
+        }
     }
 
     /// Best effort: these are conveniences, never authoritative state.
@@ -142,7 +152,10 @@ mod tests {
         assert_eq!(prefs.grid_size, "l");
         assert!(!prefs.folders_first);
         assert_eq!(prefs.sort.key, "name");
-        assert_eq!(AccountPrefs::normalized(&serde_json::json!({"pins": []})), AccountPrefs::default());
+        assert_eq!(
+            AccountPrefs::normalized(&serde_json::json!({"pins": []})),
+            AccountPrefs::default()
+        );
         let wire = serde_json::to_value(AccountPrefs::default()).unwrap();
         assert!(wire.get("gridSize").is_some() && wire.get("foldersFirst").is_some());
     }

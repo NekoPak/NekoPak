@@ -15,33 +15,58 @@ const MAX_TABS: usize = 12;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Route {
-    Files { folder: String },
-    Search { query: String },
+    Files {
+        folder: String,
+    },
+    Search {
+        query: String,
+    },
     Recent,
     Starred,
     Trash,
     Shares,
-    Transfers { tab: String },
+    Transfers {
+        tab: String,
+    },
     Sync,
     Mount,
     Local,
     References,
-    Settings { section: String },
-    Duplicates { folder: String },
-    Space { folder: String },
-    Archive { file: String, path: String },
-    SharedFolder { access: String, parent: String, title: String },
+    Settings {
+        section: String,
+    },
+    Duplicates {
+        folder: String,
+    },
+    Space {
+        folder: String,
+    },
+    Archive {
+        file: String,
+        path: String,
+    },
+    SharedFolder {
+        access: String,
+        parent: String,
+        title: String,
+    },
 }
 
 impl Route {
     pub fn root() -> Self {
-        Self::Files { folder: ROOT_ID.into() }
+        Self::Files {
+            folder: ROOT_ID.into(),
+        }
     }
 
     /// Identifier of the Slint page that renders this route.
     pub fn page(&self) -> &'static str {
         match self {
-            Self::Files { .. } | Self::Search { .. } | Self::Recent | Self::Starred | Self::Trash
+            Self::Files { .. }
+            | Self::Search { .. }
+            | Self::Recent
+            | Self::Starred
+            | Self::Trash
             | Self::SharedFolder { .. } => "files",
             Self::Shares => "shares",
             Self::Transfers { .. } => "transfers",
@@ -101,7 +126,16 @@ pub struct Nav {
 
 impl Default for Nav {
     fn default() -> Self {
-        Self { tabs: vec![Tab { id: 1, history: vec![Route::root()], at: 0, title: None }], active: 0, next_id: 2 }
+        Self {
+            tabs: vec![Tab {
+                id: 1,
+                history: vec![Route::root()],
+                at: 0,
+                title: None,
+            }],
+            active: 0,
+            next_id: 2,
+        }
     }
 }
 
@@ -135,9 +169,15 @@ pub fn install(ctx: &Ctx) {
         }
     }));
     shell.on_toggle_sidebar(handler!(|ctx| ctx.toggle_sidebar()));
-    shell.on_open_transfers(handler!(|ctx| ctx.navigate(Route::Transfers { tab: "all".into() })));
-    shell.on_open_account(handler!(|ctx| ctx.navigate(Route::Settings { section: "account".into() })));
-    shell.on_open_settings(handler!(|ctx| ctx.navigate(Route::Settings { section: "general".into() })));
+    shell.on_open_transfers(handler!(
+        |ctx| ctx.navigate(Route::Transfers { tab: "all".into() })
+    ));
+    shell.on_open_account(handler!(|ctx| ctx.navigate(Route::Settings {
+        section: "account".into()
+    })));
+    shell.on_open_settings(handler!(|ctx| ctx.navigate(Route::Settings {
+        section: "general".into()
+    })));
     shell.on_tab_activate(handler!(|ctx, id| ctx.activate_tab(id)));
     shell.on_tab_close(handler!(|ctx, id| ctx.close_tab(Some(id))));
     shell.on_tab_new(handler!(|ctx| {
@@ -257,7 +297,15 @@ impl App {
             let id = nav.next_id;
             nav.next_id += 1;
             let at = nav.active + 1;
-            nav.tabs.insert(at, Tab { id, history: vec![route], at: 0, title });
+            nav.tabs.insert(
+                at,
+                Tab {
+                    id,
+                    history: vec![route],
+                    at: 0,
+                    title,
+                },
+            );
             nav.active = at;
         }
         self.route_changed();
@@ -336,7 +384,9 @@ impl App {
             "local" => Route::Local,
             "references" => Route::References,
             other => match other.strip_prefix("pin:") {
-                Some(folder) => Route::Files { folder: folder.into() },
+                Some(folder) => Route::Files {
+                    folder: folder.into(),
+                },
                 None => return,
             },
         };
@@ -371,12 +421,18 @@ impl App {
             .enumerate()
             .map(|(index, tab)| TabEntry {
                 id: tab.id,
-                title: tab.title.clone().unwrap_or_else(|| tab.route().default_title()).into(),
+                title: tab
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| tab.route().default_title())
+                    .into(),
                 icon: slint::Image::default(),
                 active: index == nav.active,
             })
             .collect();
-        self.ui.global::<Shell>().set_tabs(ModelRc::new(VecModel::from(tabs)));
+        self.ui
+            .global::<Shell>()
+            .set_tabs(ModelRc::new(VecModel::from(tabs)));
     }
 
     /// Rebuilds the sidebar: navigation, live transfer summary and account line.
@@ -403,7 +459,8 @@ impl App {
             "files",
             tr("网盘"),
             "cloud",
-            (matches!(route, Route::Files { .. }) && !pin_active) || matches!(route, Route::Search { .. }),
+            (matches!(route, Route::Files { .. }) && !pin_active)
+                || matches!(route, Route::Search { .. }),
             "Ctrl+1",
         )];
         for pin in &prefs.account.pins {
@@ -416,16 +473,64 @@ impl App {
             ));
         }
         let library = vec![
-            entry("recent", tr("最近"), "clock", route == Route::Recent, "Ctrl+3"),
-            entry("starred", tr("星标"), "star", route == Route::Starred, "Ctrl+4"),
-            entry("shares", tr("我的分享"), "share", route == Route::Shares, "Ctrl+5"),
-            entry("trash", tr("回收站"), "trash", route == Route::Trash, "Ctrl+6"),
+            entry(
+                "recent",
+                tr("最近"),
+                "clock",
+                route == Route::Recent,
+                "Ctrl+3",
+            ),
+            entry(
+                "starred",
+                tr("星标"),
+                "star",
+                route == Route::Starred,
+                "Ctrl+4",
+            ),
+            entry(
+                "shares",
+                tr("我的分享"),
+                "share",
+                route == Route::Shares,
+                "Ctrl+5",
+            ),
+            entry(
+                "trash",
+                tr("回收站"),
+                "trash",
+                route == Route::Trash,
+                "Ctrl+6",
+            ),
         ];
         let tools = vec![
-            entry("sync", tr("自动同步"), "sync", route == Route::Sync, "Ctrl+7"),
-            entry("mount", tr("挂载"), "drive", route == Route::Mount, "Ctrl+8"),
-            entry("local", tr("本地文件夹"), "folder", route == Route::Local, ""),
-            entry("references", tr("引用归档"), "archive", route == Route::References, ""),
+            entry(
+                "sync",
+                tr("自动同步"),
+                "sync",
+                route == Route::Sync,
+                "Ctrl+7",
+            ),
+            entry(
+                "mount",
+                tr("挂载"),
+                "drive",
+                route == Route::Mount,
+                "Ctrl+8",
+            ),
+            entry(
+                "local",
+                tr("本地文件夹"),
+                "folder",
+                route == Route::Local,
+                "",
+            ),
+            entry(
+                "references",
+                tr("引用归档"),
+                "archive",
+                route == Route::References,
+                "",
+            ),
         ];
         shell.set_nav_quick(ModelRc::new(VecModel::from(quick)));
         shell.set_nav_library(ModelRc::new(VecModel::from(library)));
@@ -445,7 +550,8 @@ impl App {
         let name = if self.mock {
             tr("未连接 PikPak")
         } else if signed_in {
-            auth.and_then(|auth| auth.display_name.clone()).unwrap_or_else(|| tr("已登录"))
+            auth.and_then(|auth| auth.display_name.clone())
+                .unwrap_or_else(|| tr("已登录"))
         } else if expired {
             tr("登录已过期")
         } else {
@@ -455,7 +561,11 @@ impl App {
             ["download_daily", "download"].iter().find_map(|wanted| {
                 let dimension = quota.dimensions.iter().find(|d| d.dimension == *wanted)?;
                 let remaining = dimension.remaining_bytes?;
-                let period = if *wanted == "download_daily" { tr("今日") } else { tr("本月") };
+                let period = if *wanted == "download_daily" {
+                    tr("今日")
+                } else {
+                    tr("本月")
+                };
                 Some(tx("{0}剩余 {1}", &[&period, &format::bytes(remaining.0)]))
             })
         });
@@ -477,10 +587,18 @@ impl App {
             }
         };
         let exhausted = core.quota.as_ref().is_some_and(|quota| {
-            quota.dimensions.iter().any(|dimension| dimension.remaining_bytes == Some(DecimalU64(0)))
+            quota
+                .dimensions
+                .iter()
+                .any(|dimension| dimension.remaining_bytes == Some(DecimalU64(0)))
         });
         shell.set_account_initial(if signed_in && !self.mock {
-            name.trim().chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default().into()
+            name.trim()
+                .chars()
+                .next()
+                .map(|c| c.to_uppercase().to_string())
+                .unwrap_or_default()
+                .into()
         } else {
             Default::default()
         });

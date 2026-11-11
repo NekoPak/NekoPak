@@ -30,34 +30,64 @@ pub struct Row {
 
 impl Row {
     fn of(id: &str, kind: &'static str, title: impl Into<String>) -> Self {
-        Self { id: id.into(), kind, title: title.into(), ..Self::default() }
+        Self {
+            id: id.into(),
+            kind,
+            title: title.into(),
+            ..Self::default()
+        }
     }
     pub fn header(title: impl Into<String>) -> Self {
         Self::of("", "header", title)
     }
     pub fn note(text: impl Into<String>, tone: &'static str) -> Self {
-        Self { tone, ..Self::of("", "note", text) }
+        Self {
+            tone,
+            ..Self::of("", "note", text)
+        }
     }
     pub fn info(title: impl Into<String>, value: impl Into<String>) -> Self {
-        Self { value: value.into(), ..Self::of("", "info", title) }
+        Self {
+            value: value.into(),
+            ..Self::of("", "info", title)
+        }
     }
     pub fn toggle(id: &str, title: impl Into<String>, checked: bool) -> Self {
-        Self { checked, ..Self::of(id, "toggle", title) }
+        Self {
+            checked,
+            ..Self::of(id, "toggle", title)
+        }
     }
     pub fn select(id: &str, title: impl Into<String>, value: impl Into<String>) -> Self {
-        Self { value: value.into(), ..Self::of(id, "select", title) }
+        Self {
+            value: value.into(),
+            ..Self::of(id, "select", title)
+        }
     }
     pub fn button(id: &str, title: impl Into<String>, action: impl Into<String>) -> Self {
-        Self { action: action.into(), ..Self::of(id, "button", title) }
+        Self {
+            action: action.into(),
+            ..Self::of(id, "button", title)
+        }
     }
     pub fn item(id: &str, title: impl Into<String>) -> Self {
         Self::of(id, "item", title)
     }
     pub fn progress(id: &str, title: impl Into<String>, value: f32) -> Self {
-        Self { progress: value, ..Self::of(id, "progress", title) }
+        Self {
+            progress: value,
+            ..Self::of(id, "progress", title)
+        }
     }
-    pub fn segment(id: &str, title: impl Into<String>, options: Vec<(String, String, bool)>) -> Self {
-        Self { options, ..Self::of(id, "segment", title) }
+    pub fn segment(
+        id: &str,
+        title: impl Into<String>,
+        options: Vec<(String, String, bool)>,
+    ) -> Self {
+        Self {
+            options,
+            ..Self::of(id, "segment", title)
+        }
     }
     pub fn detail(mut self, text: impl Into<String>) -> Self {
         self.detail = text.into();
@@ -116,6 +146,7 @@ pub struct View {
     pub rows: Vec<Row>,
 }
 
+#[allow(dead_code)] // coordinates are provided for handlers that open menus
 pub enum Event {
     Action(String, f32, f32),
     Tab(String),
@@ -192,7 +223,14 @@ impl App {
         panel.set_phase("loading".into());
     }
 
-    pub fn panel_state(&self, error: bool, icon: &'static str, title: &str, body: &str, action: &str) {
+    pub fn panel_state(
+        &self,
+        error: bool,
+        icon: &'static str,
+        title: &str,
+        body: &str,
+        action: &str,
+    ) {
         let panel = self.ui.global::<Panel>();
         panel.set_phase(if error { "error" } else { "empty" }.into());
         panel.set_state_error(error);
@@ -206,9 +244,15 @@ impl App {
         let panel = self.ui.global::<Panel>();
         panel.set_title(view.title.into());
         panel.set_subtitle(view.subtitle.into());
-        panel.set_icon(if view.icon.is_empty() { slint::Image::default() } else { self.icon(view.icon) });
+        panel.set_icon(if view.icon.is_empty() {
+            slint::Image::default()
+        } else {
+            self.icon(view.icon)
+        });
         panel.set_can_back(view.back && self.can_go(-1));
-        panel.set_actions(ModelRc::new(VecModel::from(self.menu_entries(&view.actions))));
+        panel.set_actions(ModelRc::new(VecModel::from(
+            self.menu_entries(&view.actions),
+        )));
         panel.set_tabs(ModelRc::new(VecModel::from(
             view.tabs
                 .into_iter()
@@ -230,7 +274,11 @@ impl App {
                 title: row.title.into(),
                 detail: row.detail.into(),
                 value: row.value.into(),
-                icon: if row.icon.is_empty() { slint::Image::default() } else { self.icon(row.icon) },
+                icon: if row.icon.is_empty() {
+                    slint::Image::default()
+                } else {
+                    self.icon(row.icon)
+                },
                 file_kind: row.file_kind.unwrap_or(-1),
                 tone: row.tone.into(),
                 checked: row.checked,

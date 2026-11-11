@@ -116,7 +116,15 @@ impl FilesState {
 
     /// Cloud path of the listed folder, e.g. `/课程/第一章`.
     pub fn crumb_path(&self) -> String {
-        format!("/{}", self.crumbs.iter().skip(1).map(|(_, name)| name.as_str()).collect::<Vec<_>>().join("/"))
+        format!(
+            "/{}",
+            self.crumbs
+                .iter()
+                .skip(1)
+                .map(|(_, name)| name.as_str())
+                .collect::<Vec<_>>()
+                .join("/")
+        )
     }
 
     pub fn path_for(&self, entry: &RemoteEntry) -> String {
@@ -193,7 +201,9 @@ pub fn install(ctx: &Ctx) {
     files.on_forward(handler!(|ctx| ctx.navigate_history(1)));
     files.on_up(handler!(|ctx| go_up(&ctx)));
     files.on_home(handler!(|ctx| ctx.navigate(Route::root())));
-    files.on_crumb(handler!(|ctx, id| ctx.navigate(Route::Files { folder: id.to_string() })));
+    files.on_crumb(handler!(|ctx, id| ctx.navigate(Route::Files {
+        folder: id.to_string()
+    })));
     files.on_recent_menu(task!(|ctx, x, y| recent_menu(&ctx, x, y).await));
     files.on_open_search(handler!(|ctx| open_search(&ctx)));
     files.on_close_search(handler!(|ctx| close_search(&ctx)));
@@ -219,14 +229,33 @@ pub fn install(ctx: &Ctx) {
         let entries = ctx.files.borrow().selected_entries();
         actions::run(&ctx, &id, entries, x, y).await
     }));
-    files.on_row_clicked(handler!(|ctx, index, ctrl, shift| row_clicked(&ctx, index.max(0) as usize, ctrl, shift)));
-    files.on_row_toggled(handler!(|ctx, index| row_clicked(&ctx, index.max(0) as usize, true, false)));
+    files.on_row_clicked(handler!(|ctx, index, ctrl, shift| row_clicked(
+        &ctx,
+        index.max(0) as usize,
+        ctrl,
+        shift
+    )));
+    files.on_row_toggled(handler!(|ctx, index| row_clicked(
+        &ctx,
+        index.max(0) as usize,
+        true,
+        false
+    )));
     files.on_row_activated(handler!(|ctx, index| activate(&ctx, index.max(0) as usize)));
-    files.on_row_context(task!(|ctx, index, x, y| row_context(&ctx, index.max(0) as usize, x, y).await));
+    files.on_row_context(task!(|ctx, index, x, y| row_context(
+        &ctx,
+        index.max(0) as usize,
+        x,
+        y
+    )
+    .await));
     files.on_background_context(task!(|ctx, x, y| background_context(&ctx, x, y).await));
     files.on_key({
         let weak = weak.clone();
-        move |text, ctrl, shift, alt| weak.upgrade().is_some_and(|ctx| key(&ctx, &text, ctrl, shift, alt))
+        move |text, ctrl, shift, alt| {
+            weak.upgrade()
+                .is_some_and(|ctx| key(&ctx, &text, ctrl, shift, alt))
+        }
     });
     files.on_near_end(task!(|ctx| load_more(&ctx, false).await));
     files.on_load_all(task!(|ctx| load_more(&ctx, true).await));
@@ -269,7 +298,9 @@ pub fn enter(ctx: &Ctx, route: &Route) {
         let same = state.route.as_ref() == Some(route);
         state.route = Some(route.clone());
         let (mode, folder, query) = match route {
-            Route::Files { folder } if folder.starts_with("local:") => (Mode::Local, folder.clone(), String::new()),
+            Route::Files { folder } if folder.starts_with("local:") => {
+                (Mode::Local, folder.clone(), String::new())
+            }
             Route::Files { folder } => (Mode::Files, folder.clone(), String::new()),
             Route::Search { query } => (Mode::Search, String::new(), query.clone()),
             Route::Recent => (Mode::Recent, String::new(), String::new()),
@@ -283,7 +314,11 @@ pub fn enter(ctx: &Ctx, route: &Route) {
         state.query = query;
         state.kind_filter = None;
         let key = memory_key(tab, route);
-        state.selected = state.selection_memory.get(&key).cloned().unwrap_or_default();
+        state.selected = state
+            .selection_memory
+            .get(&key)
+            .cloned()
+            .unwrap_or_default();
         state.anchor = 0;
         state.focus = None;
         state.crumbs = match mode {
@@ -292,7 +327,12 @@ pub fn enter(ctx: &Ctx, route: &Route) {
                 .crumb_cache
                 .get(&state.folder)
                 .cloned()
-                .unwrap_or_else(|| vec![(ROOT_ID.to_owned(), tr("网盘")), (state.folder.clone(), "…".to_owned())]),
+                .unwrap_or_else(|| {
+                    vec![
+                        (ROOT_ID.to_owned(), tr("网盘")),
+                        (state.folder.clone(), "…".to_owned()),
+                    ]
+                }),
             Mode::Shared => match route {
                 Route::SharedFolder { title, parent, .. } => vec![(parent.clone(), title.clone())],
                 _ => Vec::new(),
@@ -306,7 +346,11 @@ pub fn enter(ctx: &Ctx, route: &Route) {
         files.set_search_text(query.as_str().into());
     }
     push_chrome(ctx);
-    let keep = if same_listing { ctx.files.borrow().items.len() } else { 0 };
+    let keep = if same_listing {
+        ctx.files.borrow().items.len()
+    } else {
+        0
+    };
     let ctx = ctx.clone();
     ctx.clone().spawn(async move {
         load(&ctx, keep, remembered_scroll).await;
@@ -325,23 +369,59 @@ pub fn reload(ctx: &Ctx) {
     });
 }
 
-async fn fetch(ctx: &Ctx, mode: Mode, folder: String, query: String, cursor: Option<String>) -> Result<Page<RemoteEntry>, ClientError> {
+async fn fetch(
+    ctx: &Ctx,
+    mode: Mode,
+    folder: String,
+    query: String,
+    cursor: Option<String>,
+) -> Result<Page<RemoteEntry>, ClientError> {
     let route = ctx.route();
     ctx.call(move |service| async move {
         let context = request();
         match mode {
-            Mode::Files => service.files_list(&folder, cursor.as_deref(), Some(PAGE), &context).await,
+            Mode::Files => {
+                service
+                    .files_list(&folder, cursor.as_deref(), Some(PAGE), &context)
+                    .await
+            }
             Mode::Local => service.local_list(&folder, cursor.as_deref(), Some(PAGE)),
-            Mode::Recent => service.files_query(&FileQuery::Recent, cursor.as_deref(), Some(100), &context).await,
-            Mode::Starred => service.files_query(&FileQuery::Starred, cursor.as_deref(), Some(200), &context).await,
-            Mode::Trash => service.files_query(&FileQuery::Trash, cursor.as_deref(), Some(200), &context).await,
-            Mode::Search => service.files_query(&FileQuery::Search(query), cursor.as_deref(), Some(200), &context).await,
+            Mode::Recent => {
+                service
+                    .files_query(&FileQuery::Recent, cursor.as_deref(), Some(100), &context)
+                    .await
+            }
+            Mode::Starred => {
+                service
+                    .files_query(&FileQuery::Starred, cursor.as_deref(), Some(200), &context)
+                    .await
+            }
+            Mode::Trash => {
+                service
+                    .files_query(&FileQuery::Trash, cursor.as_deref(), Some(200), &context)
+                    .await
+            }
+            Mode::Search => {
+                service
+                    .files_query(
+                        &FileQuery::Search(query),
+                        cursor.as_deref(),
+                        Some(200),
+                        &context,
+                    )
+                    .await
+            }
             Mode::Shared => {
                 let Route::SharedFolder { access, parent, .. } = route else {
                     return Err(ClientError::new(ErrorCode::Internal, "分享来源已失效。"));
                 };
-                let shared = service.share_folder(&access, &parent, cursor.as_deref(), Some(200), &context).await?;
-                Ok(Page { items: shared.entries, next_cursor: shared.next_cursor })
+                let shared = service
+                    .share_folder(&access, &parent, cursor.as_deref(), Some(200), &context)
+                    .await?;
+                Ok(Page {
+                    items: shared.entries,
+                    next_cursor: shared.next_cursor,
+                })
             }
         }
     })
@@ -362,7 +442,12 @@ async fn load(ctx: &Ctx, keep: usize, restore_scroll: Option<f32>) {
             state.next = None;
             state.phase = Phase::Loading;
         }
-        (state.token, state.mode, state.folder.clone(), state.query.clone())
+        (
+            state.token,
+            state.mode,
+            state.folder.clone(),
+            state.query.clone(),
+        )
     };
     let files = ctx.ui.global::<Files>();
     if mode != Mode::Local && !ctx.signed_in() {
@@ -386,7 +471,8 @@ async fn load(ctx: &Ctx, keep: usize, restore_scroll: Option<f32>) {
     if matches!(mode, Mode::Files | Mode::Local) && folder != ROOT_ID {
         let ctx = ctx.clone();
         let folder = folder.clone();
-        ctx.clone().spawn(async move { load_crumbs(&ctx, token, mode, folder).await });
+        ctx.clone()
+            .spawn(async move { load_crumbs(&ctx, token, mode, folder).await });
     }
     let session = ctx.session();
     let mut items: Vec<RemoteEntry> = Vec::new();
@@ -400,7 +486,10 @@ async fn load(ctx: &Ctx, keep: usize, restore_scroll: Option<f32>) {
                 match &cursor {
                     Some(next) if items.len() < keep => {
                         if !seen.insert(next.clone()) {
-                            break Err(ClientError::new(ErrorCode::Conflict, "服务返回重复分页，请刷新目录。"));
+                            break Err(ClientError::new(
+                                ErrorCode::Conflict,
+                                "服务返回重复分页，请刷新目录。",
+                            ));
                         }
                     }
                     _ => break Ok(()),
@@ -459,8 +548,9 @@ async fn load_crumbs(ctx: &Ctx, token: u64, mode: Mode, folder: String) {
             Mode::Local => (ROOT_ID.to_owned(), tr("本地文件夹")),
             _ => (ROOT_ID.to_owned(), tr("网盘")),
         };
-        let crumbs: Vec<(String, String)> =
-            std::iter::once(root).chain(chain.into_iter().map(|entry| (entry.id, entry.name))).collect();
+        let crumbs: Vec<(String, String)> = std::iter::once(root)
+            .chain(chain.into_iter().map(|entry| (entry.id, entry.name)))
+            .collect();
         if state.crumb_cache.len() > 2000 {
             state.crumb_cache.clear();
         }
@@ -486,10 +576,18 @@ async fn load_more(ctx: &Ctx, all: bool) {
         if state.loading_more || state.phase != Phase::Ready {
             return;
         }
-        let Some(cursor) = state.next.clone() else { return };
+        let Some(cursor) = state.next.clone() else {
+            return;
+        };
         state.loading_more = true;
         state.more_error = None;
-        (state.token, state.mode, state.folder.clone(), state.query.clone(), Some(cursor))
+        (
+            state.token,
+            state.mode,
+            state.folder.clone(),
+            state.query.clone(),
+            Some(cursor),
+        )
     };
     push_chrome(ctx);
     let session = ctx.session();
@@ -497,7 +595,10 @@ async fn load_more(ctx: &Ctx, all: bool) {
     let mut failure = None;
     while let Some(current) = cursor.clone() {
         if !seen.insert(current.clone()) {
-            failure = Some(ClientError::new(ErrorCode::Conflict, "服务返回重复分页，请刷新目录。"));
+            failure = Some(ClientError::new(
+                ErrorCode::Conflict,
+                "服务返回重复分页，请刷新目录。",
+            ));
             break;
         }
         match fetch(ctx, mode, folder.clone(), query.clone(), Some(current)).await {
@@ -530,14 +631,29 @@ async fn load_more(ctx: &Ctx, all: bool) {
     rebuild(ctx);
 }
 
-fn compare(a: &(SortKey, &RemoteEntry, i32, usize), b: &(SortKey, &RemoteEntry, i32, usize), key: &str) -> Ordering {
+fn compare(
+    a: &(SortKey, &RemoteEntry, i32, usize),
+    b: &(SortKey, &RemoteEntry, i32, usize),
+    key: &str,
+) -> Ordering {
     let by_name = || a.0.compare(&b.0);
     let order = match key {
         "size" => {
-            let size = |entry: &RemoteEntry| if entry.kind == EntryKind::Folder { None } else { Some(entry.size_bytes.0) };
+            let size = |entry: &RemoteEntry| {
+                if entry.kind == EntryKind::Folder {
+                    None
+                } else {
+                    Some(entry.size_bytes.0)
+                }
+            };
             size(a.1).cmp(&size(b.1))
         }
-        "modified" => a.1.modified_at.as_deref().unwrap_or("").cmp(b.1.modified_at.as_deref().unwrap_or("")),
+        "modified" => {
+            a.1.modified_at
+                .as_deref()
+                .unwrap_or("")
+                .cmp(b.1.modified_at.as_deref().unwrap_or(""))
+        }
         "kind" => a.2.cmp(&b.2),
         _ => by_name(),
     };
@@ -552,7 +668,11 @@ fn compare(a: &(SortKey, &RemoteEntry, i32, usize), b: &(SortKey, &RemoteEntry, 
 pub fn rebuild(ctx: &Ctx) {
     let (sort_key, descending, folders_first) = {
         let prefs = ctx.prefs.borrow();
-        (prefs.account.sort.key.clone(), prefs.account.sort.dir == "desc", prefs.account.folders_first)
+        (
+            prefs.account.sort.key.clone(),
+            prefs.account.sort.dir == "desc",
+            prefs.account.folders_first,
+        )
     };
     {
         let mut state = ctx.files.borrow_mut();
@@ -565,13 +685,18 @@ pub fn rebuild(ctx: &Ctx) {
             .enumerate()
             .filter_map(|(index, entry)| {
                 let kind = names::file_kind(&entry.name, entry.kind, entry.mime_type.as_deref());
-                (filter.is_none() || filter == Some(kind)).then(|| (SortKey::new(&entry.name), entry, kind, index))
+                (filter.is_none() || filter == Some(kind))
+                    .then(|| (SortKey::new(&entry.name), entry, kind, index))
             })
             .collect();
         if !server_order {
             keyed.sort_by(|a, b| {
                 if folders_first && a.1.kind != b.1.kind {
-                    return if a.1.kind == EntryKind::Folder { Ordering::Less } else { Ordering::Greater };
+                    return if a.1.kind == EntryKind::Folder {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    };
                 }
                 let order = compare(a, b, &sort_key);
                 let order = if descending { order.reverse() } else { order };
@@ -580,13 +705,21 @@ pub fn rebuild(ctx: &Ctx) {
         }
         let order: Vec<usize> = keyed.iter().map(|item| item.3).collect();
         drop(keyed);
-        state.index_of = order.iter().enumerate().map(|(visible, at)| (state.items[*at].id.clone(), visible)).collect();
+        state.index_of = order
+            .iter()
+            .enumerate()
+            .map(|(visible, at)| (state.items[*at].id.clone(), visible))
+            .collect();
         state.order = order;
         // Drop ids that disappeared after a reload; keep focus in range.
         let present: HashSet<String> = state.index_of.keys().cloned().collect();
         state.selected.retain(|id| present.contains(id));
         if let Some(focus) = state.focus {
-            state.focus = if state.order.is_empty() { None } else { Some(focus.min(state.order.len() - 1)) };
+            state.focus = if state.order.is_empty() {
+                None
+            } else {
+                Some(focus.min(state.order.len() - 1))
+            };
         }
         state.anchor = state.anchor.min(state.order.len().saturating_sub(1));
     }
@@ -603,14 +736,22 @@ fn row_for(entry: &RemoteEntry, selected: bool, cut: bool) -> FileRow {
         name: entry.name.as_str().into(),
         kind,
         folder,
-        size: if folder { "—".into() } else { format::bytes(entry.size_bytes.0).into() },
+        size: if folder {
+            "—".into()
+        } else {
+            format::bytes(entry.size_bytes.0).into()
+        },
         modified: format::date_time(entry.modified_at.as_deref()).into(),
         type_label: names::kind_label(kind).into(),
         location: Default::default(),
         starred: entry.starred == Some(true),
         selected,
         cut,
-        note: if issues.is_empty() { Default::default() } else { issues.join("；").into() },
+        note: if issues.is_empty() {
+            Default::default()
+        } else {
+            issues.join("；").into()
+        },
     }
 }
 
@@ -625,7 +766,11 @@ fn push_rows(ctx: &Ctx) {
         .iter()
         .map(|at| {
             let entry = &state.items[*at];
-            row_for(entry, state.selected.contains(&entry.id), cut.contains(entry.id.as_str()))
+            row_for(
+                entry,
+                state.selected.contains(&entry.id),
+                cut.contains(entry.id.as_str()),
+            )
         })
         .collect();
     let grid_view = ctx.prefs.borrow().account.view == "grid";
@@ -657,9 +802,30 @@ pub fn push_chrome(ctx: &Ctx) {
     let prefs = ctx.prefs.borrow();
     files.set_mode(state.mode.id().into());
     let (title, icon) = match state.mode {
-        Mode::Files => (state.crumbs.last().map(|(_, name)| name.clone()).unwrap_or_default(), "cloud"),
-        Mode::Local => (state.crumbs.last().map(|(_, name)| name.clone()).unwrap_or_default(), "folder"),
-        Mode::Shared => (state.crumbs.last().map(|(_, name)| name.clone()).unwrap_or_default(), "share"),
+        Mode::Files => (
+            state
+                .crumbs
+                .last()
+                .map(|(_, name)| name.clone())
+                .unwrap_or_default(),
+            "cloud",
+        ),
+        Mode::Local => (
+            state
+                .crumbs
+                .last()
+                .map(|(_, name)| name.clone())
+                .unwrap_or_default(),
+            "folder",
+        ),
+        Mode::Shared => (
+            state
+                .crumbs
+                .last()
+                .map(|(_, name)| name.clone())
+                .unwrap_or_default(),
+            "share",
+        ),
         Mode::Recent => (tr("最近"), "clock"),
         Mode::Starred => (tr("星标"), "star"),
         Mode::Trash => (tr("回收站"), "trash"),
@@ -668,7 +834,14 @@ pub fn push_chrome(ctx: &Ctx) {
     files.set_title(title.into());
     files.set_title_icon(ctx.icon(icon));
     files.set_crumbs(ModelRc::new(VecModel::from(
-        state.crumbs.iter().map(|(id, name)| Crumb { id: id.into(), name: name.into() }).collect::<Vec<_>>(),
+        state
+            .crumbs
+            .iter()
+            .map(|(id, name)| Crumb {
+                id: id.into(),
+                name: name.into(),
+            })
+            .collect::<Vec<_>>(),
     )));
     files.set_can_back(ctx.can_go(-1));
     files.set_can_forward(ctx.can_go(1));
@@ -679,17 +852,30 @@ pub fn push_chrome(ctx: &Ctx) {
         "l" => 2,
         _ => 1,
     });
-    files.set_sort_key(if state.mode == Mode::Recent { "".into() } else { prefs.account.sort.key.as_str().into() });
+    files.set_sort_key(if state.mode == Mode::Recent {
+        "".into()
+    } else {
+        prefs.account.sort.key.as_str().into()
+    });
     files.set_sort_desc(prefs.account.sort.dir == "desc");
     files.set_sort_label(tx("按{0}", &[&sort_label(&prefs.account.sort.key)]).into());
-    files.set_filter_label(state.kind_filter.map(names::kind_label).unwrap_or_else(|| tr("全部类型")).into());
+    files.set_filter_label(
+        state
+            .kind_filter
+            .map(names::kind_label)
+            .unwrap_or_else(|| tr("全部类型"))
+            .into(),
+    );
     files.set_filter_active(state.kind_filter.is_some());
     let count = state.order.len();
     files.set_count_label(
         if state.phase != Phase::Ready {
             String::new()
         } else if state.next.is_some() {
-            tx("已加载 {0} 项，还有更多", &[&format::group_digits(count as u64)])
+            tx(
+                "已加载 {0} 项，还有更多",
+                &[&format::group_digits(count as u64)],
+            )
         } else {
             tx("{0} 项", &[&format::group_digits(count as u64)])
         }
@@ -697,13 +883,28 @@ pub fn push_chrome(ctx: &Ctx) {
     );
     files.set_has_more(state.next.is_some());
     files.set_loading_more(state.loading_more);
-    files.set_more_error(state.more_error.as_ref().map(error_text).unwrap_or_default().into());
+    files.set_more_error(
+        state
+            .more_error
+            .as_ref()
+            .map(error_text)
+            .unwrap_or_default()
+            .into(),
+    );
     files.set_show_location(false);
     let drive = state.mode == Mode::Files;
     files.set_can_write(drive && ctx.can(Operation::Mkdir));
     files.set_can_upload(drive && ctx.can(Operation::Upload) && ctx.feature("upload"));
-    files.set_can_add_link(matches!(state.mode, Mode::Files | Mode::Recent | Mode::Starred | Mode::Search));
-    files.set_can_organize(drive && (ctx.can(Operation::Duplicates) || ctx.can(Operation::SpaceSummary) || ctx.can(Operation::Rename)));
+    files.set_can_add_link(matches!(
+        state.mode,
+        Mode::Files | Mode::Recent | Mode::Starred | Mode::Search
+    ));
+    files.set_can_organize(
+        drive
+            && (ctx.can(Operation::Duplicates)
+                || ctx.can(Operation::SpaceSummary)
+                || ctx.can(Operation::Rename)),
+    );
     files.set_can_media(ctx.feature("media_session"));
     files.set_paste_label(match (&state.clip, drive) {
         (Some((_, entries)), true) => tx("粘贴 {0} 项", &[&entries.len().to_string()]).into(),
@@ -721,9 +922,17 @@ pub fn push_chrome(ctx: &Ctx) {
     // Empty, error and signed-out states share one panel.
     let (state_title, state_body, action, action2, state_icon, is_error) = match state.phase {
         Phase::SignedOut => (
-            if ctx.auth_expired() { tr("登录已过期") } else { tr("登录后浏览云盘") },
+            if ctx.auth_expired() {
+                tr("登录已过期")
+            } else {
+                tr("登录后浏览云盘")
+            },
             String::new(),
-            if ctx.auth_expired() { tr("重新登录") } else { tr("登录") },
+            if ctx.auth_expired() {
+                tr("重新登录")
+            } else {
+                tr("登录")
+            },
             String::new(),
             "login",
             false,
@@ -734,19 +943,32 @@ pub fn push_chrome(ctx: &Ctx) {
                 error.map(error_title).unwrap_or_default(),
                 error.map(error_text).unwrap_or_default(),
                 tr("重试"),
-                if error.is_some_and(|error| error.code == ErrorCode::AuthExpired) { tr("重新登录") } else { String::new() },
+                if error.is_some_and(|error| error.code == ErrorCode::AuthExpired) {
+                    tr("重新登录")
+                } else {
+                    String::new()
+                },
                 "alert-circle",
                 true,
             )
         }
-        _ if state.kind_filter.is_some() && !state.items.is_empty() => {
-            (tr("没有这种类型的项目"), String::new(), tr("显示全部类型"), String::new(), "filter", false)
-        }
+        _ if state.kind_filter.is_some() && !state.items.is_empty() => (
+            tr("没有这种类型的项目"),
+            String::new(),
+            tr("显示全部类型"),
+            String::new(),
+            "filter",
+            false,
+        ),
         _ => match state.mode {
             Mode::Files => (
                 tr("这个文件夹是空的"),
                 tr("新建文件夹，或粘贴磁力链接、http(s) 链接让服务端保存到这里。"),
-                if ctx.can(Operation::Mkdir) { tr("新建文件夹") } else { String::new() },
+                if ctx.can(Operation::Mkdir) {
+                    tr("新建文件夹")
+                } else {
+                    String::new()
+                },
                 tr("添加链接"),
                 "folder-open",
                 false,
@@ -759,7 +981,14 @@ pub fn push_chrome(ctx: &Ctx) {
                 "folder-open",
                 false,
             ),
-            Mode::Recent => (tr("还没有最近使用的文件"), String::new(), String::new(), String::new(), "clock", false),
+            Mode::Recent => (
+                tr("还没有最近使用的文件"),
+                String::new(),
+                String::new(),
+                String::new(),
+                "clock",
+                false,
+            ),
             Mode::Starred => (
                 tr("还没有星标项目"),
                 tr("在文件上按 Ctrl+D 或使用右键菜单添加星标。"),
@@ -768,7 +997,14 @@ pub fn push_chrome(ctx: &Ctx) {
                 "star",
                 false,
             ),
-            Mode::Trash => (tr("回收站是空的"), String::new(), String::new(), String::new(), "trash", false),
+            Mode::Trash => (
+                tr("回收站是空的"),
+                String::new(),
+                String::new(),
+                String::new(),
+                "trash",
+                false,
+            ),
             Mode::Search => (
                 tx("没有找到“{0}”", &[&state.query]),
                 tr("试试更短的关键词，或检查拼写。"),
@@ -777,7 +1013,14 @@ pub fn push_chrome(ctx: &Ctx) {
                 "manage-search",
                 false,
             ),
-            Mode::Shared => (tr("这个文件夹是空的"), String::new(), String::new(), String::new(), "folder-open", false),
+            Mode::Shared => (
+                tr("这个文件夹是空的"),
+                String::new(),
+                String::new(),
+                String::new(),
+                "folder-open",
+                false,
+            ),
         },
     };
     files.set_state_title(state_title.into());
@@ -806,14 +1049,33 @@ fn push_selection(ctx: &Ctx) {
     let (count, bytes, any_file, focus, mode, entries) = {
         let state = ctx.files.borrow();
         let entries = state.selected_entries();
-        let bytes: u64 = entries.iter().filter(|entry| entry.kind == EntryKind::File).map(|entry| entry.size_bytes.0).sum();
+        let bytes: u64 = entries
+            .iter()
+            .filter(|entry| entry.kind == EntryKind::File)
+            .map(|entry| entry.size_bytes.0)
+            .sum();
         let any_file = entries.iter().any(|entry| entry.kind == EntryKind::File);
-        (entries.len(), bytes, any_file, state.focus, state.mode, entries)
+        (
+            entries.len(),
+            bytes,
+            any_file,
+            state.focus,
+            state.mode,
+            entries,
+        )
     };
     files.set_selected_count(count as i32);
-    files.set_selection_summary(if any_file { tx("所选文件共 {0}", &[&format::bytes(bytes)]).into() } else { Default::default() });
+    files.set_selection_summary(if any_file {
+        tx("所选文件共 {0}", &[&format::bytes(bytes)]).into()
+    } else {
+        Default::default()
+    });
     files.set_focus_index(focus.map(|index| index as i32).unwrap_or(-1));
-    let actions = if count == 0 { Vec::new() } else { actions::selection_actions(ctx, mode, &entries) };
+    let actions = if count == 0 {
+        Vec::new()
+    } else {
+        actions::selection_actions(ctx, mode, &entries)
+    };
     files.set_selection_actions(ModelRc::new(VecModel::from(ctx.menu_entries(&actions))));
 }
 
@@ -851,10 +1113,16 @@ pub fn set_selection(ctx: &Ctx, selection: HashSet<String>, focus: Option<usize>
 fn row_clicked(ctx: &Ctx, index: usize, ctrl: bool, shift: bool) {
     let selection = {
         let mut state = ctx.files.borrow_mut();
-        let Some(id) = state.visible(index).map(|entry| entry.id.clone()) else { return };
+        let Some(id) = state.visible(index).map(|entry| entry.id.clone()) else {
+            return;
+        };
         let mut selection = state.selected.clone();
         if shift {
-            let (low, high) = if state.anchor <= index { (state.anchor, index) } else { (index, state.anchor) };
+            let (low, high) = if state.anchor <= index {
+                (state.anchor, index)
+            } else {
+                (index, state.anchor)
+            };
             if !ctrl {
                 selection.clear();
             }
@@ -884,7 +1152,11 @@ fn toggle_all(ctx: &Ctx) {
         if state.selected.len() == state.order.len() && !state.order.is_empty() {
             HashSet::new()
         } else {
-            state.order.iter().map(|at| state.items[*at].id.clone()).collect()
+            state
+                .order
+                .iter()
+                .map(|at| state.items[*at].id.clone())
+                .collect()
         }
     };
     set_selection(ctx, selection, None);
@@ -943,8 +1215,17 @@ pub fn zoom(ctx: &Ctx, delta: i32) {
         let prefs = ctx.prefs.borrow();
         (prefs.account.view.clone(), prefs.account.grid_size.clone())
     };
-    let steps = [("list", size.as_str()), ("grid", "s"), ("grid", "m"), ("grid", "l")];
-    let at = if view == "list" { 0 } else { 1 + ["s", "m", "l"].iter().position(|s| *s == size).unwrap_or(1) };
+    let steps = [
+        ("list", size.as_str()),
+        ("grid", "s"),
+        ("grid", "m"),
+        ("grid", "l"),
+    ];
+    let at = if view == "list" {
+        0
+    } else {
+        1 + ["s", "m", "l"].iter().position(|s| *s == size).unwrap_or(1)
+    };
     let next = steps[(at as i32 + delta).clamp(0, 3) as usize];
     if next.0 == view && next.1 == size {
         return;
@@ -962,9 +1243,16 @@ pub fn zoom(ctx: &Ctx, delta: i32) {
 fn header_sort(ctx: &Ctx, key: &str) {
     let (current, direction) = {
         let prefs = ctx.prefs.borrow();
-        (prefs.account.sort.key.clone(), prefs.account.sort.dir.clone())
+        (
+            prefs.account.sort.key.clone(),
+            prefs.account.sort.dir.clone(),
+        )
     };
-    let direction = if current == key && direction == "asc" { "desc" } else { "asc" };
+    let direction = if current == key && direction == "asc" {
+        "desc"
+    } else {
+        "asc"
+    };
     set_sort(ctx, key, direction);
 }
 
@@ -981,14 +1269,22 @@ fn set_sort(ctx: &Ctx, key: &str, direction: &str) {
 async fn sort_menu(ctx: &Ctx, x: f32, y: f32) {
     let (key, descending, folders_first) = {
         let prefs = ctx.prefs.borrow();
-        (prefs.account.sort.key.clone(), prefs.account.sort.dir == "desc", prefs.account.folders_first)
+        (
+            prefs.account.sort.key.clone(),
+            prefs.account.sort.dir == "desc",
+            prefs.account.folders_first,
+        )
     };
     let mut items: Vec<MenuItem> = ["name", "size", "modified", "kind"]
         .iter()
         .map(|candidate| MenuItem::new(candidate, sort_label(candidate)).checked(*candidate == key))
         .collect();
     items.push(MenuItem::separator());
-    items.push(MenuItem::new("asc", tr("升序")).icon("arrow-up").checked(!descending));
+    items.push(
+        MenuItem::new("asc", tr("升序"))
+            .icon("arrow-up")
+            .checked(!descending),
+    );
     items.push(MenuItem::new("desc", tr("降序")).checked(descending));
     items.push(MenuItem::separator());
     items.push(MenuItem::new("folders-first", tr("文件夹优先")).checked(folders_first));
@@ -996,7 +1292,9 @@ async fn sort_menu(ctx: &Ctx, x: f32, y: f32) {
         Some("asc") => set_sort(ctx, &key, "asc"),
         Some("desc") => set_sort(ctx, &key, "desc"),
         Some("folders-first") => {
-            if crate::settings::update_account_prefs(ctx, |prefs| prefs.folders_first = !folders_first) {
+            if crate::settings::update_account_prefs(ctx, |prefs| {
+                prefs.folders_first = !folders_first
+            }) {
                 rebuild(ctx);
             }
         }
@@ -1007,11 +1305,19 @@ async fn sort_menu(ctx: &Ctx, x: f32, y: f32) {
 
 async fn filter_menu(ctx: &Ctx, x: f32, y: f32) {
     let current = ctx.files.borrow().kind_filter;
-    let mut items = vec![MenuItem::new("all", tr("全部类型")).checked(current.is_none()), MenuItem::separator()];
+    let mut items = vec![
+        MenuItem::new("all", tr("全部类型")).checked(current.is_none()),
+        MenuItem::separator(),
+    ];
     for kind in names::FILTER_KINDS {
-        items.push(MenuItem::new(&kind.to_string(), names::kind_label(kind)).checked(current == Some(kind)));
+        items.push(
+            MenuItem::new(&kind.to_string(), names::kind_label(kind))
+                .checked(current == Some(kind)),
+        );
     }
-    let Some(choice) = ctx.menu(x, y, &tr("按类型筛选"), items).await else { return };
+    let Some(choice) = ctx.menu(x, y, &tr("按类型筛选"), items).await else {
+        return;
+    };
     ctx.files.borrow_mut().kind_filter = choice.parse().ok();
     ctx.ui.global::<Files>().set_viewport_y(0.0);
     rebuild(ctx);
@@ -1023,12 +1329,22 @@ async fn organize_menu(ctx: &Ctx, x: f32, y: f32) {
         (state.folder.clone(), state.order.len())
     };
     let items = vec![
-        MenuItem::new("duplicates", tr("在此文件夹中查找重复")).icon("duplicates").gate(ctx.gate(Operation::Duplicates)),
-        MenuItem::new("space", tr("查看空间分布")).icon("space").gate(ctx.gate(Operation::SpaceSummary)),
+        MenuItem::new("duplicates", tr("在此文件夹中查找重复"))
+            .icon("duplicates")
+            .gate(ctx.gate(Operation::Duplicates)),
+        MenuItem::new("space", tr("查看空间分布"))
+            .icon("space")
+            .gate(ctx.gate(Operation::SpaceSummary)),
         MenuItem::separator(),
         MenuItem::new("batch-rename", tr("批量重命名本文件夹…"))
             .icon("find-replace")
-            .gate(ctx.gate(Operation::Rename).and_then(|_| if count >= 2 { Ok(()) } else { Err(tr("至少需要两个项目")) })),
+            .gate(ctx.gate(Operation::Rename).and_then(|_| {
+                if count >= 2 {
+                    Ok(())
+                } else {
+                    Err(tr("至少需要两个项目"))
+                }
+            })),
     ];
     match ctx.menu(x, y, &tr("整理"), items).await.as_deref() {
         Some("duplicates") => ctx.navigate(Route::Duplicates { folder }),
@@ -1036,7 +1352,11 @@ async fn organize_menu(ctx: &Ctx, x: f32, y: f32) {
         Some("batch-rename") => {
             let entries: Vec<RemoteEntry> = {
                 let state = ctx.files.borrow();
-                state.order.iter().map(|at| state.items[*at].clone()).collect()
+                state
+                    .order
+                    .iter()
+                    .map(|at| state.items[*at].clone())
+                    .collect()
             };
             actions::batch_rename(ctx, entries).await;
         }
@@ -1047,16 +1367,23 @@ async fn organize_menu(ctx: &Ctx, x: f32, y: f32) {
 async fn new_menu(ctx: &Ctx, x: f32, y: f32) {
     let upload = ctx.gate(Operation::Upload);
     let items = vec![
-        MenuItem::new("folder", tr("新建文件夹")).icon("folder-plus").hint("Ctrl+Shift+N").gate(ctx.gate(Operation::Mkdir)),
+        MenuItem::new("folder", tr("新建文件夹"))
+            .icon("folder-plus")
+            .hint("Ctrl+Shift+N")
+            .gate(ctx.gate(Operation::Mkdir)),
         MenuItem::separator(),
-        MenuItem::new("upload", tr("上传文件")).icon("upload").gate(upload.clone()),
-        MenuItem::new("upload-folder", tr("上传文件夹")).icon("folder-move").gate(upload.and_then(|_| {
-            if ctx.feature("upload_directory") {
-                Ok(())
-            } else {
-                Err(tr("当前版本尚未支持目录上传"))
-            }
-        })),
+        MenuItem::new("upload", tr("上传文件"))
+            .icon("upload")
+            .gate(upload.clone()),
+        MenuItem::new("upload-folder", tr("上传文件夹"))
+            .icon("folder-move")
+            .gate(upload.and_then(|_| {
+                if ctx.feature("upload_directory") {
+                    Ok(())
+                } else {
+                    Err(tr("当前版本尚未支持目录上传"))
+                }
+            })),
     ];
     match ctx.menu(x, y, "", items).await.as_deref() {
         Some("folder") => actions::new_folder(ctx).await,
@@ -1069,13 +1396,21 @@ async fn new_menu(ctx: &Ctx, x: f32, y: f32) {
 async fn recent_menu(ctx: &Ctx, x: f32, y: f32) {
     let list: Vec<(String, String)> = {
         let state = ctx.files.borrow();
-        state.recent_folders.iter().filter(|(id, _)| *id != state.folder).take(8).cloned().collect()
+        state
+            .recent_folders
+            .iter()
+            .filter(|(id, _)| *id != state.folder)
+            .take(8)
+            .cloned()
+            .collect()
     };
     let items = if list.is_empty() {
         vec![MenuItem::new("none", tr("还没有其他最近访问的位置")).enabled(false)]
     } else {
         list.iter()
-            .map(|(id, name)| MenuItem::new(id, name.clone()).icon(if id == ROOT_ID { "cloud" } else { "folder" }))
+            .map(|(id, name)| {
+                MenuItem::new(id, name.clone()).icon(if id == ROOT_ID { "cloud" } else { "folder" })
+            })
             .collect()
     };
     if let Some(folder) = ctx.menu(x, y, &tr("最近访问"), items).await {
@@ -1087,7 +1422,9 @@ async fn row_context(ctx: &Ctx, index: usize, x: f32, y: f32) {
     // Right-clicking outside the selection selects just that row, like Explorer.
     let needs_select = {
         let state = ctx.files.borrow();
-        state.visible(index).is_some_and(|entry| !state.selected.contains(&entry.id))
+        state
+            .visible(index)
+            .is_some_and(|entry| !state.selected.contains(&entry.id))
     };
     if needs_select {
         row_clicked(ctx, index, false, false);
@@ -1099,7 +1436,11 @@ async fn row_context(ctx: &Ctx, index: usize, x: f32, y: f32) {
     if entries.is_empty() {
         return;
     }
-    let title = if entries.len() == 1 { entries[0].name.clone() } else { tx("{0} 个项目", &[&entries.len().to_string()]) };
+    let title = if entries.len() == 1 {
+        entries[0].name.clone()
+    } else {
+        tx("{0} 个项目", &[&entries.len().to_string()])
+    };
     let items = actions::entry_menu(ctx, mode, &entries);
     if let Some(choice) = ctx.menu(x, y, &title, items).await {
         actions::run(ctx, &choice, entries, x, y).await;
@@ -1109,23 +1450,61 @@ async fn row_context(ctx: &Ctx, index: usize, x: f32, y: f32) {
 async fn background_context(ctx: &Ctx, x: f32, y: f32) {
     let (mode, has_clip, title) = {
         let state = ctx.files.borrow();
-        (state.mode, state.clip.is_some(), state.crumbs.last().map(|(_, name)| name.clone()).unwrap_or_default())
+        (
+            state.mode,
+            state.clip.is_some(),
+            state
+                .crumbs
+                .last()
+                .map(|(_, name)| name.clone())
+                .unwrap_or_default(),
+        )
     };
     let mut items = Vec::new();
     if mode == Mode::Files {
-        items.push(MenuItem::new("new-folder", tr("新建文件夹")).icon("folder-plus").hint("Ctrl+Shift+N").gate(ctx.gate(Operation::Mkdir)));
-        items.push(MenuItem::new("add-link", tr("添加链接")).icon("bolt").gate(ctx.gate(Operation::CloudTask)));
-        items.push(MenuItem::new("upload", tr("上传文件")).icon("upload").gate(ctx.gate(Operation::Upload)));
-        items.push(MenuItem::new("paste", tr("粘贴")).icon("paste").hint("Ctrl+V").gate(if has_clip {
-            Ok(())
-        } else {
-            Err(tr("先在其他位置剪切或复制项目"))
-        }));
+        items.push(
+            MenuItem::new("new-folder", tr("新建文件夹"))
+                .icon("folder-plus")
+                .hint("Ctrl+Shift+N")
+                .gate(ctx.gate(Operation::Mkdir)),
+        );
+        items.push(
+            MenuItem::new("add-link", tr("添加链接"))
+                .icon("bolt")
+                .gate(ctx.gate(Operation::CloudTask)),
+        );
+        items.push(
+            MenuItem::new("upload", tr("上传文件"))
+                .icon("upload")
+                .gate(ctx.gate(Operation::Upload)),
+        );
+        items.push(
+            MenuItem::new("paste", tr("粘贴"))
+                .icon("paste")
+                .hint("Ctrl+V")
+                .gate(if has_clip {
+                    Ok(())
+                } else {
+                    Err(tr("先在其他位置剪切或复制项目"))
+                }),
+        );
         items.push(MenuItem::separator());
     }
-    items.push(MenuItem::new("select-all", tr("全选")).icon("select-all").hint("Ctrl+A"));
-    items.push(MenuItem::new("refresh", tr("刷新")).icon("refresh").hint("F5"));
-    match ctx.menu(x, y, &tx("{0} 中的文件", &[&title]), items).await.as_deref() {
+    items.push(
+        MenuItem::new("select-all", tr("全选"))
+            .icon("select-all")
+            .hint("Ctrl+A"),
+    );
+    items.push(
+        MenuItem::new("refresh", tr("刷新"))
+            .icon("refresh")
+            .hint("F5"),
+    );
+    match ctx
+        .menu(x, y, &tx("{0} 中的文件", &[&title]), items)
+        .await
+        .as_deref()
+    {
         Some("new-folder") => actions::new_folder(ctx).await,
         Some("add-link") => actions::add_link(ctx, None),
         Some("upload") => actions::upload(ctx, false).await,
@@ -1137,7 +1516,9 @@ async fn background_context(ctx: &Ctx, x: f32, y: f32) {
 }
 
 fn activate(ctx: &Ctx, index: usize) {
-    let Some(entry) = ctx.files.borrow().visible(index).cloned() else { return };
+    let Some(entry) = ctx.files.borrow().visible(index).cloned() else {
+        return;
+    };
     actions::open_entry(ctx, entry);
 }
 
@@ -1148,7 +1529,10 @@ fn state_action(ctx: &Ctx, secondary: bool) {
             state.phase,
             state.kind_filter.is_some() && !state.items.is_empty(),
             state.mode,
-            state.error.as_ref().is_some_and(|error| error.code == ErrorCode::AuthExpired),
+            state
+                .error
+                .as_ref()
+                .is_some_and(|error| error.code == ErrorCode::AuthExpired),
         )
     };
     match (phase, secondary) {
@@ -1164,7 +1548,8 @@ fn state_action(ctx: &Ctx, secondary: bool) {
         }
         (_, false) if mode == Mode::Files => {
             let ctx = ctx.clone();
-            ctx.clone().spawn(async move { actions::new_folder(&ctx).await });
+            ctx.clone()
+                .spawn(async move { actions::new_folder(&ctx).await });
         }
         (_, true) if mode == Mode::Files => actions::add_link(ctx, None),
         _ => {}
@@ -1176,7 +1561,11 @@ fn scroll_to(ctx: &Ctx, index: usize) {
     let files = ctx.ui.global::<Files>();
     let (grid_view, compact, grid_size) = {
         let prefs = ctx.prefs.borrow();
-        (prefs.account.view == "grid", prefs.account.density == "compact", prefs.account.grid_size.clone())
+        (
+            prefs.account.view == "grid",
+            prefs.account.density == "compact",
+            prefs.account.grid_size.clone(),
+        )
     };
     let columns = ctx.files.borrow().columns.max(1);
     let (row, height) = if grid_view {
@@ -1208,7 +1597,11 @@ fn move_focus(ctx: &Ctx, target: usize, shift: bool, ctrl: bool) {
         let target = target.min(state.order.len() - 1);
         let mut selection = state.selected.clone();
         if shift {
-            let (low, high) = if state.anchor <= target { (state.anchor, target) } else { (target, state.anchor) };
+            let (low, high) = if state.anchor <= target {
+                (state.anchor, target)
+            } else {
+                (target, state.anchor)
+            };
             selection.clear();
             for visible in low..=high {
                 if let Some(entry) = state.visible(visible) {
@@ -1236,13 +1629,24 @@ pub fn key(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
     let is = |key: Key| text == slint::SharedString::from(key).as_str();
     let (count, focus, columns, mode) = {
         let state = ctx.files.borrow();
-        (state.order.len(), state.focus, state.columns.max(1), state.mode)
+        (
+            state.order.len(),
+            state.focus,
+            state.columns.max(1),
+            state.mode,
+        )
     };
     let grid_view = ctx.prefs.borrow().account.view == "grid";
     let step = if grid_view { columns } else { 1 };
     let page = {
         let files = ctx.ui.global::<Files>();
-        let row = if grid_view { 164.0 } else if ctx.prefs.borrow().account.density == "compact" { 36.0 } else { 44.0 };
+        let row = if grid_view {
+            164.0
+        } else if ctx.prefs.borrow().account.density == "compact" {
+            36.0
+        } else {
+            44.0
+        };
         ((files.get_visible_height() / row).floor().max(1.0) as usize) * step
     };
     let current = focus.unwrap_or(0);
@@ -1253,10 +1657,16 @@ pub fn key(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
             return;
         }
         let ctx = ctx.clone();
-        ctx.clone().spawn(async move { actions::run(&ctx, id, entries, 0.0, 0.0).await });
+        ctx.clone()
+            .spawn(async move { actions::run(&ctx, id, entries, 0.0, 0.0).await });
     };
     if is(Key::DownArrow) {
-        move_focus(ctx, if focus.is_none() { 0 } else { current + step }, shift, ctrl);
+        move_focus(
+            ctx,
+            if focus.is_none() { 0 } else { current + step },
+            shift,
+            ctrl,
+        );
     } else if is(Key::UpArrow) {
         move_focus(ctx, current.saturating_sub(step), shift, ctrl);
     } else if is(Key::RightArrow) && grid_view {
@@ -1289,13 +1699,18 @@ pub fn key(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
             row_clicked(ctx, index, true, false);
         }
     } else if is(Key::Delete) {
-        spawn(if mode == Mode::Trash { "delete-forever" } else { "trash" });
+        spawn(if mode == Mode::Trash {
+            "delete-forever"
+        } else {
+            "trash"
+        });
     } else if is(Key::F2) {
         spawn("rename");
     } else if is(Key::Menu) || (is(Key::F10) && shift) {
         if let Some(index) = focus {
             let ctx = ctx.clone();
-            ctx.clone().spawn(async move { row_context(&ctx, index, 320.0, 220.0).await });
+            ctx.clone()
+                .spawn(async move { row_context(&ctx, index, 320.0, 220.0).await });
         }
     } else if ctrl && !alt {
         match text.to_lowercase().as_str() {
@@ -1306,7 +1721,8 @@ pub fn key(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
             "d" => spawn("star-toggle"),
             "n" if shift => {
                 let ctx = ctx.clone();
-                ctx.clone().spawn(async move { actions::new_folder(&ctx).await });
+                ctx.clone()
+                    .spawn(async move { actions::new_folder(&ctx).await });
             }
             "=" | "+" => zoom(ctx, 1),
             "-" => zoom(ctx, -1),
@@ -1325,17 +1741,33 @@ fn type_ahead(ctx: &Ctx, text: &str) {
     let target = {
         let mut state = ctx.files.borrow_mut();
         let now = std::time::Instant::now();
-        if state.type_ahead_at.is_none_or(|at| now.duration_since(at).as_millis() > 900) {
+        if state
+            .type_ahead_at
+            .is_none_or(|at| now.duration_since(at).as_millis() > 900)
+        {
             state.type_ahead.clear();
         }
         state.type_ahead_at = Some(now);
         state.type_ahead.push_str(&text.to_lowercase());
         let needle = state.type_ahead.clone();
         let count = state.order.len();
-        let start = state.focus.map(|focus| if needle.chars().count() == 1 { focus + 1 } else { focus }).unwrap_or(0);
+        let start = state
+            .focus
+            .map(|focus| {
+                if needle.chars().count() == 1 {
+                    focus + 1
+                } else {
+                    focus
+                }
+            })
+            .unwrap_or(0);
         (0..count)
             .map(|offset| (start + offset) % count.max(1))
-            .find(|index| state.visible(*index).is_some_and(|entry| entry.name.to_lowercase().starts_with(&needle)))
+            .find(|index| {
+                state
+                    .visible(*index)
+                    .is_some_and(|entry| entry.name.to_lowercase().starts_with(&needle))
+            })
     };
     if let Some(index) = target {
         move_focus(ctx, index, false, false);

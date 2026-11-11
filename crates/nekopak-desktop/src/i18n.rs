@@ -60,7 +60,10 @@ fn catalog(locale: Locale) -> Option<&'static Catalog> {
 pub fn resolve(tag: &str) -> Locale {
     let tag = tag.replace('_', "-").to_ascii_lowercase();
     if tag.starts_with("zh") {
-        if ["hant", "-tw", "-hk", "-mo"].iter().any(|part| tag.contains(part)) {
+        if ["hant", "-tw", "-hk", "-mo"]
+            .iter()
+            .any(|part| tag.contains(part))
+        {
             Locale::ZhTw
         } else {
             Locale::ZhCn
@@ -138,6 +141,78 @@ mod tests {
         assert_eq!(resolve("ja-JP"), Locale::Ja);
         assert_eq!(resolve("ko"), Locale::Ko);
         assert_eq!(resolve("de-DE"), Locale::En);
+    }
+
+    /// Every developer-authored string used by the native UI must be
+    /// translated into all shipped languages.
+    #[test]
+    fn native_ui_copy_is_translated_in_every_locale() {
+        fn literals(text: &str, marker: &str, out: &mut Vec<String>) {
+            let mut rest = text;
+            while let Some(at) = rest.find(marker) {
+                rest = &rest[at + marker.len()..];
+                let mut value = String::new();
+                let mut chars = rest.chars();
+                while let Some(c) = chars.next() {
+                    match c {
+                        '\\' => match chars.next() {
+                            Some('n') => value.push('\n'),
+                            Some(other) => value.push(other),
+                            None => break,
+                        },
+                        '"' => break,
+                        other => value.push(other),
+                    }
+                }
+                out.push(value);
+            }
+        }
+        fn walk(directory: &std::path::Path, out: &mut Vec<String>) {
+            for entry in std::fs::read_dir(directory).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, out);
+                } else if matches!(
+                    path.extension().and_then(|e| e.to_str()),
+                    Some("rs" | "slint")
+                ) {
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    for marker in ["tr(\"", "tx(\"", "Tr.t(\"", "Tr.x(\"", "Tr.x2(\""] {
+                        literals(&text, marker, out);
+                    }
+                }
+            }
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut sources = Vec::new();
+        walk(&root.join("src"), &mut sources);
+        walk(&root.join("ui"), &mut sources);
+        sources.sort();
+        sources.dedup();
+        // Only copy that contains CJK needs translating; symbols and names do not.
+        sources.retain(|text| text.chars().any(|c| ('\u{3400}'..='\u{9fff}').contains(&c)));
+        let mut missing = Vec::new();
+        for (locale, name) in [
+            (Locale::En, "en"),
+            (Locale::ZhTw, "zh-TW"),
+            (Locale::Ja, "ja"),
+            (Locale::Ko, "ko"),
+        ] {
+            for source in &sources {
+                if !has_translation(locale, source) {
+                    missing.push(format!("{name}\t{source}"));
+                }
+            }
+        }
+        if let Ok(path) = std::env::var("NEKOPAK_WRITE_MISSING") {
+            std::fs::write(path, missing.join("\n")).unwrap();
+        }
+        assert!(
+            missing.is_empty(),
+            "{} untranslated strings, e.g. {:?}",
+            missing.len(),
+            &missing[..missing.len().min(8)]
+        );
     }
 
     #[test]

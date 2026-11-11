@@ -13,7 +13,9 @@ pub fn claim_single_instance(events: &UnboundedSender<HostEvent>) -> bool {
     {
         use windows_sys::Win32::{
             Foundation::{GetLastError, ERROR_ALREADY_EXISTS, WAIT_OBJECT_0},
-            System::Threading::{CreateEventW, CreateMutexW, SetEvent, WaitForSingleObject, INFINITE},
+            System::Threading::{
+                CreateEventW, CreateMutexW, SetEvent, WaitForSingleObject, INFINITE,
+            },
         };
         fn wide(text: &str) -> Vec<u16> {
             text.encode_utf16().chain(Some(0)).collect()
@@ -36,7 +38,9 @@ pub fn claim_single_instance(events: &UnboundedSender<HostEvent>) -> bool {
                 let events = events.clone();
                 let event = event as usize;
                 std::thread::spawn(move || loop {
-                    if WaitForSingleObject(event as _, INFINITE) != WAIT_OBJECT_0 || events.send(HostEvent::Activate(None)).is_err() {
+                    if WaitForSingleObject(event as _, INFINITE) != WAIT_OBJECT_0
+                        || events.send(HostEvent::Activate(None)).is_err()
+                    {
                         break;
                     }
                 });
@@ -64,7 +68,9 @@ pub fn install_tray(events: &UnboundedSender<HostEvent>) -> Option<Tray> {
             menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
             Icon, MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent,
         };
-        let decoder = png::Decoder::new(std::io::Cursor::new(include_bytes!("../assets/icon.png").as_slice()));
+        let decoder = png::Decoder::new(std::io::Cursor::new(
+            include_bytes!("../assets/icon.png").as_slice(),
+        ));
         let mut reader = decoder.read_info().ok()?;
         let mut pixels = vec![0; reader.output_buffer_size()?];
         let info = reader.next_frame(&mut pixels).ok()?;
@@ -78,7 +84,14 @@ pub fn install_tray(events: &UnboundedSender<HostEvent>) -> Option<Tray> {
         let downloads = MenuItem::with_id("downloads", "下载任务 / Downloads", true, None);
         let hide = MenuItem::with_id("hide", "隐藏窗口 / Hide", true, None);
         let quit = MenuItem::with_id("quit", "退出 / Quit", true, None);
-        menu.append_items(&[&show, &downloads, &hide, &PredefinedMenuItem::separator(), &quit]).ok()?;
+        menu.append_items(&[
+            &show,
+            &downloads,
+            &hide,
+            &PredefinedMenuItem::separator(),
+            &quit,
+        ])
+        .ok()?;
         let tray = TrayIconBuilder::new()
             .with_tooltip("NekoPak")
             .with_icon(icon)
@@ -98,7 +111,12 @@ pub fn install_tray(events: &UnboundedSender<HostEvent>) -> Option<Tray> {
         }));
         let sender = events.clone();
         TrayIconEvent::set_event_handler(Some(move |event: TrayIconEvent| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
                 let _ = sender.send(HostEvent::Activate(None));
             }
         }));
@@ -135,7 +153,9 @@ pub fn activate(ctx: &Ctx, target: Option<&'static str>) {
 pub fn install_close_handler(ctx: &Ctx, has_tray: bool) {
     let weak = std::rc::Rc::downgrade(ctx);
     ctx.ui.window().on_close_requested(move || {
-        let Some(ctx) = weak.upgrade() else { return slint::CloseRequestResponse::HideWindow };
+        let Some(ctx) = weak.upgrade() else {
+            return slint::CloseRequestResponse::HideWindow;
+        };
         let to_tray = has_tray && ctx.core.borrow().settings["close_to_tray"] == true;
         if !to_tray {
             let _ = slint::quit_event_loop();

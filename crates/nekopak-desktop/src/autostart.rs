@@ -135,7 +135,10 @@ pub fn set(enabled: bool) -> Result<bool, ClientError> {
     #[cfg(not(windows))]
     {
         let _ = enabled;
-        Err(ClientError::new(ErrorCode::Unsupported, "当前平台启动项尚未接入。"))
+        Err(ClientError::new(
+            ErrorCode::Unsupported,
+            "当前平台启动项尚未接入。",
+        ))
     }
 }
 #[cfg(all(test, windows))]

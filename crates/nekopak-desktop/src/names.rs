@@ -53,16 +53,21 @@ pub fn file_kind(name: &str, kind: EntryKind, mime: Option<&str>) -> i32 {
             return KIND_IMAGE;
         }
     }
-    let extension = split_name(name).1.trim_start_matches('.').to_ascii_lowercase();
+    let extension = split_name(name)
+        .1
+        .trim_start_matches('.')
+        .to_ascii_lowercase();
     match extension.as_str() {
         "mp4" | "mkv" | "mov" | "avi" | "webm" | "m4v" | "ts" | "flv" | "wmv" => KIND_VIDEO,
         "mp3" | "flac" | "wav" | "aac" | "ogg" | "m4a" | "opus" => KIND_AUDIO,
         "png" | "jpg" | "jpeg" | "gif" | "webp" | "heic" | "bmp" | "svg" | "avif" => KIND_IMAGE,
-        "pdf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "txt" | "md" | "rtf" | "odt" | "csv"
-        | "epub" => KIND_DOC,
-        "zip" | "7z" | "rar" | "tar" | "gz" | "zst" | "xz" | "iso" | "img" | "dmg" | "bz2" => KIND_ARCHIVE,
-        "rs" | "js" | "json" | "toml" | "yaml" | "yml" | "py" | "c" | "h" | "cpp" | "kt" | "go" | "sh"
-        | "fig" => KIND_CODE,
+        "pdf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "txt" | "md" | "rtf" | "odt"
+        | "csv" | "epub" => KIND_DOC,
+        "zip" | "7z" | "rar" | "tar" | "gz" | "zst" | "xz" | "iso" | "img" | "dmg" | "bz2" => {
+            KIND_ARCHIVE
+        }
+        "rs" | "js" | "json" | "toml" | "yaml" | "yml" | "py" | "c" | "h" | "cpp" | "kt" | "go"
+        | "sh" | "fig" => KIND_CODE,
         _ => KIND_OTHER,
     }
 }
@@ -82,15 +87,25 @@ pub fn kind_label(kind: i32) -> String {
 
 pub fn is_archive_browsable(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
-    [".zip", ".rar", ".7z"].iter().any(|extension| lower.ends_with(extension))
+    [".zip", ".rar", ".7z"]
+        .iter()
+        .any(|extension| lower.ends_with(extension))
 }
 
 fn reserved_on_windows(name: &str) -> bool {
-    let stem = name.trim().split('.').next().unwrap_or_default().to_ascii_lowercase();
+    let stem = name
+        .trim()
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
     matches!(stem.as_str(), "con" | "prn" | "aux" | "nul")
         || (stem.chars().count() == 4
             && (stem.starts_with("com") || stem.starts_with("lpt"))
-            && stem.chars().nth(3).is_some_and(|c| c.is_ascii_digit() || "¹²³".contains(c)))
+            && stem
+                .chars()
+                .nth(3)
+                .is_some_and(|c| c.is_ascii_digit() || "¹²³".contains(c)))
 }
 
 /// Issues that only matter when the remote name is materialised on Windows.
@@ -116,7 +131,10 @@ pub struct NameCheck {
 
 /// Hard errors block submit; warnings explain how a later Windows download escapes the name.
 pub fn validate_name(name: &str, siblings: &[String], current: Option<&str>) -> NameCheck {
-    let fail = |message: &str| NameCheck { error: Some(tr(message)), warnings: Vec::new() };
+    let fail = |message: &str| NameCheck {
+        error: Some(tr(message)),
+        warnings: Vec::new(),
+    };
     if name.trim().is_empty() {
         return fail("名称不能为空");
     }
@@ -144,13 +162,19 @@ pub fn validate_name(name: &str, siblings: &[String], current: Option<&str>) -> 
             return fail("此文件夹中已有同名项");
         }
         if sibling.to_lowercase() == name.to_lowercase() {
-            warnings.push(tx("与“{0}”仅大小写不同，Windows 本地会视为同名", &[sibling]));
+            warnings.push(tx(
+                "与“{0}”仅大小写不同，Windows 本地会视为同名",
+                &[sibling],
+            ));
         }
     }
     for issue in windows_issues(name) {
         warnings.push(tx("{0}，下载到 Windows 时将被转义", &[&issue]));
     }
-    NameCheck { error: None, warnings }
+    NameCheck {
+        error: None,
+        warnings,
+    }
 }
 
 #[cfg(test)]
@@ -160,7 +184,10 @@ mod tests {
     #[test]
     fn kinds_follow_extension_then_mime() {
         assert_eq!(file_kind("a.MKV", EntryKind::File, None), KIND_VIDEO);
-        assert_eq!(file_kind("a.bin", EntryKind::File, Some("image/png")), KIND_IMAGE);
+        assert_eq!(
+            file_kind("a.bin", EntryKind::File, Some("image/png")),
+            KIND_IMAGE
+        );
         assert_eq!(file_kind("a.zip", EntryKind::Folder, None), KIND_FOLDER);
         assert_eq!(file_kind(".gitignore", EntryKind::File, None), KIND_OTHER);
         assert_eq!(split_name("archive.tar.gz"), ("archive.tar", ".gz"));

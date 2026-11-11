@@ -7,9 +7,9 @@ slint::include_modules!();
 mod actions;
 mod app;
 mod auth;
-mod autostart;
 #[cfg(feature = "automation")]
 mod automation;
+mod autostart;
 mod cloud;
 mod collate;
 mod desktop;
@@ -32,6 +32,7 @@ mod prefs;
 mod settings;
 mod settings_page;
 mod shortcuts;
+mod sync_mount;
 mod tools;
 mod transfers;
 mod updates;
@@ -52,7 +53,10 @@ fn fail(message: &str) -> ! {
 }
 
 fn main() {
-    let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
         Ok(runtime) => runtime,
         Err(error) => fail(&error.to_string()),
     };
@@ -67,7 +71,10 @@ fn main() {
         Err(error) => fail(&format!("The window could not be created: {error}")),
     };
     let (events, mut inbox) = tokio::sync::mpsc::unbounded_channel::<HostEvent>();
-    if !host.mock && std::env::var_os("NEKOPAK_TEST_DATA_DIR").is_none() && !desktop::claim_single_instance(&events) {
+    if !host.mock
+        && std::env::var_os("NEKOPAK_TEST_DATA_DIR").is_none()
+        && !desktop::claim_single_instance(&events)
+    {
         return;
     }
     host::spawn_workers(&host.service, events.clone());
@@ -129,10 +136,19 @@ fn main() {
     automation::install(&ctx);
     let tray = desktop::install_tray(&events);
     desktop::install_close_handler(&ctx, tray.is_some());
-    if let Err(error) = ctx.ui.show().and_then(|_| slint::run_event_loop_until_quit()) {
+    if let Err(error) = ctx
+        .ui
+        .show()
+        .and_then(|_| slint::run_event_loop_until_quit())
+    {
         fail(&error.to_string());
     }
-    drop(tray);
+    let _tray = tray;
+    // Leave no stale mount behind; bounded so exit never hangs on the network.
+    let service = ctx.svc.clone();
+    let _ = runtime.block_on(async move {
+        tokio::time::timeout(std::time::Duration::from_secs(5), service.stop_all_mounts()).await
+    });
     // Stop background workers without waiting on in-flight network calls.
     runtime.shutdown_background();
 }

@@ -1,13 +1,13 @@
 //! Application context shared by every controller on the UI thread.
 use crate::{
-    files::FilesState, generated::icons, host::Host, i18n, nav::Nav, overlay::Overlays, prefs::Prefs, AppWindow,
-    Icons,
+    files::FilesState, generated::icons, host::Host, i18n, nav::Nav, overlay::Overlays,
+    prefs::Prefs, AppWindow, Icons,
 };
 use nekopak_core::{updates::UpdateService, AppService};
 use nekopak_domain::*;
 use nekopak_provider::RequestContext;
 use slint::ComponentHandle;
-use std::{cell::RefCell, future::Future, path::PathBuf, rc::Rc, sync::Arc, time::Duration};
+use std::{cell::RefCell, future::Future, rc::Rc, sync::Arc, time::Duration};
 
 pub type Ctx = Rc<App>;
 
@@ -31,7 +31,6 @@ pub struct App {
     pub svc: Arc<AppService>,
     pub updater: Option<Arc<UpdateService>>,
     pub mock: bool,
-    pub directory: PathBuf,
     runtime: tokio::runtime::Handle,
     pub core: RefCell<Core>,
     pub prefs: RefCell<Prefs>,
@@ -41,7 +40,8 @@ pub struct App {
     pub undo: RefCell<Option<(String, Vec<FileMutation>)>>,
     pub transfers: RefCell<crate::transfers::TransfersState>,
     pub panel: RefCell<crate::panel::PanelState>,
-    pub last_clipboard: RefCell<String>,
+    /// Identifier of the duplicates scan shown on the page.
+    pub scan: RefCell<Option<String>>,
 }
 
 /// Default deadline for one backend request, matching the web host.
@@ -61,9 +61,11 @@ impl App {
             svc: host.service,
             updater: host.updater,
             mock: host.mock,
-            directory: host.directory,
             runtime,
-            core: RefCell::new(Core { settings: serde_json::Value::Null, ..Core::default() }),
+            core: RefCell::new(Core {
+                settings: serde_json::Value::Null,
+                ..Core::default()
+            }),
             prefs: RefCell::new(prefs),
             nav: RefCell::new(Nav::default()),
             files: RefCell::new(FilesState::default()),
@@ -71,7 +73,7 @@ impl App {
             undo: RefCell::new(None),
             transfers: RefCell::new(Default::default()),
             panel: RefCell::new(Default::default()),
-            last_clipboard: RefCell::new(String::new()),
+            scan: RefCell::new(None),
         })
     }
 
@@ -116,10 +118,6 @@ impl App {
         self.core.borrow().session
     }
 
-    pub fn epoch(&self) -> u64 {
-        self.core.borrow().epoch
-    }
-
     pub fn feature(&self, name: &str) -> bool {
         self.core
             .borrow()
@@ -130,11 +128,21 @@ impl App {
     }
 
     pub fn signed_in(&self) -> bool {
-        self.mock || self.core.borrow().auth.as_ref().is_some_and(|auth| auth.authenticated)
+        self.mock
+            || self
+                .core
+                .borrow()
+                .auth
+                .as_ref()
+                .is_some_and(|auth| auth.authenticated)
     }
 
     pub fn auth_expired(&self) -> bool {
-        self.core.borrow().auth.as_ref().is_some_and(|auth| auth.state == AuthStatus::Expired)
+        self.core
+            .borrow()
+            .auth
+            .as_ref()
+            .is_some_and(|auth| auth.state == AuthStatus::Expired)
     }
 
     fn active_backend<'a>(&self, core: &'a Core) -> Option<&'a CapabilityReport> {
@@ -145,7 +153,8 @@ impl App {
     pub fn quota_exhausted(&self, dimensions: &[&str]) -> bool {
         self.core.borrow().quota.as_ref().is_some_and(|quota| {
             quota.dimensions.iter().any(|dimension| {
-                dimensions.contains(&dimension.dimension.as_str()) && dimension.remaining_bytes == Some(DecimalU64(0))
+                dimensions.contains(&dimension.dimension.as_str())
+                    && dimension.remaining_bytes == Some(DecimalU64(0))
             })
         })
     }
@@ -157,13 +166,21 @@ impl App {
             return Err(i18n::tr("正在启动"));
         }
         if !self.mock && !core.auth.as_ref().is_some_and(|auth| auth.authenticated) {
-            return Err(if core.auth.as_ref().is_some_and(|auth| auth.state == AuthStatus::Expired) {
-                i18n::tr("登录已过期，请重新授权")
-            } else {
-                i18n::tr("需要先登录")
-            });
+            return Err(
+                if core
+                    .auth
+                    .as_ref()
+                    .is_some_and(|auth| auth.state == AuthStatus::Expired)
+                {
+                    i18n::tr("登录已过期，请重新授权")
+                } else {
+                    i18n::tr("需要先登录")
+                },
+            );
         }
-        let Some(backend) = self.active_backend(&core).filter(|report| report.status == BackendStatus::Ready)
+        let Some(backend) = self
+            .active_backend(&core)
+            .filter(|report| report.status == BackendStatus::Ready)
         else {
             return Err(i18n::tr("暂时无法连接 PikPak"));
         };
@@ -173,9 +190,10 @@ impl App {
         drop(core);
         let exhausted = match operation {
             Operation::CloudTask => self.quota_exhausted(&["cloud_download"]),
-            Operation::Download | Operation::ClipDownload | Operation::QualityDownload | Operation::FolderDownload => {
-                self.quota_exhausted(&["download", "download_daily"])
-            }
+            Operation::Download
+            | Operation::ClipDownload
+            | Operation::QualityDownload
+            | Operation::FolderDownload => self.quota_exhausted(&["download", "download_daily"]),
             _ => false,
         };
         if exhausted {
@@ -186,10 +204,6 @@ impl App {
 
     pub fn can(&self, operation: Operation) -> bool {
         self.gate(operation).is_ok()
-    }
-
-    pub fn setting_str(&self, key: &str) -> String {
-        self.core.borrow().settings[key].as_str().unwrap_or_default().to_owned()
     }
 }
 

@@ -25,7 +25,11 @@ pub async fn pick_files(ctx: &Ctx, title: &str) -> Vec<String> {
         .collect()
 }
 
-pub async fn pick_file(ctx: &Ctx, title: &str, filter: (&str, &[&str])) -> Option<std::path::PathBuf> {
+pub async fn pick_file(
+    ctx: &Ctx,
+    title: &str,
+    filter: (&str, &[&str]),
+) -> Option<std::path::PathBuf> {
     let _ = ctx;
     rfd::AsyncFileDialog::new()
         .set_title(title)
@@ -42,16 +46,10 @@ pub fn copy_text(ctx: &Ctx, text: &str) {
     ctx.ui.set_clipboard_text(Default::default());
 }
 
-pub fn read_clipboard(ctx: &Ctx) -> String {
-    ctx.ui.invoke_clipboard_paste();
-    let text = ctx.ui.get_clipboard_text().to_string();
-    ctx.ui.set_clipboard_text(Default::default());
-    text
-}
-
 /// Opens an HTTPS link in the default browser. Other schemes are refused.
 pub fn open_url(url: &str) -> bool {
-    let safe = url.starts_with("https://") && !url[8..].split('/').next().unwrap_or_default().contains('@');
+    let safe = url.starts_with("https://")
+        && !url[8..].split('/').next().unwrap_or_default().contains('@');
     safe && open::that_detached(url).is_ok()
 }
 

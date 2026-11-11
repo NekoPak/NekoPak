@@ -133,6 +133,7 @@ ${names.map((n) => `    in property <color> ${n}: #${schemes[0].light[n]};`).joi
 // Material color utilities (Apache-2.0), TonalSpot; identical to the web UI palettes.
 use slint::Color;
 
+#[allow(dead_code)] // swatch is kept for accent pickers
 pub struct Accent {
     pub id: &'static str,
     /// Simplified Chinese source label; translated at display time.

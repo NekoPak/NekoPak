@@ -14,6 +14,7 @@ use tokio::sync::{broadcast::error::RecvError, mpsc::UnboundedSender};
 const APP_IDENTIFIER: &str = "io.nekopak.desktop";
 
 #[derive(Debug)]
+#[cfg_attr(not(windows), allow(dead_code))] // tray and second-launch events are Windows-only
 pub enum HostEvent {
     TransfersChanged,
     AuthChanged(AuthChangedEvent),
@@ -53,7 +54,9 @@ pub fn data_directory() -> Result<PathBuf, String> {
         std::env::var_os("XDG_DATA_HOME")
             .filter(|value| !value.is_empty())
             .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
+            .or_else(|| {
+                std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share"))
+            })
     };
     base.map(|base| base.join(APP_IDENTIFIER))
         .ok_or_else(|| "The user data directory is unavailable.".to_owned())
@@ -61,7 +64,8 @@ pub fn data_directory() -> Result<PathBuf, String> {
 
 pub fn start() -> Result<Host, String> {
     let directory = data_directory()?;
-    std::fs::create_dir_all(&directory).map_err(|error| format!("Cannot create the data directory: {error}"))?;
+    std::fs::create_dir_all(&directory)
+        .map_err(|error| format!("Cannot create the data directory: {error}"))?;
     #[cfg(not(windows))]
     let directory = std::fs::canonicalize(directory).map_err(|error| error.to_string())?;
     let mock = match std::env::var("NEKOPAK_BACKEND").as_deref() {
@@ -88,14 +92,22 @@ pub fn start() -> Result<Host, String> {
         .map_err(|error| error.message)?;
         (Arc::new(provider), "api-preview.sqlite3")
     };
-    let service = Arc::new(AppService::with_provider(&directory.join(database), provider));
+    let service = Arc::new(AppService::with_provider(
+        &directory.join(database),
+        provider,
+    ));
     // Apply persisted proxy/TLS settings before any request can be made. A
     // damaged journal keeps its recovery screen instead of failing start-up.
     if service.app_status().storage.status == "ready" {
         service.settings_get().map_err(|error| error.message)?;
     }
     let updater = UpdateService::production(directory.join("updates")).ok();
-    Ok(Host { service, updater, mock, directory })
+    Ok(Host {
+        service,
+        updater,
+        mock,
+        directory,
+    })
 }
 
 /// Starts the workers. Must be called from inside the Tokio runtime.
@@ -107,7 +119,10 @@ pub fn spawn_workers(service: &Arc<AppService>, events: UnboundedSender<HostEven
                 let event = match auth.recv().await {
                     Ok(event) => event,
                     // The UI re-reads authoritative state for every auth event.
-                    Err(RecvError::Lagged(_)) => AuthChangedEvent { state: AuthStatus::Pending, error: None },
+                    Err(RecvError::Lagged(_)) => AuthChangedEvent {
+                        state: AuthStatus::Pending,
+                        error: None,
+                    },
                     Err(RecvError::Closed) => break,
                 };
                 if events.send(HostEvent::AuthChanged(event)).is_err() {
@@ -139,14 +154,9 @@ pub fn spawn_workers(service: &Arc<AppService>, events: UnboundedSender<HostEven
         let mut transfers = service.subscribe();
         let events = events.clone();
         tokio::spawn(async move {
-            loop {
-                match transfers.recv().await {
-                    Ok(_) | Err(RecvError::Lagged(_)) => {
-                        if events.send(HostEvent::TransfersChanged).is_err() {
-                            break;
-                        }
-                    }
-                    Err(RecvError::Closed) => break,
+            while let Ok(_) | Err(RecvError::Lagged(_)) = transfers.recv().await {
+                if events.send(HostEvent::TransfersChanged).is_err() {
+                    break;
                 }
             }
         });
@@ -166,7 +176,11 @@ pub fn spawn_workers(service: &Arc<AppService>, events: UnboundedSender<HostEven
             let mut timer = tokio::time::interval(Duration::from_millis(500));
             loop {
                 timer.tick().await;
-                let result = if media { service.run_media().await } else { service.run_upload().await };
+                let result = if media {
+                    service.run_media().await
+                } else {
+                    service.run_upload().await
+                };
                 if result.is_err() {
                     break;
                 }

@@ -1,6 +1,6 @@
 //! Start-up, re-synchronisation with the core, theme and preferences.
 use crate::{
-    app::{error_text, error_title, request, App, Ctx},
+    app::{error_text, error_title, request, Ctx},
     generated::palettes,
     i18n,
     nav::Route,
@@ -9,13 +9,22 @@ use crate::{
 };
 use nekopak_domain::*;
 use slint::ComponentHandle;
-use std::rc::Rc;
 
 pub fn apply_theme(ctx: &Ctx) {
     let tokens = ctx.ui.global::<Tk>();
     let prefs = ctx.prefs.borrow();
-    let accent = palettes::ACCENTS.iter().find(|accent| accent.id == prefs.device.accent).unwrap_or(&palettes::ACCENTS[0]);
-    palettes::apply(&ctx.ui.global::<Pal>(), if tokens.get_dark() { &accent.dark } else { &accent.light });
+    let accent = palettes::ACCENTS
+        .iter()
+        .find(|accent| accent.id == prefs.device.accent)
+        .unwrap_or(&palettes::ACCENTS[0]);
+    palettes::apply(
+        &ctx.ui.global::<Pal>(),
+        if tokens.get_dark() {
+            &accent.dark
+        } else {
+            &accent.light
+        },
+    );
     tokens.set_reduce_motion(prefs.device.reduce_motion);
     tokens.set_compact(prefs.account.density == "compact");
 }
@@ -25,8 +34,14 @@ pub fn apply_settings(ctx: &Ctx) {
     let (theme, language) = {
         let core = ctx.core.borrow();
         (
-            core.settings["theme"].as_str().unwrap_or("system").to_owned(),
-            core.settings["language"].as_str().unwrap_or("system").to_owned(),
+            core.settings["theme"]
+                .as_str()
+                .unwrap_or("system")
+                .to_owned(),
+            core.settings["language"]
+                .as_str()
+                .unwrap_or("system")
+                .to_owned(),
         )
     };
     i18n::apply_preference(&language);
@@ -49,7 +64,10 @@ pub async fn boot(ctx: &Ctx) {
         shell.set_boot("fatal".into());
         return;
     }
-    match ctx.call(|service| async move { service.settings_get() }).await {
+    match ctx
+        .call(|service| async move { service.settings_get() })
+        .await
+    {
         Ok(settings) => ctx.core.borrow_mut().settings = settings,
         Err(error) => {
             shell.set_boot_error_title(error_title(&error).into());
@@ -75,17 +93,29 @@ pub async fn boot(ctx: &Ctx) {
 }
 
 pub async fn refresh_caps(ctx: &Ctx) {
-    match ctx.call(|service| async move { service.backend_discover(&request()).await }).await {
+    match ctx
+        .call(|service| async move { service.backend_discover(&request()).await })
+        .await
+    {
         Ok(caps) => ctx.core.borrow_mut().caps = caps,
         Err(error) => ctx.core.borrow_mut().auth_error = Some(error),
     }
 }
 
 pub async fn refresh_auth(ctx: &Ctx) {
-    match ctx.call(|service| async move { service.auth_status(&request()).await }).await {
+    match ctx
+        .call(|service| async move { service.auth_status(&request()).await })
+        .await
+    {
         Ok(auth) => {
-            let previous = ctx.core.borrow().auth.as_ref().and_then(|auth| auth.account_id.clone());
-            let changed = previous.is_some() && auth.account_id.is_some() && previous != auth.account_id;
+            let previous = ctx
+                .core
+                .borrow()
+                .auth
+                .as_ref()
+                .and_then(|auth| auth.account_id.clone());
+            let changed =
+                previous.is_some() && auth.account_id.is_some() && previous != auth.account_id;
             let signed_in = auth.authenticated;
             {
                 let mut core = ctx.core.borrow_mut();
@@ -109,7 +139,9 @@ pub async fn refresh_quota(ctx: &Ctx) {
         return;
     }
     let session = ctx.session();
-    let quota = ctx.call(|service| async move { service.quota_get(&request()).await }).await;
+    let quota = ctx
+        .call(|service| async move { service.quota_get(&request()).await })
+        .await;
     if session == ctx.session() {
         ctx.core.borrow_mut().quota = quota.ok();
         ctx.refresh_shell();
@@ -118,7 +150,10 @@ pub async fn refresh_quota(ctx: &Ctx) {
 
 async fn load_account_prefs(ctx: &Ctx) {
     let session = ctx.session();
-    match ctx.call(|service| async move { service.ui_prefs_get(&request()).await }).await {
+    match ctx
+        .call(|service| async move { service.ui_prefs_get(&request()).await })
+        .await
+    {
         Ok(value) if session == ctx.session() => {
             {
                 let mut prefs = ctx.prefs.borrow_mut();
@@ -153,8 +188,14 @@ pub fn update_account_prefs(ctx: &Ctx, change: impl FnOnce(&mut AccountPrefs)) -
         let session = ctx.session();
         let ctx = ctx.clone();
         ctx.clone().spawn(async move {
-            let Ok(value) = serde_json::to_value(&snapshot) else { return };
-            let result = ctx.call(move |service| async move { service.ui_prefs_update(&value, &account, &request()).await }).await;
+            let Ok(value) = serde_json::to_value(&snapshot) else {
+                return;
+            };
+            let result = ctx
+                .call(move |service| async move {
+                    service.ui_prefs_update(&value, &account, &request()).await
+                })
+                .await;
             if let Err(error) = result {
                 if session == ctx.session() {
                     ctx.toast_error(&error);
@@ -190,9 +231,7 @@ pub fn clear_account_data(ctx: &Ctx) {
     }
     ctx.files.borrow_mut().clear_session();
     *ctx.undo.borrow_mut() = None;
-    while ctx.cancel_top_dialog() && ctx.dialog_open() {
-        break;
-    }
+    ctx.cancel_top_dialog();
     ctx.finish_menu(None);
 }
 
@@ -207,7 +246,10 @@ pub async fn resync(ctx: &Ctx) {
 }
 
 pub async fn update_settings(ctx: &Ctx, patch: serde_json::Value) -> bool {
-    match ctx.call(move |service| async move { service.settings_update(&patch) }).await {
+    match ctx
+        .call(move |service| async move { service.settings_update(&patch) })
+        .await
+    {
         Ok(settings) => {
             ctx.core.borrow_mut().settings = settings;
             apply_settings(ctx);
@@ -234,12 +276,4 @@ pub fn on_auth_changed(ctx: &Ctx, event: AuthChangedEvent) {
 
 pub fn enter(ctx: &Ctx, route: &Route) {
     crate::settings_page::enter(ctx, route);
-}
-
-impl App {
-    pub fn language_changed(self: &Rc<Self>) {
-        self.refresh_tabs();
-        self.refresh_shell();
-        crate::pages::enter(self, &self.route());
-    }
 }

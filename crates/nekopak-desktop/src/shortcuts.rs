@@ -5,9 +5,12 @@ use std::rc::Rc;
 
 pub fn install(ctx: &Ctx) {
     let weak = Rc::downgrade(ctx);
-    ctx.ui.global::<Shell>().on_shortcut(move |text, ctrl, shift, alt| {
-        weak.upgrade().is_some_and(|ctx| handle(&ctx, &text, ctrl, shift, alt))
-    });
+    ctx.ui
+        .global::<Shell>()
+        .on_shortcut(move |text, ctrl, shift, alt| {
+            weak.upgrade()
+                .is_some_and(|ctx| handle(&ctx, &text, ctrl, shift, alt))
+        });
 }
 
 fn handle(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
@@ -29,7 +32,9 @@ fn handle(ctx: &Ctx, text: &str, ctrl: bool, shift: bool, alt: bool) -> bool {
             "z" if !shift => ctx.undo_last(),
             "f" if !shift => files::open_search(ctx),
             "b" => ctx.toggle_sidebar(),
-            "," => ctx.navigate(Route::Settings { section: "general".into() }),
+            "," => ctx.navigate(Route::Settings {
+                section: "general".into(),
+            }),
             "r" => refresh(ctx),
             "v" if !shift && matches!(ctx.route(), Route::Files { .. }) => {
                 let task = ctx.clone();

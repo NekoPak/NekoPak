@@ -7,7 +7,7 @@ mod media;
 mod rates;
 mod retry;
 mod settings;
-pub use media::TransferOptions;
+pub use media::{ClipOptions, TransferOptions};
 mod jobs;
 mod local;
 mod mounts;

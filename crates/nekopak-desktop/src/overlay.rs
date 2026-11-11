@@ -3,7 +3,8 @@
 use crate::{
     app::{error_text, request, App, Ctx},
     i18n::tr,
-    Choice, Crumb, DialogSpec, Dialogs, FileRow, FormField, KeyValue, Menu, MenuEntry, ToastEntry, Toasts,
+    Choice, Crumb, DialogSpec, Dialogs, FileRow, FormField, KeyValue, Menu, MenuEntry, ToastEntry,
+    Toasts,
 };
 use nekopak_domain::*;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
@@ -24,10 +25,17 @@ pub struct MenuItem {
 
 impl MenuItem {
     pub fn new(id: &str, label: impl Into<String>) -> Self {
-        Self { id: id.into(), label: label.into(), ..Self::default() }
+        Self {
+            id: id.into(),
+            label: label.into(),
+            ..Self::default()
+        }
     }
     pub fn separator() -> Self {
-        Self { separator: true, ..Self::default() }
+        Self {
+            separator: true,
+            ..Self::default()
+        }
     }
     pub fn icon(mut self, icon: &'static str) -> Self {
         self.icon = icon;
@@ -58,6 +66,10 @@ impl MenuItem {
     }
 }
 
+type ToastAction = Box<dyn FnOnce(&Ctx)>;
+/// Returns `(error, hint)` for the current text.
+pub type Validator<'a> = Box<dyn Fn(&str) -> (Option<String>, String) + 'a>;
+
 pub enum DialogEvent {
     Action(String, String),
     Edited(String),
@@ -77,7 +89,7 @@ pub struct Overlays {
     dialogs: Option<Rc<VecModel<DialogSpec>>>,
     dialog_events: HashMap<i32, mpsc::UnboundedSender<DialogEvent>>,
     toasts: Option<Rc<VecModel<ToastEntry>>>,
-    toast_actions: HashMap<i32, Box<dyn FnOnce(&Ctx)>>,
+    toast_actions: HashMap<i32, ToastAction>,
     next_id: i32,
 }
 
@@ -100,14 +112,18 @@ pub struct PromptOptions<'a> {
     /// Characters to preselect (0 selects everything), e.g. a name without its extension.
     pub select_to: usize,
     /// Returns `(error, hint)`; an error disables the confirm button.
-    pub validate: Box<dyn Fn(&str) -> (Option<String>, String) + 'a>,
+    pub validate: Validator<'a>,
 }
 
 pub fn install(ctx: &Ctx) {
     let dialogs = Rc::new(VecModel::<DialogSpec>::default());
     let toasts = Rc::new(VecModel::<ToastEntry>::default());
-    ctx.ui.global::<Dialogs>().set_stack(ModelRc::from(dialogs.clone()));
-    ctx.ui.global::<Toasts>().set_items(ModelRc::from(toasts.clone()));
+    ctx.ui
+        .global::<Dialogs>()
+        .set_stack(ModelRc::from(dialogs.clone()));
+    ctx.ui
+        .global::<Toasts>()
+        .set_items(ModelRc::from(toasts.clone()));
     {
         let mut overlays = ctx.overlays.borrow_mut();
         overlays.dialogs = Some(dialogs);
@@ -268,7 +284,11 @@ impl App {
             .map(|item| MenuEntry {
                 id: item.id.as_str().into(),
                 label: item.label.as_str().into(),
-                icon: if item.icon.is_empty() { slint::Image::default() } else { self.icon(item.icon) },
+                icon: if item.icon.is_empty() {
+                    slint::Image::default()
+                } else {
+                    self.icon(item.icon)
+                },
                 hint: item.hint.into(),
                 enabled: item.disabled.is_none(),
                 danger: item.danger,
@@ -328,7 +348,9 @@ impl App {
             return;
         }
         let menu = self.ui.global::<Menu>();
-        let current = usable.iter().position(|index| *index as i32 == menu.get_current());
+        let current = usable
+            .iter()
+            .position(|index| *index as i32 == menu.get_current());
         let next = match (current, delta) {
             (_, d) if d <= -1000 => 0,
             (_, d) if d >= 1000 => usable.len() - 1,
@@ -356,7 +378,9 @@ impl App {
     pub(crate) fn update_dialog(&self, id: i32, change: impl FnOnce(&mut DialogSpec)) {
         let model = self.overlays.borrow().dialogs.clone();
         let Some(model) = model else { return };
-        if let Some(row) = (0..model.row_count()).find(|row| model.row_data(*row).is_some_and(|spec| spec.id == id)) {
+        if let Some(row) = (0..model.row_count())
+            .find(|row| model.row_data(*row).is_some_and(|spec| spec.id == id))
+        {
             let mut spec = model.row_data(row).unwrap_or_default();
             change(&mut spec);
             model.set_row_data(row, spec);
@@ -370,13 +394,19 @@ impl App {
             overlays.dialogs.clone()
         };
         let Some(model) = model else { return };
-        if let Some(row) = (0..model.row_count()).find(|row| model.row_data(*row).is_some_and(|spec| spec.id == id)) {
+        if let Some(row) = (0..model.row_count())
+            .find(|row| model.row_data(*row).is_some_and(|spec| spec.id == id))
+        {
             model.remove(row);
         }
     }
 
     pub fn dialog_open(&self) -> bool {
-        self.overlays.borrow().dialogs.as_ref().is_some_and(|model| model.row_count() > 0)
+        self.overlays
+            .borrow()
+            .dialogs
+            .as_ref()
+            .is_some_and(|model| model.row_count() > 0)
     }
 
     /// Closes the top dialog as if it had been cancelled (Escape, session reset).
@@ -508,11 +538,20 @@ impl App {
     }
 
     /// Key/value sheet. Returns true when the optional `action` button was used.
-    pub async fn details(&self, title: &str, rows: Vec<(String, String, bool)>, action: Option<String>) -> bool {
+    pub async fn details(
+        &self,
+        title: &str,
+        rows: Vec<(String, String, bool)>,
+        action: Option<String>,
+    ) -> bool {
         let mut spec = Self::base_dialog("details", title);
         spec.details = ModelRc::new(VecModel::from(
             rows.into_iter()
-                .map(|(key, value, mono)| KeyValue { key: key.into(), value: value.into(), mono })
+                .map(|(key, value, mono)| KeyValue {
+                    key: key.into(),
+                    value: value.into(),
+                    mono,
+                })
                 .collect::<Vec<_>>(),
         ));
         spec.cancel = tr("关闭").into();
@@ -569,7 +608,9 @@ impl App {
                         spec.confirm_enabled = true;
                     });
                 }
-                Some(DialogEvent::Action(action, _)) if action == "confirm" => break Some(selected),
+                Some(DialogEvent::Action(action, _)) if action == "confirm" => {
+                    break Some(selected)
+                }
                 Some(DialogEvent::Action(..)) | None => break None,
                 Some(_) => {}
             }
@@ -586,7 +627,11 @@ impl App {
         start: Vec<(String, String)>,
         blocked: &[String],
     ) -> Option<(String, String)> {
-        let mut trail = if start.is_empty() { vec![("root".to_owned(), tr("网盘"))] } else { start };
+        let mut trail = if start.is_empty() {
+            vec![("root".to_owned(), tr("网盘"))]
+        } else {
+            start
+        };
         let mut spec = Self::base_dialog("picker", title);
         spec.confirm = confirm.into();
         spec.alt = tr("新建文件夹").into();
@@ -600,7 +645,10 @@ impl App {
                 reload = false;
                 let crumbs: Vec<Crumb> = trail
                     .iter()
-                    .map(|(id, name)| Crumb { id: id.into(), name: name.into() })
+                    .map(|(id, name)| Crumb {
+                        id: id.into(),
+                        name: name.into(),
+                    })
                     .collect();
                 let current = trail.last().map(|(id, _)| id.clone()).unwrap_or_default();
                 let allowed = !blocked.contains(&current);
@@ -619,8 +667,14 @@ impl App {
                             let mut cursor: Option<String> = None;
                             // Folder pickers list a bounded number of pages.
                             for _ in 0..20 {
-                                let page = service.files_list(&current, cursor.as_deref(), Some(500), &request()).await?;
-                                all.extend(page.items.into_iter().filter(|entry| entry.kind == EntryKind::Folder));
+                                let page = service
+                                    .files_list(&current, cursor.as_deref(), Some(500), &request())
+                                    .await?;
+                                all.extend(
+                                    page.items
+                                        .into_iter()
+                                        .filter(|entry| entry.kind == EntryKind::Folder),
+                                );
                                 cursor = page.next_cursor;
                                 if cursor.is_none() {
                                     break;
@@ -651,7 +705,11 @@ impl App {
                             spec.rows = ModelRc::new(VecModel::from(rows));
                             spec.phase = "ready".into();
                             spec.confirm_enabled = allowed;
-                            spec.hint = if allowed { SharedString::default() } else { tr("不能移动或复制到自身").into() };
+                            spec.hint = if allowed {
+                                SharedString::default()
+                            } else {
+                                tr("不能移动或复制到自身").into()
+                            };
                         });
                     }
                     Err(error) => {
@@ -678,7 +736,8 @@ impl App {
                 }
                 Some(DialogEvent::Action(action, _)) if action == "alt" => {
                     let parent = trail.last().map(|(id, _)| id.clone()).unwrap_or_default();
-                    let siblings: Vec<String> = folders.iter().map(|entry| entry.name.clone()).collect();
+                    let siblings: Vec<String> =
+                        folders.iter().map(|entry| entry.name.clone()).collect();
                     if crate::actions::new_folder_in(self, &parent, siblings).await {
                         reload = true;
                     }
@@ -686,7 +745,12 @@ impl App {
                 Some(DialogEvent::Action(action, _)) if action == "confirm" => {
                     let path = format!(
                         "/{}",
-                        trail.iter().skip(1).map(|(_, name)| name.as_str()).collect::<Vec<_>>().join("/")
+                        trail
+                            .iter()
+                            .skip(1)
+                            .map(|(_, name)| name.as_str())
+                            .collect::<Vec<_>>()
+                            .join("/")
                     );
                     break trail.last().map(|(id, _)| (id.clone(), path));
                 }
@@ -720,7 +784,12 @@ impl App {
         self.toast_with(text, tone, Some((label.into(), Box::new(action))));
     }
 
-    fn toast_with(self: &Rc<Self>, text: impl Into<String>, tone: &str, action: Option<(String, Box<dyn FnOnce(&Ctx)>)>) {
+    fn toast_with(
+        self: &Rc<Self>,
+        text: impl Into<String>,
+        tone: &str,
+        action: Option<(String, ToastAction)>,
+    ) {
         let id = self.next_overlay_id();
         let lifetime = Duration::from_millis(match (tone, action.is_some()) {
             ("error", _) => 9000,
@@ -731,7 +800,10 @@ impl App {
             id,
             text: text.into().into(),
             tone: tone.into(),
-            action: action.as_ref().map(|(label, _)| label.as_str().into()).unwrap_or_default(),
+            action: action
+                .as_ref()
+                .map(|(label, _)| label.as_str().into())
+                .unwrap_or_default(),
         };
         let model = {
             let mut overlays = self.overlays.borrow_mut();
@@ -763,7 +835,9 @@ impl App {
             overlays.toasts.clone()
         };
         let Some(model) = model else { return };
-        if let Some(row) = (0..model.row_count()).find(|row| model.row_data(*row).is_some_and(|toast| toast.id == id)) {
+        if let Some(row) = (0..model.row_count())
+            .find(|row| model.row_data(*row).is_some_and(|toast| toast.id == id))
+        {
             model.remove(row);
         }
     }
@@ -787,25 +861,45 @@ pub struct Field {
 
 impl Field {
     fn of(id: &'static str, kind: &'static str, label: impl Into<String>) -> Self {
-        Self { id, kind, label: label.into(), ..Self::default() }
+        Self {
+            id,
+            kind,
+            label: label.into(),
+            ..Self::default()
+        }
     }
     pub fn text(id: &'static str, label: impl Into<String>, value: impl Into<String>) -> Self {
-        Self { value: value.into(), ..Self::of(id, "text", label) }
+        Self {
+            value: value.into(),
+            ..Self::of(id, "text", label)
+        }
     }
     pub fn password(id: &'static str, label: impl Into<String>) -> Self {
         Self::of(id, "password", label)
     }
     pub fn multiline(id: &'static str, label: impl Into<String>, value: impl Into<String>) -> Self {
-        Self { value: value.into(), ..Self::of(id, "multiline", label) }
+        Self {
+            value: value.into(),
+            ..Self::of(id, "multiline", label)
+        }
     }
     pub fn toggle(id: &'static str, label: impl Into<String>, checked: bool) -> Self {
-        Self { checked, ..Self::of(id, "toggle", label) }
+        Self {
+            checked,
+            ..Self::of(id, "toggle", label)
+        }
     }
     pub fn select(id: &'static str, label: impl Into<String>, value: impl Into<String>) -> Self {
-        Self { value: value.into(), ..Self::of(id, "select", label) }
+        Self {
+            value: value.into(),
+            ..Self::of(id, "select", label)
+        }
     }
     pub fn note(id: &'static str, text: impl Into<String>, tone: &'static str) -> Self {
-        Self { tone, ..Self::of(id, "note", text) }
+        Self {
+            tone,
+            ..Self::of(id, "note", text)
+        }
     }
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = text.into();
@@ -827,8 +921,8 @@ impl Field {
 
 pub enum FormEvent {
     /// A text field changed (already stored in the form).
-    Edited(String),
-    Toggled(String),
+    Edited,
+    Toggled,
     /// A select field was opened; show a menu at the given point.
     Select(String, f32, f32),
     Submit,
@@ -863,7 +957,9 @@ impl Form {
                 tone: field.tone.into(),
             })
             .collect();
-        self.ctx.update_dialog(self.id, |spec| spec.fields = ModelRc::new(VecModel::from(rows)));
+        self.ctx.update_dialog(self.id, |spec| {
+            spec.fields = ModelRc::new(VecModel::from(rows))
+        });
     }
 
     pub async fn next(&mut self) -> FormEvent {
@@ -879,17 +975,19 @@ impl Form {
                             self.push();
                         }
                     }
-                    return FormEvent::Edited(id);
+                    return FormEvent::Edited;
                 }
                 Some(DialogEvent::FieldToggle(id, checked)) => {
                     if let Some(field) = self.fields.iter_mut().find(|field| field.id == id) {
                         field.checked = checked;
                     }
                     self.push();
-                    return FormEvent::Toggled(id);
+                    return FormEvent::Toggled;
                 }
                 Some(DialogEvent::FieldAction(id, x, y)) => return FormEvent::Select(id, x, y),
-                Some(DialogEvent::Action(action, _)) if action == "confirm" => return FormEvent::Submit,
+                Some(DialogEvent::Action(action, _)) if action == "confirm" => {
+                    return FormEvent::Submit
+                }
                 Some(DialogEvent::Action(action, _)) if action == "alt" => return FormEvent::Alt,
                 Some(DialogEvent::Action(..)) | None => return FormEvent::Cancel,
                 Some(_) => {}
@@ -898,11 +996,17 @@ impl Form {
     }
 
     pub fn value(&self, id: &str) -> String {
-        self.fields.iter().find(|field| field.id == id).map(|field| field.value.clone()).unwrap_or_default()
+        self.fields
+            .iter()
+            .find(|field| field.id == id)
+            .map(|field| field.value.clone())
+            .unwrap_or_default()
     }
 
     pub fn checked(&self, id: &str) -> bool {
-        self.fields.iter().any(|field| field.id == id && field.checked)
+        self.fields
+            .iter()
+            .any(|field| field.id == id && field.checked)
     }
 
     /// Changes one field and refreshes the dialog.
@@ -913,18 +1017,14 @@ impl Form {
         self.push();
     }
 
-    pub fn replace_fields(&mut self, fields: Vec<Field>) {
-        self.fields = fields;
-        self.push();
-    }
-
     pub fn set_busy(&self, busy: bool) {
         self.ctx.update_dialog(self.id, |spec| spec.busy = busy);
     }
 
     pub fn set_error(&self, message: impl Into<String>) {
         let message = message.into();
-        self.ctx.update_dialog(self.id, |spec| spec.error = message.into());
+        self.ctx
+            .update_dialog(self.id, |spec| spec.error = message.into());
     }
 
     pub fn set_confirm(&self, label: &str, enabled: bool) {
@@ -947,14 +1047,26 @@ impl Form {
 }
 
 impl App {
-    pub fn form(self: &Rc<Self>, title: &str, body: &str, confirm: &str, alt: &str, fields: Vec<Field>) -> Form {
+    pub fn form(
+        self: &Rc<Self>,
+        title: &str,
+        body: &str,
+        confirm: &str,
+        alt: &str,
+        fields: Vec<Field>,
+    ) -> Form {
         let mut spec = Self::base_dialog("form", title);
         spec.body = body.into();
         spec.confirm = confirm.into();
         spec.alt = alt.into();
         spec.width = 480.0;
         let (id, events) = self.push_dialog(spec);
-        let form = Form { ctx: self.clone(), id, events, fields };
+        let form = Form {
+            ctx: self.clone(),
+            id,
+            events,
+            fields,
+        };
         form.push();
         form
     }

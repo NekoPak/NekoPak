@@ -26,15 +26,11 @@ pub fn bytes(value: u64) -> String {
     format!("{hundredths:.digits$} {}", UNITS[unit])
 }
 
-pub fn bytes_opt(value: Option<u64>) -> String {
-    value.map(bytes).unwrap_or_else(|| "—".into())
-}
-
 pub fn group_digits(value: u64) -> String {
     let digits = value.to_string();
     let mut out = String::with_capacity(digits.len() + digits.len() / 3);
     for (index, digit) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
             out.push(',');
         }
         out.push(digit);
@@ -48,7 +44,9 @@ pub fn bytes_exact(value: u64) -> String {
 
 pub fn speed(bytes_per_second: Option<f64>) -> String {
     match bytes_per_second {
-        Some(value) if value.is_finite() && value >= 0.0 => format!("{}/s", bytes(value.round() as u64)),
+        Some(value) if value.is_finite() && value >= 0.0 => {
+            format!("{}/s", bytes(value.round() as u64))
+        }
         _ => tr("未提供"),
     }
 }
@@ -91,7 +89,9 @@ pub fn eta(done: u64, total: Option<u64>, bytes_per_second: Option<f64>) -> Opti
 }
 
 fn parse(iso: &str) -> Option<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(iso).ok().map(|value| value.with_timezone(&Utc))
+    DateTime::parse_from_rfc3339(iso)
+        .ok()
+        .map(|value| value.with_timezone(&Utc))
 }
 
 pub fn date_time(iso: Option<&str>) -> String {
@@ -112,7 +112,7 @@ pub fn relative(iso: Option<&str>) -> String {
         return "—".into();
     };
     let seconds = (Utc::now() - value).num_seconds();
-    if seconds < 0 || seconds >= 86_400 {
+    if !(0..86_400).contains(&seconds) {
         return date_time(iso);
     }
     if seconds < 45 {
