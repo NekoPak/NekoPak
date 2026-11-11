@@ -107,6 +107,28 @@ Media Foundation 的库在运行时按需加载，不做静态导入：在没有
 x64，Windows 10 1709 或更新版本。可执行文件静态导入 `cldapi.dll`（云文件占位符，
 1709 起提供）；更早的 Windows 10 无法启动。不需要 WebView2、.NET 或 VC++ 运行库安装包。
 
+## 性能实测
+
+发行版构建（`opt-level=s`、LTO、strip），离线演示数据，窗口 1280×760，启动 5 秒后取样，
+每种渲染器 3 次。Linux x86-64 容器、Xvfb、无显卡：
+
+| 渲染器 | 常驻内存（RSS） | 线程 | 空闲 3 秒 CPU |
+|---|---|---|---|
+| CPU（`winit-software`） | 约 42 MiB | 7 | 0 个时钟滴答 |
+| OpenGL（`winit-femtovg`，此处由 llvmpipe 软件模拟） | 约 171 MiB | 16 | 0–1 个时钟滴答 |
+
+说明：
+
+- OpenGL 一栏的内存主要是 Mesa 软件光栅器本身，不代表有真实显卡驱动时的占用；
+  有参考意义的是 CPU 渲染器的数字和“空闲时不占 CPU”。
+- Linux 可执行文件 27.4 MiB（未压缩）。Windows 的体积见 CI 产物 `dist/size-report.json`。
+- Windows 上的出窗时间与内存由 CI 步骤 “Launch the release build and measure start-up
+  and memory” 输出（托管运行器无显卡、波动大，只记录不设阈值）。
+- 列表与媒体库都是虚拟化的：只创建可见行；缩略图同时最多解码 3 张、缓存 160 张。
+  图片解码、网络与磁盘工作都不在界面线程上。
+- 评估过但没有做的体积优化：去掉 `accessibility`（读屏支持会消失）或只保留一种渲染器
+  （失去无显卡时的回退或显卡加速）。两者都以兼容性换体积，不划算。
+
 ## 待决定
 
 应用更新源和 README 中的下载链接仍指向 `NekoPak/NikoPak` 的发行页，因为已发布的
