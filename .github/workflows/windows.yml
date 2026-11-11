@@ -52,6 +52,16 @@ jobs:
       - run: cargo run --locked -p nekopak-core --example mock_smoke
       - run: node scripts/gen-native-assets.mjs --check
       - run: cargo build --release --locked -p nekopak-desktop
+      # Starts the real release executable on Windows (offline demo data) and
+      # records time-to-window and memory. Informational: hosted runners have
+      # no GPU and vary too much for thresholds.
+      - name: Launch the release build and measure start-up and memory
+        shell: pwsh
+        continue-on-error: true
+        env:
+          NEKOPAK_BACKEND: mock
+        run: |
+          ./scripts/measure_runtime.ps1 -Runs 3
       - run: cargo fetch --locked
       - run: python scripts/package_release.py
       - run: python scripts/package_installer.py

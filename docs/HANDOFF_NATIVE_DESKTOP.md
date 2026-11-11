@@ -10,44 +10,45 @@
 3. 发布签名私钥已写入 Actions secrets（`NEKOPAK_RELEASE_PRIVATE_KEY`，见 `.github/workflows/release.yml`），可以用。
 4. 不要创建 PR，除非用户明确要求；只推到上面的分支。
 
-## 第一件事：看 Windows CI
+## 现状（第二轮会话结束时）
 
-提交 `ea1e9f7` 触发了 `Windows desktop checks`（run 42962162641）和 `Portable Rust core`（含新增的 `native-desktop` 作业，run 42962162705）。
-此前两次 Windows 失败只是 `cargo fmt --check`，已修。本次是原生端第一次在真实 Windows 上编译/测试/打包，
-很可能暴露问题，重点怀疑：
+Windows CI（`Windows desktop checks`）已全绿：clippy、测试、发行版构建、便携包、NSIS 安装器。
+上一版“待办”清单的处理结果：
 
-- `cargo clippy --workspace` 在 MSVC 下对 `desktop.rs`（tray-icon 0.25 API、windows-sys 调用）的报错；
-- `scripts/package_installer.py`：用 Tauri NSIS 打包器 + `mainBinaryName: "nekopak"` 打包原生 exe，从未运行过；
-- `scripts/test_installer.ps1`、`installer-smoke.yml`、`tests/e2e/native-*.mjs`（已改指向 `nekopak-webview.exe`，但 CI 里 debug 版 webview 宿主是否还会被构建需确认）；
-- `build.rs` 的 `winresource` 图标嵌入；
-- `npm run e2e` 等旧 web 测试是否仍依赖被改名的二进制。
+| 项 | 结果 |
+|---|---|
+| Windows CI | 通过。补了 13 个依赖的许可证文本（`licenses/upstream`、`licenses/sources.json`） |
+| 应用内图片预览、媒体库 | 完成（`preview.rs`、`gallery.rs`、`ui/viewer.slint`、`ui/pages/gallery.slint`） |
+| 视频画面预览、选段标记 | 完成。通用引擎 `frames.rs`，Windows 解码器 `frames_win.rs`（Media Foundation，运行时加载）。CI 上有端到端解码测试 |
+| 拖放 | 完成。列表内用 Slint `DragArea` / `DropArea`；系统拖入经 winit 事件（`window_events.rs`） |
+| 命令面板、F1 | 完成（`palette.rs`、`ui/palette.slint`） |
+| 剪贴板链接提醒 | 完成，默认关闭（`cloud::clipboard_check`） |
+| 演示场景面板 | 完成（`demo.rs`）；演示后端改用 `MockProvider::demo`，可搜索 / 整理 / 预览 |
+| “位置”列 | 完成（`files::resolve_locations`） |
+| 小瑕疵四项 | 完成；英文核心消息译表在 `locales/core-messages.json` |
+| 手机界面 | 做了一轮触控与视觉打磨（`src/styles/phone.css` 末尾） |
+| 文档 | `NATIVE_DESKTOP.md`、`CHANGELOG.md`、`SCREENSHOTS.md`、`USER_GUIDE.md`、`RUNNING.md` 已更新，原生截图在 `docs/screenshots/native` |
 
-## 待办（按优先级）
+## 仍然没做 / 没验证
 
-1. **让 Windows CI 全绿**，然后在真实 Windows 上验收托盘、关闭到托盘、单实例、开机自启、安装/卸载。
-2. **应用内媒体预览**：视频/图片预览与选段画面预览。建议 Windows 用 Media Foundation（`IMFPMediaPlayer` 或 MediaEngine）渲染到子窗口，
-   图片用 `image` 解码成 `slint::Image`；媒体会话地址来自 `service.media_session_open`（仅回环）。当前 `media.rs` 只做外部播放器。
-3. **媒体库 / 图库视图**（web 的 `Gallery.tsx`）：现在只是“只看视频”筛选（`actions::open_media_library`）。
-4. **拖放**：列表内拖动移动/复制、从系统拖入上传（Slint 1.18 的拖放能力先查文档）。
-5. **命令面板**（Ctrl+K，web 的 `Palette.tsx`）和 **F1 快捷键入口**（`settings_page::shortcuts` 已有内容，未绑 F1）。
-6. **剪贴板链接提醒**：功能和设置项已删，需重做（窗口获得焦点时读剪贴板；隐藏 TextInput 桥在 `ui/app.slint`）。
-7. **演示场景切换面板**（web 的 `DevPanel.tsx`）；侧栏“演示”标签的 `Shell.open-demo` 回调未接。
-8. **搜索/最近列表的“位置”列**（`Files.show-location` 恒为 false）。
-9. **性能与兼容专项**（用户原始要求，尚未做）：核心热点、启动时间与内存实测（`scripts/measure_runtime.ps1`）、
-   exe 体积（现 Windows gnu 约 19 MiB / 压缩 9 MiB，可评估去掉 `accessibility` 或只留一种渲染器、MSVC 实测）、
-   手机 web 界面的性能与 UI 问题。
-10. **更新源迁移**（待用户决定）：`crates/nekopak-core/src/updates.rs` 和 README 仍指向 `NekoPak/NikoPak` 发行页；
-    迁到 `NekoPak/NekoPak` 需先在新仓库发布带签名清单的版本。`scripts/publish_release.py` 也写死了 NikoPak。
-11. 文档：`docs/RUNNING.md`、`USER_GUIDE.md`、`SCREENSHOTS.md` 仍是 WebView 时代内容，需更新并补原生截图。
-12. 小瑕疵：面板行右侧数值缺右内边距；窄窗口 rail 模式侧栏出现滚动条且无设置入口；
-    “已选 1 项”英文单复数；核心部分英文错误消息在中文界面未翻译。
+1. **Windows 真机人工验收**：托盘、关闭到托盘、单实例、开机自启、安装 / 卸载、系统文件拖入、
+   鼠标侧键、视频预览的实际观感。CI 只证明能编译、测试通过、发行版能启动。
+2. **更新源迁移**（等用户决定）：`crates/nekopak-core/src/updates.rs`、README、
+   `scripts/publish_release.py` 仍指向 `NekoPak/NikoPak`。
+3. **真实账号流程**未在这两轮验证。
+4. 视频预览没有声音（有意为之，完整播放交给外部播放器）；HEIC / AVIF / SVG 不能应用内预览。
+5. exe 静态导入 `cldapi.dll`，因此要求 Windows 10 1709+；若要支持更早版本需把
+   `nekopak-mount` 的云文件接口改成运行时加载。
+6. 性能：见 `docs/NATIVE_DESKTOP.md` 的“性能实测”；CI 的启动与内存数据在
+   “Launch the release build…” 步骤日志里，未设阈值。体积优化（去掉 `accessibility` 或
+   只留一种渲染器）评估后未做——两者都影响兼容性或可访问性。
 
-## 已验证 / 未验证
+## 调试界面的办法
 
-- 已验证（Linux）：`cargo clippy -p nekopak-desktop --all-targets --features automation -- -D warnings`、
-  `cargo test -p nekopak-desktop`（15 项，含译文覆盖测试）、`python3 tests/native/run.py`（两种渲染器各 14 张截图）、
-  核心测试、`npm run build`、`npm test`、`node scripts/gen-native-assets.mjs --check`、`cargo fmt --all --check`。
-- 未验证：真实 Windows 运行与安装；真实账号流程；离线演示后端不支持重命名/分享/搜索，这些对话框无截图级验证。
+`tests/native/smoke.txt` 之外，可以写临时脚本驱动 `automation` 构建：
+`click / dclick / rclick / down / move / up / key / ctrl / type / size / shot`。
+`NEKOPAK_FAKE_FRAMES=1` 让视频预览使用合成帧（仅 `automation` 构建），便于在 Linux 上
+走查进度条、播放和选段标记。演示后端里“照片”文件夹的图片可真实解码。
 
 ## 开发速查
 
