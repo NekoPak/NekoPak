@@ -194,3 +194,5 @@
 .mobile-action-sheet, .phone-modal-backdrop .modal { animation:phone-sheet-in .18s ease-out; }
 @media (prefers-reduced-motion: reduce) { .mobile-action-sheet, .phone-modal-backdrop .modal { animation:none; } }
 :root[data-motion=reduce] .mobile-action-sheet, :root[data-motion=reduce] .phone-modal-backdrop .modal { animation:none; }
+/* The secondary task action reads as a button, not as stray text. */
+.phone-task-actions .btn-ghost { background:var(--surface-high); }

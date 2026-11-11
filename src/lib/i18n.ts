@@ -1,9 +1,4 @@
 import { Store } from "./store";
-import { EN } from "./locales/en";
-import { EN_EXTRA } from "./locales/en-extra";
-import { ZH_TW } from "./locales/zh-tw";
-import { JA } from "./locales/ja";
-import { KO } from "./locales/ko";
 
 export type Locale = "zh-CN" | "zh-TW" | "en" | "ja-JP" | "ko-KR";
 export type Language = "system" | Locale;
@@ -22,14 +17,54 @@ function initial(): Language {
   return "system";
 }
 
-export const language = new Store<{ preference: Language }>({ preference: initial() });
+/** `revision` changes when a catalog finishes loading, so views re-render with it. */
+export const language = new Store<{ preference: Language; revision: number }>({ preference: initial(), revision: 0 });
 let nativeSystemLanguage: string | undefined;
+
+type Catalog = Readonly<Record<string, string>>;
+/**
+ * Catalogs are loaded on demand: Simplified Chinese (the source language)
+ * needs none, and every other language downloads only its own. Earlier
+ * entries win, matching the previous EN_EXTRA-over-EN lookup.
+ */
+const catalogs: Partial<Record<Locale, readonly Catalog[]>> = {};
+const loading: Partial<Record<Locale, Promise<void>>> = {};
+
+export function registerLocale(locale: Locale, parts: readonly Catalog[]): void {
+  catalogs[locale] = parts;
+}
+
+/** Resolves once `locale` can be translated synchronously. Never rejects. */
+export function ensureLocale(locale: Locale = resolvedLanguage()): Promise<void> {
+  if (locale === "zh-CN" || catalogs[locale]) return Promise.resolve();
+  return loading[locale] ??= (async () => {
+    try {
+      if (locale === "zh-TW") registerLocale(locale, [(await import("./locales/zh-tw")).ZH_TW]);
+      else if (locale === "ja-JP") registerLocale(locale, [(await import("./locales/ja")).JA]);
+      else if (locale === "ko-KR") registerLocale(locale, [(await import("./locales/ko")).KO]);
+      else registerLocale(locale, [(await import("./locales/en-extra")).EN_EXTRA, (await import("./locales/en")).EN]);
+    } catch {
+      // Offline or a failed chunk: keep the source language and allow a retry.
+      delete loading[locale];
+    }
+  })();
+}
+
+/** Loads the active catalog if needed, then re-renders everything that shows copy. */
+function refreshWhenLoaded(): void {
+  const locale = resolvedLanguage();
+  if (locale === "zh-CN" || catalogs[locale]) return;
+  void ensureLocale(locale).then(() => {
+    if (resolvedLanguage() === locale) language.set(state => ({ revision: state.revision + 1 }));
+  });
+}
 
 /** Android WebView may retain an English navigator locale while the OS is Chinese. */
 export function setSystemLanguageOverride(locale?: string): void {
   nativeSystemLanguage = typeof locale === "string" && /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/.test(locale)
     ? locale.replaceAll("_", "-") : undefined;
   if (typeof document !== "undefined") document.documentElement.lang = resolvedLanguage();
+  refreshWhenLoaded();
 }
 
 export function resolveSystemLanguage(value: string): Locale {
@@ -50,16 +85,18 @@ export function setLanguage(preference: Language): void {
   language.set({ preference });
   try { localStorage.setItem(KEY, preference); } catch { /* Optional browser cache. */ }
   if (typeof document !== "undefined") document.documentElement.lang = resolvedLanguage();
+  refreshWhenLoaded();
 }
 
 /** Only developer-authored UI copy is passed here. Remote names, paths and identifiers are untouched. */
 export function tr(text: string): string {
   const locale = resolvedLanguage();
   if (locale === "zh-CN") return text;
-  if (locale === "zh-TW") return ZH_TW[text] ?? text;
-  if (locale === "ja-JP") return JA[text] ?? text;
-  if (locale === "ko-KR") return KO[text] ?? text;
-  return EN_EXTRA[text] ?? EN[text] ?? text;
+  for (const part of catalogs[locale] ?? []) {
+    const hit = part[text];
+    if (hit !== undefined) return hit;
+  }
+  return text;
 }
 /** Interpolated values are inserted after translating the developer-authored template. */
 export function tx(template: string, ...values: (string | number | undefined)[]): string {

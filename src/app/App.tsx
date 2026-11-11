@@ -163,7 +163,7 @@ function Page() {
 export function App() {
   const mobileLayout = useMobileLayout();
   // Rerender translated labels without remounting the tree or losing forms.
-  useStore(language, state => state.preference);
+  useStore(language, state => `${state.preference}:${state.revision}`);
   const tabId = useStore(workspaceTabs, state => state.activeId);
   const s = useStore(app, (x) => ({ boot: x.boot, err: x.bootError, accepted: x.disclaimerAccepted, auth: x.auth?.state, sessionEpoch: x.sessionEpoch }));
   const collapsedPref = useStore(prefs, (p) => p.sidebarCollapsed);
