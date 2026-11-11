@@ -412,6 +412,14 @@ impl App {
         self.refresh_tabs();
         self.refresh_shell();
         crate::pages::enter(self, &route);
+        // The previous page may have owned the focused control (search field,
+        // list); without a focused element window shortcuts stop working.
+        if !self.dialog_open()
+            && !self.palette_open()
+            && !self.ui.global::<crate::Files>().get_searching()
+        {
+            self.ui.invoke_focus_root();
+        }
     }
 
     pub fn refresh_tabs(&self) {

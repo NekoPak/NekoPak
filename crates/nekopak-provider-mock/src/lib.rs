@@ -1,7 +1,9 @@
 //! Offline deterministic simulator. No HTTP client, credentials, filesystem writes, or external tools.
 use async_trait::async_trait;
 use nekopak_domain::*;
-use nekopak_provider::{CloudTaskRequest, ProviderPort, SimulationStep};
+use nekopak_provider::{
+    CloudTaskRequest, DownloadChunk, DownloadInfo, DownloadObserver, ProviderPort, SimulationStep,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -10,7 +12,11 @@ use std::{
     time::Duration,
 };
 
+pub mod demo;
+
 pub const FIXTURE_TIME: &str = "2026-11-07T00:00:00Z";
+/// Storage scope of the simulated account (interactive demo only).
+const DEMO_SCOPE: &str = "mock-demo";
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -56,12 +62,17 @@ pub struct MockProvider {
     /// Switchable at runtime so the demo panel can change scenario in place.
     scenario: Mutex<Scenario>,
     data: Mutex<MockData>,
+    /// Interactive demo: search, in-memory file operations and generated
+    /// pictures. Off for the contract fixtures, which stay byte-stable.
+    rich: bool,
 }
 struct MockData {
     entries: Vec<RemoteEntry>,
     generation: u64,
     faults: VecDeque<(Operation, Fault)>,
     disconnected: BTreeSet<String>,
+    trashed: Vec<RemoteEntry>,
+    next_id: u64,
 }
 
 impl MockProvider {
@@ -73,8 +84,26 @@ impl MockProvider {
                 generation: 1,
                 faults: VecDeque::new(),
                 disconnected: BTreeSet::new(),
+                trashed: Vec::new(),
+                next_id: 1,
             }),
+            rich: false,
         }
+    }
+    /// The simulator behind the desktop's offline demo. Same scenarios as
+    /// [`MockProvider::new`], plus a tree that can be searched and edited.
+    pub fn demo(scenario: Scenario) -> Self {
+        let mut provider = Self::new(scenario);
+        provider.rich = true;
+        provider.set_scenario(scenario);
+        provider
+    }
+    fn tree(&self, scenario: Scenario) -> Vec<RemoteEntry> {
+        let mut tree = entries(scenario);
+        if self.rich {
+            tree.extend(demo::extra_entries());
+        }
+        tree
     }
     pub fn scenario(&self) -> Scenario {
         *self.scenario.lock().unwrap_or_else(|e| e.into_inner())
@@ -83,10 +112,11 @@ impl MockProvider {
     pub fn set_scenario(&self, scenario: Scenario) {
         *self.scenario.lock().unwrap_or_else(|e| e.into_inner()) = scenario;
         let mut data = self.data.lock().unwrap_or_else(|e| e.into_inner());
-        data.entries = entries(scenario);
+        data.entries = self.tree(scenario);
         data.generation += 1;
         data.faults.clear();
         data.disconnected.clear();
+        data.trashed.clear();
     }
     pub fn inject(&self, operation: Operation, fault: Fault) {
         self.data
@@ -180,7 +210,7 @@ impl ProviderPort for MockProvider {
         Ok(CapabilityReport {
             backend: BackendId::Mock,
             status: if self.scenario() == Scenario::Unauthorized { BackendStatus::NeedsLogin } else { BackendStatus::Ready },
-            operations: [Operation::List, Operation::Stat, Operation::Download, Operation::CloudTask, Operation::Quota].into_iter().map(|op| (op, true)).chain([(Operation::ReadRange, false), (Operation::SegmentDownload, false), (Operation::Upload, false), (Operation::Trash, false)]).collect(),
+            operations: [Operation::List, Operation::Stat, Operation::Download, Operation::CloudTask, Operation::Quota].into_iter().map(|op| (op, true)).chain([(Operation::ReadRange, false), (Operation::SegmentDownload, false), (Operation::Upload, false), (Operation::Trash, false)]).chain(if self.rich { RICH_OPERATIONS.as_slice() } else { &[] }.iter().map(|op| (*op, true))).collect(),
             account_tier: Some(if self.scenario() == Scenario::Premium { AccountTier::Premium } else { AccountTier::Free }),
             version: Some("mock-0.1".into()),
             limitations: vec!["OFFLINE SIMULATION: all entries, quotas and transfers are synthetic; no file is downloaded.".into(), "Real providers, random reads, sync and mounting are not implemented.".into()],
@@ -280,6 +310,238 @@ impl ProviderPort for MockProvider {
             Sha256::digest(request.idempotency_key.as_bytes())
         ))
     }
+    async fn account_scope(&self) -> Result<String, ClientError> {
+        if self.rich {
+            Ok(DEMO_SCOPE.into())
+        } else {
+            Err(unsupported())
+        }
+    }
+    async fn query_files(
+        &self,
+        query: &FileQuery,
+        cursor: Option<&str>,
+        limit: usize,
+    ) -> Result<Page<RemoteEntry>, ClientError> {
+        if !self.rich {
+            return Err(unsupported());
+        }
+        self.check(Operation::List).await?;
+        let data = self.data.lock().map_err(|_| internal())?;
+        let mut items: Vec<RemoteEntry> = match query {
+            FileQuery::Trash => data.trashed.clone(),
+            FileQuery::Starred => data
+                .entries
+                .iter()
+                .filter(|entry| entry.starred == Some(true))
+                .cloned()
+                .collect(),
+            FileQuery::Recent => data
+                .entries
+                .iter()
+                .filter(|entry| entry.kind == EntryKind::File)
+                .rev()
+                .take(30)
+                .cloned()
+                .collect(),
+            FileQuery::Search(text) => {
+                let needle = text.trim().to_lowercase();
+                data.entries
+                    .iter()
+                    .filter(|entry| {
+                        !needle.is_empty() && entry.name.to_lowercase().contains(&needle)
+                    })
+                    .cloned()
+                    .collect()
+            }
+        };
+        let offset = cursor.and_then(|at| at.parse::<usize>().ok()).unwrap_or(0);
+        let total = items.len();
+        items = items.into_iter().skip(offset).take(limit.max(1)).collect();
+        let end = offset + items.len();
+        Ok(Page {
+            items,
+            next_cursor: (end < total).then(|| end.to_string()),
+        })
+    }
+    async fn mutate_files(
+        &self,
+        request: &FileMutation,
+        _account_scope: &str,
+    ) -> Result<OperationResult, ClientError> {
+        if !self.rich {
+            return Err(unsupported());
+        }
+        self.check(Operation::Stat).await?;
+        let mut data = self.data.lock().map_err(|_| internal())?;
+        data.generation += 1;
+        let mut result = OperationResult {
+            op: request.op,
+            succeeded: Vec::new(),
+            failed: Vec::new(),
+            created: Vec::new(),
+            replayed: false,
+        };
+        let target = request.target.clone().unwrap_or_default();
+        let parent = target.parent_id.clone().unwrap_or_else(|| "root".into());
+        let taken = |data: &MockData, parent: &str, name: &str, except: &str| {
+            data.entries.iter().any(|entry| {
+                entry.parent_id.as_deref() == Some(parent)
+                    && entry.name == name
+                    && entry.id != except
+            })
+        };
+        let folder_exists = |data: &MockData, id: &str| {
+            id == "root"
+                || data
+                    .entries
+                    .iter()
+                    .any(|entry| entry.id == id && entry.kind == EntryKind::Folder)
+        };
+        if request.op == MutateOp::Mkdir {
+            let name = target.name.clone().unwrap_or_default();
+            if name.trim().is_empty() || !folder_exists(&data, &parent) {
+                return Err(conflict());
+            }
+            if taken(&data, &parent, &name, "") {
+                return Err(ClientError::new(
+                    ErrorCode::Conflict,
+                    "这里已经有同名项目。",
+                ));
+            }
+            let id = format!("demo-new-{}", data.next_id);
+            data.next_id += 1;
+            let created = RemoteEntry {
+                id: id.clone(),
+                parent_id: Some(parent),
+                name,
+                kind: EntryKind::Folder,
+                size_bytes: DecimalU64(0),
+                modified_at: Some(FIXTURE_TIME.into()),
+                etag: Some(format!("mock-v{}", data.generation)),
+                hash: None,
+                mime_type: None,
+                starred: None,
+            };
+            data.entries.push(created.clone());
+            result.succeeded.push(id);
+            result.created.push(created);
+            return Ok(result);
+        }
+        for id in &request.ids {
+            let outcome: Result<(), ClientError> = (|| {
+                if request.op == MutateOp::Restore || request.op == MutateOp::DeleteForever {
+                    let at = data
+                        .trashed
+                        .iter()
+                        .position(|entry| entry.id == *id)
+                        .ok_or_else(not_found)?;
+                    let entry = data.trashed.remove(at);
+                    if request.op == MutateOp::Restore {
+                        data.entries.push(entry);
+                    }
+                    return Ok(());
+                }
+                let at = data
+                    .entries
+                    .iter()
+                    .position(|entry| entry.id == *id)
+                    .ok_or_else(not_found)?;
+                match request.op {
+                    MutateOp::Rename => {
+                        let name = target.name.clone().unwrap_or_default();
+                        let holder = data.entries[at].parent_id.clone().unwrap_or_default();
+                        if name.trim().is_empty() {
+                            return Err(conflict());
+                        }
+                        if taken(&data, &holder, &name, id) {
+                            return Err(ClientError::new(
+                                ErrorCode::Conflict,
+                                "这里已经有同名项目。",
+                            ));
+                        }
+                        data.entries[at].name = name;
+                    }
+                    MutateOp::Move => {
+                        if !folder_exists(&data, &parent) || parent == *id {
+                            return Err(conflict());
+                        }
+                        data.entries[at].parent_id = Some(parent.clone());
+                    }
+                    MutateOp::Copy => {
+                        if !folder_exists(&data, &parent) {
+                            return Err(conflict());
+                        }
+                        let mut copy = data.entries[at].clone();
+                        copy.id = format!("demo-new-{}", data.next_id);
+                        data.next_id += 1;
+                        copy.parent_id = Some(parent.clone());
+                        copy.starred = None;
+                        data.entries.push(copy);
+                    }
+                    MutateOp::Trash => {
+                        let entry = data.entries.remove(at);
+                        data.trashed.push(entry);
+                    }
+                    MutateOp::Star => data.entries[at].starred = Some(true),
+                    MutateOp::Unstar => data.entries[at].starred = Some(false),
+                    _ => return Err(unsupported()),
+                }
+                Ok(())
+            })();
+            match outcome {
+                Ok(()) => result.succeeded.push(id.clone()),
+                Err(error) => result.failed.push(MutationFailure {
+                    id: id.clone(),
+                    error,
+                }),
+            }
+        }
+        Ok(result)
+    }
+    async fn download_info(&self, id: &str) -> Result<DownloadInfo, ClientError> {
+        if !self.rich {
+            return Err(unsupported());
+        }
+        self.check(Operation::Stat).await?;
+        if demo::picture_bytes(id).is_none() {
+            return Err(ClientError::new(
+                ErrorCode::Unsupported,
+                "离线演示只能预览“照片”文件夹里的示例图片。",
+            ));
+        }
+        let entry = self.stat(id).await?;
+        Ok(DownloadInfo {
+            identity: format!(
+                "{}:{}",
+                entry.etag.clone().unwrap_or_default(),
+                entry.size_bytes.0
+            ),
+            entry,
+            account_scope: DEMO_SCOPE.into(),
+        })
+    }
+    async fn download_chunk(
+        &self,
+        id: &str,
+        _identity: &str,
+        _scope: &str,
+        start: u64,
+        length: u64,
+        observer: DownloadObserver,
+    ) -> Result<DownloadChunk, ClientError> {
+        let bytes = demo::picture_bytes(id)
+            .filter(|_| self.rich)
+            .ok_or_else(unsupported)?;
+        let total = bytes.len() as u64;
+        let from = start.min(total) as usize;
+        let to = start.saturating_add(length).min(total) as usize;
+        observer.received((to - from) as u64);
+        Ok(DownloadChunk {
+            bytes: bytes[from..to].to_vec(),
+            total,
+        })
+    }
     async fn simulate_step(&self, task: &TransferTask) -> Result<SimulationStep, ClientError> {
         self.check(Operation::Download).await?;
         let total = task.total_bytes.unwrap_or(DecimalU64(100_000_000)).0;
@@ -335,6 +597,27 @@ impl ProviderPort for MockProvider {
     }
 }
 
+/// File operations the interactive demo performs in memory.
+const RICH_OPERATIONS: [Operation; 10] = [
+    Operation::Search,
+    Operation::Trash,
+    Operation::Mkdir,
+    Operation::Rename,
+    Operation::Move,
+    Operation::Copy,
+    Operation::Restore,
+    Operation::DeleteForever,
+    Operation::Star,
+    Operation::StreamUrl,
+];
+
+fn unsupported() -> ClientError {
+    ClientError::new(
+        ErrorCode::Unsupported,
+        "This provider does not support the requested operation.",
+    )
+    .for_backend(BackendId::Mock)
+}
 fn internal() -> ClientError {
     ClientError::new(ErrorCode::Internal, "Mock state is unavailable.")
 }

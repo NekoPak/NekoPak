@@ -1328,6 +1328,9 @@ pub fn open_search(ctx: &Ctx) {
 
 fn close_search(ctx: &Ctx) {
     ctx.ui.global::<Files>().set_searching(false);
+    // The search field held the keyboard focus; hand it back to the window
+    // so shortcuts keep working.
+    ctx.ui.invoke_focus_root();
     if matches!(ctx.route(), Route::Search { .. }) {
         if ctx.can_go(-1) {
             ctx.navigate_history(-1);

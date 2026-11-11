@@ -82,7 +82,7 @@ pub fn start() -> Result<Host, String> {
                 .map_err(|_| "Unknown mock scenario.".to_owned())?,
             Err(_) => Scenario::Free,
         };
-        let provider = Arc::new(MockProvider::new(scenario));
+        let provider = Arc::new(MockProvider::demo(scenario));
         demo = Some(provider.clone());
         (provider, "tasks.sqlite3")
     } else {

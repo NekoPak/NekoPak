@@ -917,7 +917,7 @@ export component FilesPage inherits Rectangle {
                         accessible-label: Files.title;
                         for row[index] in Files.rows: Row {
                             item: row;
-                            focused: scope.has-focus && index == Files.focus-index;
+                            focused: index == Files.focus-index;
                             any-selected: Files.selected-count > 0;
                             clicked(ctrl, shift) => {
                                 scope.focus();
@@ -964,7 +964,7 @@ export component FilesPage inherits Rectangle {
                                 width: root.cell-w;
                                 item: cell;
                                 icon-size: Files.grid-size == 0 ? 44px : Files.grid-size == 2 ? 88px : 64px;
-                                focused: scope.has-focus && line.first + offset == Files.focus-index;
+                                focused: line.first + offset == Files.focus-index;
                                 clicked(ctrl, shift) => {
                                     scope.focus();
                                     Files.row-clicked(line.first + offset, ctrl, shift);
