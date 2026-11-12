@@ -1,14 +1,15 @@
 # 交接包：原生桌面端（给下一个会话）
 
-分支：`claude/ui-performance-compatibility-al9i0o`（仓库 `NekoPak/NekoPak`，`main` 是从 NikoPak 原样搬来的旧历史）。
-最新提交：`ea1e9f7` 之后加本文件。先读 `docs/NATIVE_DESKTOP.md`（结构、运行、测试）和 `CHANGELOG.md` 的“未发布”。
+本文件保留原生桌面迁移的历史交接信息。当前分支、合并与发布进度以 `docs/PROGRESS.md` 为准。
+仓库：`NekoPak/NekoPak`；原始实现分支：`claude/ui-performance-compatibility-al9i0o`。
+结构与测试方法见 `docs/NATIVE_DESKTOP.md`，0.2.0 发布说明见 `release/notes/0.2.0.md`。
 
 ## 用户要求（必须遵守）
 
 1. 桌面端不能是 WebView2 外壳 → 已换成 Slint 原生界面（`crates/nekopak-desktop`）。
 2. “尚未做的也要做，要做成比较完整的”——下面的待办全部要完成。
 3. 发布签名私钥已写入 Actions secrets（`NEKOPAK_RELEASE_PRIVATE_KEY`，见 `.github/workflows/release.yml`），可以用。
-4. 不要创建 PR，除非用户明确要求；只推到上面的分支。
+4. 原先仅推工作分支；2026-11-12 用户已明确要求合并并发布 Release、tag 和 README。
 
 ## 现状（第二轮会话结束时）
 
@@ -33,14 +34,12 @@ Windows CI（`Windows desktop checks`）已全绿：clippy、测试、发行版�
 
 1. **Windows 真机人工验收**：托盘、关闭到托盘、单实例、开机自启、安装 / 卸载、系统文件拖入、
    鼠标侧键、视频预览的实际观感。CI 只证明能编译、测试通过、发行版能启动。
-2. **更新源迁移**（等用户决定）：`crates/nekopak-core/src/updates.rs`、README、
-   `scripts/publish_release.py` 仍指向 `NekoPak/NikoPak`。
+2. 更新源迁移已由 0.1.4 完成，0.2.0 保留该改动，读取 `NekoPak/NekoPak`；旧版升级说明见 README。
 3. **真实账号流程**未在这两轮验证。
 4. 视频预览没有声音（有意为之，完整播放交给外部播放器）；HEIC / AVIF / SVG 不能应用内预览。
 5. exe 静态导入 `cldapi.dll`，因此要求 Windows 10 1709+；若要支持更早版本需把
    `nekopak-mount` 的云文件接口改成运行时加载。
-6. 性能：见 `docs/NATIVE_DESKTOP.md` 的“性能实测”；CI 的启动与内存数据在
-   “Launch the release build…” 步骤日志里，未设阈值。体积优化（去掉 `accessibility` 或
+6. 性能：见 `docs/NATIVE_DESKTOP.md` 的“性能实测”；CI 的启动与内存数据已记录在 `NATIVE_DESKTOP.md`，未设阈值。体积优化（去掉 `accessibility` 或
    只留一种渲染器）评估后未做——两者都影响兼容性或可访问性。
 
 ## 调试界面的办法
@@ -64,4 +63,4 @@ node scripts/gen-native-assets.mjs                          # 改了图标/配�
 - 新页面优先用通用面板（`panel.rs` + `ui/pages/panel.slint`）和表单对话框（`overlay.rs` 的 `ctx.form`）。
 - 界面线程不得跨 `.await` 持有 `RefCell` 借用；后端调用统一走 `ctx.call(|service| async move { … })`。
 - 生成文件（`ui/generated/*`、`src/generated/*`、`locales/{en,ja,ko,zh-TW}.json`、`ui/icons/*`）勿手改。
-- 提交信息结尾按会话要求附 Co-Authored-By / Claude-Session 行。
+- 保留原始提交作者；新提交按实际贡献者署名，不冒用历史会话的作者信息。

@@ -11,6 +11,7 @@
 ## 构建与发布
 
 - [运行、检查与打包](RUNNING.md)。
+- [原生桌面客户端](NATIVE_DESKTOP.md)：Slint 界面、渲染器、系统要求、性能与验证范围。
 - [发布与签名](RELEASE_SIGNING.md)：产物、密钥类别、更新协议和 Actions 发布流程。
 - [Android 平台研究](ANDROID_RESEARCH.md)：SDK、签名与系统约束的依据。
 
@@ -37,6 +38,7 @@
 按版本保留，其中的“尚未实现”指当时状态；浏览器演示不等于服务或设备实测。
 
 - 0.1.4：Android 后台传输，见 [ANDROID.md](ANDROID.md#background-transfer-keep-alive-014) 与 [检查记录](evidence/background-transfer-checks.json)。
+- 0.2.0：[原生桌面与手机界面改进](../release/notes/0.2.0.md)，见 [原生桌面说明](NATIVE_DESKTOP.md)。
 - 0.1.3：[应用更新与实时进度](UPDATES_PROGRESS_REPORT.md)。
 - 0.1.2：[速度、种子和软键盘](SPEED_TORRENT_IME_REPORT.md)。
 - 0.1.1：[手机界面与连接恢复](MOBILE_RECOVERY_REPORT.md)。

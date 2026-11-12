@@ -49,6 +49,8 @@ jobs:
       - run: npm test
       - run: npx playwright install chromium
       - run: npm run e2e
+      - name: Mobile layouts and background transfer controls
+        run: node tests/e2e/mobile.mjs
       - run: cargo run --locked -p nekopak-core --example mock_smoke
       - run: node scripts/gen-native-assets.mjs --check
       - run: cargo build --release --locked -p nekopak-desktop

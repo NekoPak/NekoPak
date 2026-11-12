@@ -34,15 +34,15 @@ Android已生成独立keystore，后续同一应用更新必须保留原签名�
 - `NekoPak-<version>-windows-x64-portable.zip`：解压为 `NekoPak/` 多文件目录，包含
   `nekopak.exe`、使用说明、完整许可证与依赖清单；可直接运行目录中的程序。
 - `NekoPak-<version>-windows-x64-setup.exe`：真实NSIS安装器，当前用户安装，提供
-  开始菜单快捷方式、卸载入口和中繁英日韩安装语言。缺WebView2时下载安装微软引导器，
-  不捆绑Chromium或完整WebView2运行时。安装器内容沿用便携目录的许可证资源。
+  开始菜单快捷方式、卸载入口和中繁英日韩安装语言。0.2.0 起使用 Slint 原生界面，
+  不依赖或安装 WebView2。安装器内容沿用便携目录的许可证资源。
 - `release-manifest.json`：对这两个产物的名称、版本、长度和SHA256签名；0.1.3起同时签入
   size-report.json，以绑定源码commit及干净构建状态；公钥单独附带。
 - Android APK由独立宿主和Rust library生成，使用独立keystore。设备验收状态见
   `ANDROID.md`；缺签名输入直接失败。检查包签名、SDK/ABI、ZIP和ELF16KiB对齐，
   发布清单另以Ed25519签名，不能将二者混为同一种签名。
 
-Tauri前端资源目前嵌入原生EXE，不属于启动时自解压的打包器。发行目录包含多个文件，
+0.2.0 起桌面界面由 Slint 直接绘制，资源嵌入 EXE，不属于启动时自解压的打包器。发行目录包含多个文件，
 不代表必须人为拆分Rust/TLS/SQLite库。两种布局的性能要量测启动时间、WebView2整体内存、
 I/O和安全扫描，不能仅按文件数判断。更新前端或媒体组件时可继续按实际需要分包。
 

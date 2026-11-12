@@ -127,7 +127,7 @@ def main():
         'executable_bytes': executable.stat().st_size, 'archive_bytes': archive.stat().st_size,
         'executable_sha256': hashlib.sha256(executable.read_bytes()).hexdigest(),
         'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
-        'external_requirements': ['Windows 10 or later, x64'],
+        'external_requirements': ['Windows 10 version 1709 or later, x64'],
         'not_bundled': ['PikPak CLI', 'Rclone', 'WinFsp', 'Chromium', 'WebView2', 'JVM', 'FFmpeg', 'mpv'],
         'scope': 'Desktop integration: native accounts/files/upload/cloud/share/archive/MP4-MKV-TS clips and remux/sync/local media/CloudFiles plus optional WinFsp and five-language desktop UX. Tests use synthetic accounts and isolated OS fixtures. Live account, full upstream parity and other-platform acceptance remain separately tracked. No CLI or bundled media runtime/driver.',
         'runtime_measurement': 'Not measured by this script; no memory/startup claim.',
