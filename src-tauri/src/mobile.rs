@@ -1,4 +1,8 @@
-use crate::Service;
+use crate::{
+    keepalive::{Backend, KeepAlive, PauseRequired},
+    Service,
+};
+use std::{sync::Arc, time::Duration};
 use tauri::{Emitter, Manager, Runtime};
 
 #[cfg(target_os = "android")]
@@ -58,7 +62,61 @@ pub fn system_locale() -> Option<String> {
         .filter(|s| s.len() <= 64 && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
 }
 
-pub fn install<R: Runtime>(_app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+#[cfg(not(target_os = "android"))]
+struct Unavailable;
+#[cfg(not(target_os = "android"))]
+impl Backend for Unavailable {
+    fn start(&self, _: nekopak_core::LocalTransferActivity) -> bool {
+        false
+    }
+    fn update(&self, _: nekopak_core::LocalTransferActivity) {}
+    fn stop(&self) {}
+}
+
+fn pause<R: Runtime>(app: &tauri::AppHandle<R>, service: Service) {
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = service.pause_local_transfers() {
+            let _ = handle.emit("nekopak://storage/error", error);
+        }
+        let _ = handle.emit("nekopak://transfer/resync-required", ());
+    });
+}
+
+pub fn install<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    let service = app.state::<Service>().inner().clone();
+    #[cfg(target_os = "android")]
+    let backend: Box<dyn Backend> = Box::new(crate::keepalive::android::Service);
+    #[cfg(not(target_os = "android"))]
+    let backend: Box<dyn Backend> = Box::new(Unavailable);
+    let keep = Arc::new(KeepAlive::new(backend));
+    app.manage(keep.clone());
+    #[cfg(target_os = "android")]
+    {
+        let (keep, service, handle) = (keep.clone(), service.clone(), app.clone());
+        crate::keepalive::android::on_ended(move |reason| {
+            if keep.ended(&service, reason).0 {
+                pause(&handle, service.clone());
+            }
+        });
+    }
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut changed = service.subscribe();
+        loop {
+            // Storage failures are reported by the transfer workers; keep-alive
+            // then has nothing to protect and simply tries again later.
+            if let Ok(PauseRequired(true)) = keep.reconcile(&service) {
+                pause(&handle, service.clone());
+            }
+            tokio::select! {
+                _ = changed.recv() => {},
+                _ = tokio::time::sleep(Duration::from_secs(1)) => {},
+            }
+            // Coalesce event bursts and a closed channel into a bounded rate.
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    });
     Ok(())
 }
 
@@ -69,18 +127,19 @@ pub fn window_event<R: Runtime>(window: &tauri::Window<R>, event: &tauri::Window
         _ => return,
     };
     let app = window.app_handle();
-    if let Some(service) = app.try_state::<Service>() {
-        // Gate synchronously before scheduling the pause work.
-        service.set_foreground(foreground);
-        if !foreground {
-            let service = service.inner().clone();
-            let handle = app.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(error) = service.pause_local_transfers() {
-                    let _ = handle.emit("nekopak://storage/error", error);
-                }
-            });
-        }
+    let (Some(service), Some(keep)) = (
+        app.try_state::<Service>(),
+        app.try_state::<Arc<KeepAlive>>(),
+    ) else {
+        return;
+    };
+    if foreground {
+        keep.resumed(&service);
+        // The WebView was not painting while hidden; reload the snapshot.
+        let _ = app.emit("nekopak://transfer/resync-required", ());
+    } else if keep.suspended(&service).0 {
+        // Gated synchronously above; the durable pause follows off-thread.
+        pause(app, service.inner().clone());
     }
 }
 

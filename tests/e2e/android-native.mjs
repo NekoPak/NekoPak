@@ -21,7 +21,7 @@ const torrentName=`nekopak-${Date.now()}.torrent`;
 const torrentInfo=Buffer.concat([Buffer.from('d6:lengthi3e4:name8:test.bin12:piece lengthi16384e6:pieces20:'),Buffer.alloc(20,9),Buffer.from('e')]);
 const torrentBytes=Buffer.concat([Buffer.from('d4:info'),torrentInfo,Buffer.from('e')]);
 const torrentHash=createHash('sha1').update(torrentInfo).digest('hex');let cloudCreates=0;
-let origin, cdnCalls=0, interruptNextRange=false, injectedFailures=0;const violations=[];
+let origin, cdnCalls=0, cdnBytes=0, interruptNextRange=false, injectedFailures=0;const violations=[];
 const server=createServer(async(req,res)=>{
   try{
     const u=new URL(req.url,origin);let text='';for await(const part of req)text+=part;const body=text?JSON.parse(text):{};
@@ -34,7 +34,7 @@ const server=createServer(async(req,res)=>{
       if(interruptNextRange){interruptNextRange=false;injectedFailures++;res.writeHead(503,{'Retry-After':'1'});res.end('synthetic temporary outage');return;}
       const range=/^bytes=(\d+)-(\d+)$/.exec(req.headers.range);assert.ok(range);const start=Number(range[1]),end=Number(range[2]);
       res.writeHead(206,{'content-range':`bytes ${start}-${end}/${bytes.length}`,'content-length':String(end-start+1),'etag':'"android-fixture-v1"'});
-      for(let at=start;at<=end;at+=65536){if(res.destroyed)return;res.write(bytes.subarray(at,Math.min(at+65536,end+1)));await delay(18);}res.end();return;
+      for(let at=start;at<=end;at+=65536){if(res.destroyed)return;const part=bytes.subarray(at,Math.min(at+65536,end+1));res.write(part);cdnBytes+=part.length;await delay(120);}res.end();return;
     }
     assert.equal(req.headers.authorization,'Bearer android-fixture-access',`Unexpected authorization on ${req.method} ${u.pathname}`);
     const file={id:'file-1',parent_id:'',name:filename,kind:'drive#file',size:String(bytes.length),modified_time:'2026-11-09T00:00:00Z',phase:'PHASE_TYPE_COMPLETE',trashed:false,tags:[]};
@@ -161,6 +161,17 @@ try{
   await until(snapshot,s=>s.items.some(t=>t.id===task.task_id&&Number(t.transferred_bytes)>0));
   await until(snapshot,s=>s.items.some(t=>t.id===task.task_id&&t.state==='running'&&t.speed_bytes_per_sec>0));
   await screenshot('phone-transfers.png');record('Actual received bytes produce a nonzero download speed');
+  // Default setting: the dataSync foreground service keeps bytes moving while hidden.
+  device('shell','input','keyevent','KEYCODE_HOME');await delay(700);const hiddenBytes=cdnBytes;
+  await until(async()=>cdnBytes,value=>value>hiddenBytes+262144);
+  const services=device('shell','dumpsys','activity','services',pkg);assert.match(services,/io\.nekopak\.desktop\.TransferService/);assert.match(services,/isForeground=true/);
+  device('shell','am','start','-n',`${pkg}/.MainActivity`);await delay(400);
+  assert.notEqual((await snapshot()).items.find(t=>t.id===task.task_id).state,'paused');
+  record('Foreground service keeps local bytes moving while the activity is hidden');
+  // Option off: the service stops and hiding the activity pauses durably as before.
+  await invoke('settings_update',{patch:{background_transfers:false}});
+  await until(async()=>device('shell','dumpsys','activity','services',pkg),text=>!/io\.nekopak\.desktop\.TransferService/.test(text));
+  assert.equal((await snapshot()).items.find(t=>t.id===task.task_id).state,'running');
   device('shell','input','keyevent','KEYCODE_HOME');await delay(700);const atPause=cdnCalls;await delay(1000);assert.equal(cdnCalls,atPause);
   device('shell','am','start','-n',`${pkg}/.MainActivity`);await delay(400);
   const paused=(await snapshot()).items.find(t=>t.id===task.task_id);assert.equal(paused.state,'paused');assert.ok(Number(paused.transferred_bytes)>0);record('Activity background pauses local bytes; no further range requests');

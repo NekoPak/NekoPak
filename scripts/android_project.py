@@ -23,6 +23,17 @@ VERSIONS = {
     "gradle_sha256": "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531",
 }
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
+TRANSFER_SERVICE = "io.nekopak.desktop.TransferService"
+# The update installer, and the dataSync foreground service that keeps local
+# transfers running while the activity is hidden (with its optional progress
+# notification and a time-bounded partial wake lock).
+HOST_PERMISSIONS = [
+    "android.permission.REQUEST_INSTALL_PACKAGES",
+    "android.permission.FOREGROUND_SERVICE",
+    "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+    "android.permission.POST_NOTIFICATIONS",
+    "android.permission.WAKE_LOCK",
+]
 ET.register_namespace("android", ANDROID_NS)
 
 
@@ -274,8 +285,17 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
     application.set(f"{{{ANDROID_NS}}}allowBackup", "false")
     application.set(f"{{{ANDROID_NS}}}fullBackupContent", "false")
     application.set(f"{{{ANDROID_NS}}}networkSecurityConfig", "@xml/nekopak_network_security")
-    if not any(node.get(f"{{{ANDROID_NS}}}name") == "android.permission.REQUEST_INSTALL_PACKAGES" for node in tree.getroot().findall("uses-permission")):
-        ET.SubElement(tree.getroot(), "uses-permission", {f"{{{ANDROID_NS}}}name": "android.permission.REQUEST_INSTALL_PACKAGES"})
+    declared = {node.get(f"{{{ANDROID_NS}}}name") for node in tree.getroot().findall("uses-permission")}
+    for permission in HOST_PERMISSIONS:
+        if permission not in declared:
+            ET.SubElement(tree.getroot(), "uses-permission", {f"{{{ANDROID_NS}}}name": permission})
+    # Rust starts and stops this service; no other application may bind or start it.
+    transfer = next((node for node in application.findall("service") if node.get(f"{{{ANDROID_NS}}}name") == TRANSFER_SERVICE), None)
+    if transfer is None:
+        transfer = ET.SubElement(application, "service")
+    transfer.attrib.clear()
+    transfer.attrib.update({f"{{{ANDROID_NS}}}name": TRANSFER_SERVICE, f"{{{ANDROID_NS}}}exported": "false",
+                            f"{{{ANDROID_NS}}}foregroundServiceType": "dataSync"})
     provider = next((node for node in application.findall("provider") if node.get(f"{{{ANDROID_NS}}}authorities") == "${applicationId}.updates"), None)
     if provider is None:
         provider = ET.SubElement(application, "provider", {f"{{{ANDROID_NS}}}name": "io.nekopak.desktop.UpdateFileProvider", f"{{{ANDROID_NS}}}authorities": "${applicationId}.updates", f"{{{ANDROID_NS}}}exported": "false", f"{{{ANDROID_NS}}}grantUriPermissions": "true"})
@@ -310,6 +330,8 @@ tasks.named("preBuild").configure { dependsOn(nekopakLicenses) }''')
 -keep class io.nekopak.desktop.AndroidFiles { *; }
 -keep class io.nekopak.desktop.UpdateInstaller { *; }
 -keep class io.nekopak.desktop.UpdateFileProvider { *; }
+-keep class io.nekopak.desktop.TransferService { *; }
+-keep class io.nekopak.desktop.TransferService$Companion { *; }
 ''', encoding="utf-8", newline="\n")
     report = {"schema_version": 1, "toolchain": VERSIONS, "host_sources": copied,
               "launcher_icons": launcher,

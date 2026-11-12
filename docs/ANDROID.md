@@ -48,13 +48,56 @@ Version0.1.2 and earlier need a manual first upgrade. See
   partial export and arbitrary providers are not promised atomic/power-loss-safe.
 - Activity suspension gates workers and durably pauses local transfers, including
   scope-await and cancellation-registration races. The user resumes after returning.
-  Server-side cloud jobs are not cancelled when backgrounding the app.
+  Server-side cloud jobs are not cancelled when backgrounding the app. This is the
+  behavior of 0.1.3 and remains the fallback whenever the keep-alive service is not running.
 
-Android upload/SAF directory import, shared-directory sync, local mappings, external
-player integration and a foreground download service remain disabled. Windows tray,
+Android upload/SAF directory import, shared-directory sync, local mappings and external
+player integration remain disabled. The foreground transfer service described under
+"Background transfer keep-alive" is implemented after 0.1.3 and not yet device-accepted. Windows tray,
 startup registration, Cloud Files and WinFsp are desktop features. These boundaries
 do not delete any eventual upstream parity requirements. Uninstalling Android removes
 the app's private downloads and credentials; export wanted files first.
+
+## Background transfer keep-alive (unreleased, 2026-11-12)
+
+`TransferService` is a non-exported `dataSync` foreground service owned by Rust policy
+(`src-tauri/src/keepalive.rs`, contract §18). While queued, running, retrying or
+verifying local transfers exist and **Me → Downloads → Keep transferring in the
+background** is on (default), the host starts it while the activity is visible. With
+the service running, hiding the activity no longer gates the core or pauses transfers.
+
+- The service holds no transfer state. Rust starts, refreshes and stops it; Kotlin
+  reports every stop it did not request through one JNI callback.
+- Fallbacks keep the previous guarantees: a refused start, the option being off, the
+  Android 15 `dataSync` time budget (`onTimeout`), swiping the task away or a
+  finishing activity all end in gate + durable pause while hidden. Nothing resumes
+  automatically and `START_NOT_STICKY` never revives a killed process.
+- The notification shows only task count and overall percentage, opens the app, and
+  offers **Pause all**. `POST_NOTIFICATIONS` is requested once; refusal hides the
+  notification without stopping transfers.
+- A partial wake lock is acquired for two minutes and renewed by Rust at least every
+  30 seconds, so a stalled worker cannot keep the CPU awake. No Wi-Fi lock, battery
+  optimization exemption or boot receiver is requested.
+- Added manifest entries: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`,
+  `POST_NOTIFICATIONS`, `WAKE_LOCK` and the service declaration. No new dependencies.
+  Google Play's `dataSync` declaration requirements are not addressed; the project
+  distributes through GitHub Releases.
+
+Verification actually performed (Linux x86_64 host, no emulator available):
+host policy tests 8/8 with a fake backend, core lifecycle tests 4/4, Android-target
+clippy with `-D warnings`, phone browser fixtures 12/12 including the new switch, and
+an ARM64 debug APK build. The packaged APK was inspected for the four permissions,
+the non-exported `dataSync` service, the five-locale notification resources, the
+static `start/update/stop/nativeEnded` methods and the exported
+`Java_io_nekopak_desktop_TransferService_nativeEnded` symbol. See
+`evidence/background-transfer-checks.json`.
+
+**Not yet run:** any emulator or physical-device behavior. `tests/e2e/android-native.mjs`
+was extended (service keeps Range requests flowing while hidden; option off restores
+the pause) but has not been executed with these changes, and its fixture pacing was
+slowed to leave room for both phases. Minified release startup with the new keep
+rules, Doze/OEM battery managers, the Android 15 time budget and activity recreation
+in a surviving process also remain to be checked on devices.
 
 ## Build
 

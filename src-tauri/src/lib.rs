@@ -2,6 +2,8 @@ mod autostart;
 mod catalog_commands;
 #[cfg(desktop)]
 mod desktop;
+#[cfg(any(mobile, test))]
+mod keepalive;
 #[cfg(mobile)]
 mod mobile;
 mod update_commands;

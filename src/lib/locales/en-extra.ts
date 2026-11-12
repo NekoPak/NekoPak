@@ -75,6 +75,8 @@ export const EN_EXTRA: Record<string, string> = {
   "应用私有目录；完成后通过系统保存对话框导出。": "App-private storage; export completed files with the system save dialog.",
   "文件先保存到应用内。下载完成后，在任务菜单中选择“导出文件”。卸载前请导出需要保留的文件。": "Files are downloaded to app-private storage. Choose Export file from the completed task menu. Export files you want to keep before uninstalling.",
   "切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。": "Local transfers pause when the app is backgrounded or the screen locks. Resume them when you return. Cloud tasks continue on the server.",
+  "后台继续传输": "Keep transferring in the background",
+  "切到后台或锁屏后，本地传输通过系统通知继续运行，可在通知中全部暂停。系统收回后台时间或划掉应用时会暂停，返回后请手动继续。云端任务始终由服务端处理。": "After the app is backgrounded or the screen locks, local transfers keep running behind a system notification, where you can pause them all. They pause when the system reclaims background time or the app is swiped away; resume them when you return. Cloud tasks always continue on the server.",
   "关闭标签页": "Close tab",
   "关闭标签页（Ctrl+W）": "Close tab (Ctrl+W)",
   "新建标签页": "New tab",

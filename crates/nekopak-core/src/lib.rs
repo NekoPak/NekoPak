@@ -35,6 +35,14 @@ pub fn now() -> String {
         .expect("UTC time is RFC3339")
 }
 
+/// Aggregate of queued/running local transfers for a mobile keep-alive host.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LocalTransferActivity {
+    pub active: u32,
+    /// Verified bytes over known sizes; absent when any active size is unknown.
+    pub percent: Option<u8>,
+}
+
 pub struct AppService {
     torrent_imports: std::sync::Mutex<std::collections::HashMap<String, torrent::PendingTorrent>>,
     foreground: std::sync::atomic::AtomicBool,
@@ -253,7 +261,7 @@ impl AppService {
                 ("transfer_export".into(), cfg!(target_os = "android")),
                 ("media_external".into(), !cfg!(target_os = "android")),
                 ("player_config".into(), !cfg!(target_os = "android")),
-                ("background_transfers".into(), !cfg!(target_os = "android")),
+                ("background_transfers".into(), true),
                 ("autostart".into(), cfg!(windows)),
                 (
                     "reference_archive".into(),
@@ -585,6 +593,59 @@ impl AppService {
     }
     pub fn is_foreground(&self) -> bool {
         self.foreground.load(std::sync::atomic::Ordering::SeqCst)
+    }
+    /// Whether the user allows local transfers to continue while the mobile
+    /// activity is not visible. Unreadable settings fail closed.
+    pub fn background_transfers_enabled(&self) -> bool {
+        // Read the stored value only: this runs on every keep-alive
+        // reconciliation and must not reapply network settings.
+        let Some(store) = self.intents.as_ref() else {
+            return false;
+        };
+        match store.settings_get() {
+            Ok(Some(payload)) => {
+                serde_json::from_str::<serde_json::Value>(&payload).is_ok_and(|settings| {
+                    settings
+                        .get("background_transfers")
+                        .is_none_or(|value| value == true)
+                })
+            }
+            // Never saved: the default is on.
+            Ok(None) => true,
+            Err(_) => false,
+        }
+    }
+    /// Local byte work a mobile host must keep the process alive for. Cloud
+    /// jobs run on the server and never count; paused or failed tasks do not
+    /// justify a foreground service either.
+    pub fn local_transfer_activity(&self) -> Result<LocalTransferActivity, ClientError> {
+        let mut activity = LocalTransferActivity::default();
+        let (mut done, mut total, mut sized) = (0u128, 0u128, true);
+        for task in self.store()?.active()? {
+            if task.kind == TaskKind::CloudDownload
+                || !matches!(
+                    task.state,
+                    TaskState::Queued
+                        | TaskState::Running
+                        | TaskState::Retrying
+                        | TaskState::Verifying
+                )
+            {
+                continue;
+            }
+            activity.active += 1;
+            match task.total_bytes {
+                Some(bytes) if bytes.0 > 0 => {
+                    total += u128::from(bytes.0);
+                    done += u128::from(task.transferred_bytes.0.min(bytes.0));
+                }
+                _ => sized = false,
+            }
+        }
+        if activity.active > 0 && sized && total > 0 {
+            activity.percent = Some((done * 100 / total) as u8);
+        }
+        Ok(activity)
     }
     /// Android activity suspension never cancels server-side cloud work. Local
     /// verification can finish its atomic commit, but no next step is scheduled.

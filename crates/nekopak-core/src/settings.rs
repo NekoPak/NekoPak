@@ -78,6 +78,9 @@ impl AppService {
             if settings.get("language").is_none() {
                 settings["language"] = "system".into();
             }
+            if settings.get("background_transfers").is_none() {
+                settings["background_transfers"] = true.into();
+            }
             if settings.get("media").is_none() {
                 settings["media"] = json!({"player_path":""});
             }
@@ -122,7 +125,7 @@ impl AppService {
             std::fs::create_dir_all(base.join("Downloads")).map_err(|_| {
                 ClientError::new(ErrorCode::PermissionDenied, "无法创建应用下载目录。")
             })?;
-            json!({"schema_version":1,"theme":"system","language":"system","ask_download_directory":false,"close_to_tray":false,"download_dir":base.join("Downloads").to_string_lossy(),"max_concurrent_transfers":1,"bandwidth_limit_kib_s":0,
+            json!({"schema_version":1,"theme":"system","language":"system","ask_download_directory":false,"close_to_tray":false,"background_transfers":true,"download_dir":base.join("Downloads").to_string_lossy(),"max_concurrent_transfers":1,"bandwidth_limit_kib_s":0,
                 "cache":{"dir":"","max_bytes":"536870912"},"experimental_network":{"server_domain":"auto","enabled":false,"proxy_mode":"system","proxy_url":"","compatibility_mode":false,"block_access_domains":false,"user_proxy_configured":false,"custom_dns_mode":false,"connection_diagnostics":false},"telemetry":false,
                 "download":{"default_quality":"original","connections_per_task":1},"media":{"player_path":""},"updates":{"auto_check":false}})
         };
@@ -152,6 +155,7 @@ impl AppService {
                 | "bandwidth_limit_kib_s"
                 | "ask_download_directory"
                 | "close_to_tray"
+                | "background_transfers"
                 | "language" => settings[key] = value.clone(),
                 "experimental_network" => {
                     for (key, value) in value.as_object().ok_or_else(|| {
@@ -313,6 +317,7 @@ fn validate(settings: &Value) -> Result<(), ClientError> {
             .is_none()
         || settings["ask_download_directory"].as_bool().is_none()
         || settings["close_to_tray"].as_bool().is_none()
+        || settings["background_transfers"].as_bool().is_none()
         || !matches!(
             settings["language"].as_str(),
             Some("system" | "zh-CN" | "zh-TW" | "en" | "ja-JP" | "ko-KR")

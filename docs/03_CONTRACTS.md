@@ -510,3 +510,24 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
   后续状态轮询抹除。重启不会信任上次残留包，下次检查清理后重新下载和验证。
 
 公开release仍标预览，不能因此通过上游功能对齐门禁。测试与发布记录见UPDATES_PROGRESS_REPORT.md。
+
+## 18. Android 后台传输保活（未发布，2026-11-12）
+
+仅追加字段，保持 `contract_version`、既有命令与事件形状。
+
+- `settings.background_transfers:boolean`，缺省 true；旧设置读取时补为 true，非布尔值被拒绝。
+  `app_status.features.background_transfers` 在 Android 改为 true；桌面一直为 true，
+  该设置在桌面不改变行为，界面也不显示。
+- Android 存在排队／运行／重试／校验中的本地任务（下载、片段；云下载任务不计）且该设置
+  开启时，宿主在 Activity 可见期间启动 `dataSync` 前台服务。服务运行时 Activity 被隐藏
+  不再 gate Core，也不暂停本地任务；云端任务轮询同样继续。
+- 服务未运行（设置关闭、系统拒绝启动）时沿用 §14：先同步 gate，再持久暂停，返回后由
+  用户继续。本地任务全部结束后服务停止；此时若 Activity 仍隐藏，Core 重新 gate。
+- 系统或用户先结束服务时，宿主一律通知 Rust：通知上的“全部暂停”总是持久暂停本地任务；
+  Android 15 的 `dataSync` 时长配额耗尽、从最近任务划掉应用、Activity 被 finish，在隐藏
+  状态下 gate 并持久暂停。任何路径都不自动恢复已暂停任务，也不在进程被杀后自行重启。
+- 通知只含任务数与总体百分比，不含文件名、账号或地址。通知权限（Android 13+）只询问
+  一次，拒绝只影响通知显示。部分唤醒锁限时 2 分钟，由 Rust 至少每 30 秒续期。
+- Activity 恢复时宿主发出 `nekopak://transfer/resync-required`，前端重新读取快照。
+
+设备行为的验收状态见 ANDROID.md；宿主构建与静态检查不等于设备实测。

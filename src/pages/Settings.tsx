@@ -270,6 +270,8 @@ function NativeTransfersSettings() {
   const mobile = useStore(app, isMobileHost);
   const directoryPicker = useStore(app, s => hostSupports("directory_picker", s));
   const playerPicker = useStore(app, s => hostSupports("player_config", s));
+  const keepAlive = useStore(app, s => isMobileHost(s) && hostSupports("background_transfers", s));
+  const [background,setBackground]=useState(settings?.background_transfers??true);
   const [dir, setDir] = useState(settings?.download_dir ?? "");
   const [bandwidth, setBandwidth] = useState(String(settings?.bandwidth_limit_kib_s ?? 0));
   const [busy, setBusy] = useState(false);
@@ -280,7 +282,7 @@ function NativeTransfersSettings() {
   const pick=async()=>{setPicking(true);try{const chosen=await api.downloadDirectoryPick();if(chosen!==null)setDir(chosen);}catch(e){toast(errorOf(e).message,"error");}finally{setPicking(false);}};
   const save = async () => {
     setBusy(true);
-    try { await updateSettings({ ...(directoryPicker ? {download_dir: dir, ask_download_directory:ask} : {}), bandwidth_limit_kib_s: Number(bandwidth),download:{default_quality:quality},...(playerPicker ? {media:{player_path:player}} : {}) }); toast(tr("下载设置已保存"), "success"); }
+    try { await updateSettings({ ...(directoryPicker ? {download_dir: dir, ask_download_directory:ask} : {}), bandwidth_limit_kib_s: Number(bandwidth),download:{default_quality:quality},...(keepAlive ? {background_transfers:background} : {}),...(playerPicker ? {media:{player_path:player}} : {}) }); toast(tr("下载设置已保存"), "success"); }
     catch (e) { toast(errorOf(e).message, "error", { error: errorOf(e) }); }
     finally { setBusy(false); }
   };
@@ -305,7 +307,8 @@ function NativeTransfersSettings() {
       </Field>
       </> : null}
       <p class="download-help">{tr("下载原始文件，支持暂停、继续及重启后恢复。")}</p>
-      {mobile ? <p class="download-help">{tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
+      {keepAlive ? <Row label={tr("后台继续传输")}><Switch label={tr("后台继续传输")} checked={background} onChange={setBackground} /></Row> : null}
+      {mobile ? <p class="download-help">{keepAlive && background ? tr("切到后台或锁屏后，本地传输通过系统通知继续运行，可在通知中全部暂停。系统收回后台时间或划掉应用时会暂停，返回后请手动继续。云端任务始终由服务端处理。") : tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
       <div class="form-actions"><Btn type="submit" tone="primary" label={tr("保存")} busy={busy} /></div>
     </form>
   </Section>;

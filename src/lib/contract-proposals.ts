@@ -612,6 +612,8 @@ export interface Settings {
   media?: { player_path: string };
   ask_download_directory?: boolean;
   close_to_tray?: boolean;
+  /** Mobile hosts: keep local transfers running behind a system notification. */
+  background_transfers?: boolean;
   language?: "system" | "zh-CN" | "zh-TW" | "en" | "ja-JP" | "ko-KR";
   schema_version: 1;
   theme: "system" | "light" | "dark";

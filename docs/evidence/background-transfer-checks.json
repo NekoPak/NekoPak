@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-12",
+  "scope": "Android foreground keep-alive for local transfers. Host tests, build and static APK inspection only; no emulator or device run.",
+  "host": "Linux x86_64 container, rustc 1.99.1, JDK 21, Android SDK 36 / Build Tools 36.0.0 / NDK 27.2.12479018",
+  "checks": [
+    {"name": "cargo test -p nekopak-app keepalive", "passed": 8, "failed": 0},
+    {"name": "cargo test -p nekopak-core --test mobile_lifecycle", "passed": 4, "failed": 0},
+    {"name": "cargo clippy -p nekopak-app --lib --target aarch64-linux-android -- -D warnings", "result": "passed"},
+    {"name": "cargo clippy -p nekopak-core -p nekopak-app --all-targets -- -D warnings", "result": "passed"},
+    {"name": "cargo fmt --all --check", "result": "passed"},
+    {"name": "npm run check", "result": "passed"},
+    {"name": "vitest", "passed": 118, "failed": 0},
+    {"name": "node tests/e2e/mobile.mjs (browser IPC fixtures)", "passed": 12, "failed": 0},
+    {"name": "python -m unittest discover -s tests -p 'test_android*.py'", "passed": 16, "skipped": 4, "failed": 0},
+    {"name": "tauri android build --debug --target aarch64 --apk", "result": "passed"},
+    {"name": "scripts/package_android.py package --profile debug --abi arm64-v8a", "result": "passed"}
+  ],
+  "apk_inspection": {
+    "artifact": "NekoPak-0.1.3-android-arm64-v8a-debug.apk (local debug build, not published)",
+    "permissions_added": ["FOREGROUND_SERVICE", "FOREGROUND_SERVICE_DATA_SYNC", "POST_NOTIFICATIONS", "WAKE_LOCK"],
+    "service": {"name": "io.nekopak.desktop.TransferService", "exported": false, "foregroundServiceType": "dataSync"},
+    "resources": ["drawable/nekopak_stat_transfer", "plurals/nekopak_transfer_active", "string/nekopak_transfer_channel", "string/nekopak_transfer_pause", "string/nekopak_transfer_title"],
+    "dex_static_methods": ["start(Context,int,int)", "update(Context,int,int)", "stop(Context)", "nativeEnded(int)"],
+    "native_export": "Java_io_nekopak_desktop_TransferService_nativeEnded"
+  },
+  "not_run": [
+    "tests/e2e/android-native.mjs with the new keep-alive phase (no emulator on this host)",
+    "minified release startup with the added keep rules",
+    "physical ARM64 device, Doze and vendor battery managers, Android 15 dataSync time budget",
+    "live account transfers"
+  ],
+  "known_unrelated": "tests::tauri_command_wire_roundtrip_preserves_contract fails on this Linux host with and without these changes (app_status not allowed); the Windows workflow owns that test."
+}

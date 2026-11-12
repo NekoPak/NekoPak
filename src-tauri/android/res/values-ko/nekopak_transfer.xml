@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nekopak_transfer_channel">전송</string>
+    <string name="nekopak_transfer_title">NekoPak 전송 중</string>
+    <string name="nekopak_transfer_pause">모두 일시중지</string>
+    <plurals name="nekopak_transfer_active">
+        <item quantity="other">작업 %d개 진행 중</item>
+    </plurals>
+</resources>

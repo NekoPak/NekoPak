@@ -271,6 +271,7 @@ function TransfersFooter({ tasks }: { tasks: TransferTaskExt[] }) {
 export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
   const phone = useMobileLayout();
   const mobile = useStore(app, isMobileHost);
+  const keepAlive = useStore(app, s => isMobileHost(s) && hostSupports("background_transfers", s) && (s.settings?.background_transfers ?? true));
   const st = useStore(transfers, (s) => s);
   const jobMap = useStore(jobs, (j) => j.jobs);
   const jobRows = useMemo(() => [...jobMap.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)), [jobMap]);
@@ -353,7 +354,7 @@ export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
       </>}
       footer={<TransfersFooter tasks={all} />}
     >
-      {mobile ? <p class="mobile-transfer-note">{tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
+      {mobile ? <p class="mobile-transfer-note">{keepAlive ? tr("切到后台或锁屏后，本地传输通过系统通知继续运行，可在通知中全部暂停。系统收回后台时间或划掉应用时会暂停，返回后请手动继续。云端任务始终由服务端处理。") : tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
       {st.phase === "error" && st.error ? (
         <div class="canvas-pad"><ErrorPanel error={st.error} onRetry={() => void loadSnapshot()} context="transfers_list" /></div>
       ) : st.phase === "loading" || st.phase === "idle" ? (
