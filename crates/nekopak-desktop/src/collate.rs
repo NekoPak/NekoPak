@@ -5,18 +5,29 @@ use std::cmp::Ordering;
 
 /// Precomputed key; build once per entry and compare many times.
 pub struct SortKey {
+    /// System sort key (`LCMapStringEx` with the same flags as the comparison):
+    /// comparing these bytes orders names exactly like `CompareStringEx`, without
+    /// a system call per comparison. Empty when the key could not be built.
+    #[cfg(windows)]
+    bytes: Vec<u8>,
     #[cfg(windows)]
     wide: Vec<u16>,
     #[cfg(not(windows))]
     folded: String,
 }
 
+#[cfg(windows)]
+const FLAGS: u32 = windows_sys::Win32::Globalization::LINGUISTIC_IGNORECASE
+    | windows_sys::Win32::Globalization::SORT_DIGITSASNUMBERS;
+
 impl SortKey {
     pub fn new(text: &str) -> Self {
         #[cfg(windows)]
         {
+            let wide: Vec<u16> = text.encode_utf16().collect();
             Self {
-                wide: text.encode_utf16().collect(),
+                bytes: system_key(&wide),
+                wide,
             }
         }
         #[cfg(not(windows))]
@@ -30,14 +41,15 @@ impl SortKey {
     pub fn compare(&self, other: &Self) -> Ordering {
         #[cfg(windows)]
         {
-            use windows_sys::Win32::Globalization::{
-                CompareStringEx, LINGUISTIC_IGNORECASE, SORT_DIGITSASNUMBERS,
-            };
+            if !self.bytes.is_empty() && !other.bytes.is_empty() {
+                return self.bytes.cmp(&other.bytes);
+            }
+            use windows_sys::Win32::Globalization::CompareStringEx;
             // CSTR_LESS_THAN = 1, CSTR_EQUAL = 2, CSTR_GREATER_THAN = 3; 0 means failure.
             let result = unsafe {
                 CompareStringEx(
                     std::ptr::null(),
-                    LINGUISTIC_IGNORECASE | SORT_DIGITSASNUMBERS,
+                    FLAGS,
                     self.wide.as_ptr(),
                     self.wide.len() as i32,
                     other.wide.as_ptr(),
@@ -59,6 +71,40 @@ impl SortKey {
             natural(&self.folded, &other.folded)
         }
     }
+}
+
+/// Sort key bytes for the user's locale, or empty if the system refuses.
+#[cfg(windows)]
+fn system_key(wide: &[u16]) -> Vec<u8> {
+    use windows_sys::Win32::Globalization::{LCMapStringEx, LCMAP_SORTKEY};
+    if wide.is_empty() || wide.len() > i32::MAX as usize {
+        return Vec::new();
+    }
+    let map = |out: *mut u16, capacity: i32| unsafe {
+        LCMapStringEx(
+            std::ptr::null(),
+            LCMAP_SORTKEY | FLAGS,
+            wide.as_ptr(),
+            wide.len() as i32,
+            out,
+            capacity,
+            std::ptr::null(),
+            std::ptr::null(),
+            0,
+        )
+    };
+    // With LCMAP_SORTKEY the output is a byte buffer and sizes are in bytes.
+    let needed = map(std::ptr::null_mut(), 0);
+    if needed <= 0 {
+        return Vec::new();
+    }
+    let mut bytes = vec![0u8; needed as usize];
+    let written = map(bytes.as_mut_ptr().cast(), needed);
+    if written <= 0 {
+        return Vec::new();
+    }
+    bytes.truncate(written as usize);
+    bytes
 }
 
 /// Compares runs of ASCII digits by value and everything else by code point.

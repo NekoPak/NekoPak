@@ -9,7 +9,7 @@ use crate::{
     Choice, Shell, TransferRow, Transfers,
 };
 use nekopak_domain::*;
-use slint::{ComponentHandle, ModelRc, VecModel};
+use slint::ComponentHandle;
 use std::{collections::HashSet, rc::Rc, time::Duration};
 
 #[derive(Default)]
@@ -335,7 +335,8 @@ pub fn render(ctx: &Ctx) {
         ("upload", "上传"),
         ("cloud", "云下载"),
     ];
-    transfers.set_tabs(ModelRc::new(VecModel::from(
+    crate::models::update(
+        transfers.get_tabs(),
         tabs.iter()
             .map(|(id, label)| Choice {
                 id: (*id).into(),
@@ -345,7 +346,8 @@ pub fn render(ctx: &Ctx) {
                 enabled: true,
             })
             .collect::<Vec<_>>(),
-    )));
+        |model| transfers.set_tabs(model),
+    );
     let visible: Vec<&TransferTask> = state
         .tasks
         .iter()
@@ -380,7 +382,10 @@ pub fn render(ctx: &Ctx) {
             rows.extend(members.iter().map(|task| row_for(ctx, task)));
         }
     }
-    transfers.set_rows(ModelRc::new(VecModel::from(rows)));
+    // Called every few hundred milliseconds while tasks run: update in place.
+    crate::models::update(transfers.get_rows(), rows, |model| {
+        transfers.set_rows(model)
+    });
     transfers.set_phase(
         if !state.loaded {
             "loading"
