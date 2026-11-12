@@ -52,6 +52,10 @@ component Row inherits Rectangle {
     in property <FileRow> item;
     in property <bool> focused;
     in property <bool> any-selected;
+    // Narrow windows drop the least important columns so names stay readable.
+    in property <bool> show-location: true;
+    in property <bool> show-type: true;
+    in property <bool> show-modified: true;
     callback drag-started();
     callback clicked(bool, bool);
     callback toggled();
@@ -180,7 +184,7 @@ component Row inherits Rectangle {
             }
         }
 
-        if Files.show-location: Text {
+        if Files.show-location && root.show-location: Text {
             width: 200px;
             text: root.item.location;
             color: Pal.on-surface-variant;
@@ -197,7 +201,7 @@ component Row inherits Rectangle {
             horizontal-alignment: right;
         }
 
-        Text {
+        if root.show-modified: Text {
             width: 164px;
             text: root.item.modified;
             color: Pal.on-surface-variant;
@@ -206,7 +210,7 @@ component Row inherits Rectangle {
             horizontal-alignment: right;
         }
 
-        Rectangle {
+        if root.show-type: Rectangle {
             width: 124px;
             Text {
                 x: 28px;
@@ -558,6 +562,9 @@ component SearchBar inherits Rectangle {
 }
 
 export component FilesPage inherits Rectangle {
+    property <bool> col-type: island.width >= 760px;
+    property <bool> col-modified: island.width >= 600px;
+    property <bool> col-location: island.width >= 900px;
     property <length> cell-w: Files.grid-size == 0 ? 124px : Files.grid-size == 2 ? 196px : 156px;
     property <length> cell-h: Files.grid-size == 0 ? 132px : Files.grid-size == 2 ? 196px : 160px;
     property <int> wanted-columns: Math.max(1, Math.floor((island.width - 24px) / cell-w));
@@ -937,7 +944,7 @@ export component FilesPage inherits Rectangle {
                             }
                         }
 
-                        if Files.show-location: Rectangle {
+                        if Files.show-location && root.col-location: Rectangle {
                             width: 200px;
                             Text {
                                 x: 8px;
@@ -957,7 +964,7 @@ export component FilesPage inherits Rectangle {
                             }
                         }
 
-                        HeaderCell {
+                        if root.col-modified: HeaderCell {
                             width: 164px;
                             text: Tr.t("修改时间");
                             key: "modified";
@@ -967,7 +974,7 @@ export component FilesPage inherits Rectangle {
                             }
                         }
 
-                        Rectangle {
+                        if root.col-type: Rectangle {
                             width: 124px;
                             HeaderCell {
                                 x: 20px;
@@ -990,6 +997,9 @@ export component FilesPage inherits Rectangle {
                             item: row;
                             focused: index == Files.focus-index;
                             any-selected: Files.selected-count > 0;
+                            show-location: root.col-location;
+                            show-type: root.col-type;
+                            show-modified: root.col-modified;
                             drag-started => {
                                 Files.drag-started(index);
                             }
