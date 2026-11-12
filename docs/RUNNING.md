@@ -40,7 +40,7 @@ Task rows, the footer and sidebar show measured download throughput.
 
 Version 0.1.3 adds **关于 → 应用更新** on Windows x64 and Android ARM64. Check,
 download and confirm installation; startup checks are optional and off by default.
-The Rust service uses the public NekoPak/NikoPak preview feed and the app's network
+The Rust service uses the public NekoPak/NekoPak preview feed and the app's network
 proxy settings, verifies the signed metadata, byte count and SHA256, then rechecks
 the staged package before native handoff. A failed check is not reported as current.
 Windows pauses local transfers and opens the normal NSIS wizard. A portable copy

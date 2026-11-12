@@ -2,13 +2,17 @@
 
 所有列出的版本均为 **Pre-alpha 预览**。功能接入与测试不等于完整上游对齐；真实服务和平台边界见各版本验收记录。
 
-## 未发布
+## 0.1.4 · 2026-11-12
+
+[发布说明](release/notes/0.1.4.md) · [Android 后台传输说明](docs/ANDROID.md#background-transfer-keep-alive-014)
 
 - Android 新增 **后台继续传输**（我的 → 下载与传输，默认开启）：存在本地任务时启动带进度通知的前台服务，切到后台或锁屏后继续下载；通知可 **全部暂停**。
 - 系统拒绝启动服务、Android 15 后台时长配额耗尽、从最近任务划掉应用或关闭开关时，回到原有行为：持久暂停，返回后手动继续。不自动恢复、不在进程被杀后自行重启。
 - 通知只显示任务数和总体进度；通知权限只询问一次，拒绝不影响传输。
+- 移除早期多 Agent 协作的提示词、交接协议和 M0 阶段报告；文档索引与 README 按当前状态重写。
+- 发布、Issues 与应用内更新源统一到 [NekoPak/NekoPak](https://github.com/NekoPak/NekoPak/releases)。
 
-已完成宿主单元测试、ARM64 调试包构建与包内检查；模拟器与实体手机的运行验收尚未执行，见 [Android 平台说明](docs/ANDROID.md)。
+发布、Issues 和应用内更新源迁到 NekoPak/NekoPak。0.1.3 及更早版本检查不到本次更新，需要手动安装 0.1.4 一次；Android versionCode 为 104，沿用既有 APK 签名，可直接覆盖安装。后台传输已完成宿主单元测试、ARM64 构建与包内检查，尚未在模拟器或实体手机上运行验收。
 
 ## 0.1.3 · 2026-11-10
 
@@ -49,4 +53,4 @@
 - 接入 Rust 原生账号、文件、传输、云下载和媒体核心；Android 使用 Keystore 会话存储、私有下载目录和系统文件导出。
 - 桌面整理、分享、媒体选段、同步和可选挂载进入集成测试阶段；能力与兼容性按项验收。
 
-0.1.0–0.1.2 的历史检查主要保存在 Actions 和仓库证据中，不表示它们都有公开 Release。当前公开下载与升级入口以 [Releases](https://github.com/NekoPak/NikoPak/releases) 为准。
+0.1.0–0.1.2 的历史检查主要保存在 Actions 和仓库证据中，不表示它们都有公开 Release。当前下载与升级入口以 [Releases](https://github.com/NekoPak/NekoPak/releases) 为准；0.1.3 及更早版本发布在旧仓库 NekoPak/NikoPak。

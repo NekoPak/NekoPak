@@ -1,6 +1,6 @@
 # 发布仓库、签名与多平台顺序
 
-用户确认的仓库是 https://github.com/NekoPak/NikoPak 。2026-11-08 的顺序为：先稳定Windows
+自 0.1.4 起源码、Actions、签名 Secrets 与 Release 全部在 https://github.com/NekoPak/NekoPak ；0.1.3 及更早版本发布在 NekoPak/NikoPak，下文旧记录保留原链接。2026-11-08 的顺序为：先稳定Windows
 桌面端，再适配Linux/macOS和Android。Android是后续明确目标，不因桌面预览而删掉。
 
 ## 密钥保管
@@ -60,7 +60,7 @@ EXE外部播放器不是Android可用功能，须按平台能力分别实现。
 ## 本机与仓库已配置
 
 2026-11-08 已生成发布签名，公钥入库，`NEKOPAK_RELEASE_PRIVATE_KEY` 已通过标准输入
-写入NekoPak/NikoPak Actions Secret。本机备份位于用户主目录 `.nekopak-release/`，
+写入NekoPak/NekoPak Actions Secret（0.1.3 及更早写入 NekoPak/NikoPak）。本机备份位于用户主目录 `.nekopak-release/`，
 Windows ACL仅当前用户和SYSTEM可读；保留备份，不要删掉或公开。使用已有ZIP实际签名和验签
 通过，测试证明修改包字节或签名覆盖的版本会拒绝。没有创建Windows Authenticode证书。
 
@@ -112,7 +112,7 @@ Maven POM许可证元数据的固定URL和哈希随包附带；原始文件与Gi
 
 ## 0.1.3公开更新协议
 
-生产客户端固定读取`https://api.github.com/repos/NekoPak/NikoPak/releases?per_page=30`，
+0.1.4 起生产客户端固定读取`https://api.github.com/repos/NekoPak/NekoPak/releases?per_page=30`（0.1.3 读取 NekoPak/NikoPak），
 按语义版本查找当前平台的新版本。预览版接受preview/stable，未来stable仅接受stable；
 不存在更高版本与网络／签名失败是不同状态。不会发送PikPak账号头或接受IPC任意URL。
 

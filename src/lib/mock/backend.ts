@@ -1,9 +1,9 @@
 /**
- * MockTransport — a deterministic, offline stand-in for Astra's Rust
+ * MockTransport — a deterministic, offline stand-in for the Rust
  * MockProvider. It answers every command in CommandMap with fixture data
  * and emits the §4 events from a 250 ms simulation tick.
  *
- * It never performs network I/O. When Astra's Rust mock is ready the UI
+ * It never performs network I/O. When the Rust mock is available the UI
  * switches to TauriTransport without touching business code.
  */
 import type {

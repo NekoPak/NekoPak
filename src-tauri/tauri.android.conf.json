@@ -5,6 +5,6 @@
     "security": { "capabilities": ["mobile"] }
   },
   "bundle": {
-    "android": { "minSdkVersion": 24, "versionCode": 103 }
+    "android": { "minSdkVersion": 24, "versionCode": 104 }
   }
 }

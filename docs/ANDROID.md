@@ -53,12 +53,12 @@ Version0.1.2 and earlier need a manual first upgrade. See
 
 Android upload/SAF directory import, shared-directory sync, local mappings and external
 player integration remain disabled. The foreground transfer service described under
-"Background transfer keep-alive" is implemented after 0.1.3 and not yet device-accepted. Windows tray,
+"Background transfer keep-alive" ships in 0.1.4 and is not yet device-accepted. Windows tray,
 startup registration, Cloud Files and WinFsp are desktop features. These boundaries
 do not delete any eventual upstream parity requirements. Uninstalling Android removes
 the app's private downloads and credentials; export wanted files first.
 
-## Background transfer keep-alive (unreleased, 2026-11-12)
+## Background transfer keep-alive (0.1.4)
 
 `TransferService` is a non-exported `dataSync` foreground service owned by Rust policy
 (`src-tauri/src/keepalive.rs`, contract §18). While queued, running, retrying or
@@ -144,7 +144,7 @@ JNI keep rules; minification must be tested on an installed Release APK.
 Android release identity is independent of Windows Authenticode, Tauri updater and
 the existing Ed25519 release manifest. Protected local backup contains the Android
 PKCS12 and password metadata; no private key is tracked. Four `ANDROID_*` Secrets
-are configured on NekoPak/NikoPak. Reuse the same identity for future upgrades.
+must be configured on NekoPak/NekoPak (0.1.4 onward; earlier builds ran on NekoPak/NikoPak). Reuse the same identity for future upgrades.
 
 `android.yml` builds an explicitly debug-signed ARM64 preview without secrets.
 `release.yml` builds and verifies separate Windows and Android signed artifacts;

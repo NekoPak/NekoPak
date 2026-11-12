@@ -92,10 +92,10 @@ def main():
     (output / "update-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     (output / "release-notes.md").write_text(notes, encoding="utf-8")
     if args.publish:
-        existing = json.loads(subprocess.check_output(["gh", "api", "repos/NekoPak/NikoPak/releases?per_page=100"], text=True, encoding="utf-8"))
+        existing = json.loads(subprocess.check_output(["gh", "api", "repos/NekoPak/NekoPak/releases?per_page=100"], text=True, encoding="utf-8"))
         if any(release["tag_name"] == f"v{version}" for release in existing):
             raise ValueError("Release version already exists; never replace published updater assets.")
-        tags = subprocess.check_output(["git", "ls-remote", "--tags", "https://github.com/NekoPak/NikoPak.git",
+        tags = subprocess.check_output(["git", "ls-remote", "--tags", "https://github.com/NekoPak/NekoPak.git",
                                         f"refs/tags/v{version}", f"refs/tags/v{version}^{{}}"], text=True)
         revisions = dict(line.split()[::-1] for line in tags.splitlines() if line.strip())
         tagged_commit = revisions.get(f"refs/tags/v{version}^{{}}", revisions.get(f"refs/tags/v{version}"))
@@ -103,9 +103,9 @@ def main():
             raise ValueError("An existing version tag points to different source; refusing publication.")
         # Create a draft with complete assets, publish last so clients never see
         # an incomplete package/manifest pair. No token or key goes in arguments.
-        subprocess.run(["gh", "release", "create", f"v{version}", "--repo", "NekoPak/NikoPak", "--target", commit,
+        subprocess.run(["gh", "release", "create", f"v{version}", "--repo", "NekoPak/NekoPak", "--target", commit,
                         "--title", f"NekoPak {version} Preview", "--notes-file", str(output / "release-notes.md"), "--draft", "--prerelease", *[str(p) for p in output.iterdir() if p.name != "release-notes.md"]], check=True)
-        subprocess.run(["gh", "release", "edit", f"v{version}", "--repo", "NekoPak/NikoPak", "--draft=false", "--prerelease", "--latest=false"], check=True)
+        subprocess.run(["gh", "release", "edit", f"v{version}", "--repo", "NekoPak/NekoPak", "--draft=false", "--prerelease", "--latest=false"], check=True)
     print(f"Prepared {'and published ' if args.publish else ''}signed preview {version} with both platforms.")
 
 

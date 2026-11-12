@@ -86,7 +86,6 @@
       "mandatory_windows": true,
       "acceptance": "真实传输可恢复、限速运行时生效，Mock状态机不算完成",
       "evidence": [
-        "docs/TEST_REPORT.md",
         "docs/DRIVE_FILES_FIX_REPORT.md",
         "docs/DESKTOP_UX_FIX_REPORT.md",
         "docs/DESKTOP_INTEGRATION_REPORT.md"

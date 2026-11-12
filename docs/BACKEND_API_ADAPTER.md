@@ -1,6 +1,6 @@
 # 后端适配说明：去掉官方 CLI，主攻 PikPak 接口
 
-> 写给 Astra（Codex）。日期 2026-11-08。来源：项目所有者 Kiana 的决定 + Opus 5.5（前端）整理的接口对照。
+> 日期 2026-11-08。记录去掉官方 CLI 后的接口对照与决定。
 > 附件来源的接口研究与目标说明。已采纳“完全移除 CLI、主连接 rust_compat、原生登录”。
 > 当前实际实现与验证以 `API_ADAPTER.md`、`03_CONTRACTS.md` §10 为准；本文件中的“已核对”仅表示原作者记录的源码行为，不是本仓库真实服务测试。
 
@@ -8,7 +8,7 @@
 
 1. **去掉官方 CLI。** 不写 `nekopak-provider-cli`，不做 CLI 探测、安装引导或子进程适配。CLI 主要是给 AI 工具用的，做厚没有意义。契约里 `BackendId` 的 `"official_cli"` 保留（契约冻结，不改名），但不实现、不在 `backend_discover` 里返回。
 2. **主连接 = PikPak 客户端接口**（社区抓包整理，GitHub 上已有多套实现，见 §2）。在 Rust 核心里实现为 `rust_compat` provider（沿用现有 `BackendId`，不新增）。界面不显示连接名，也不让用户选后端。
-3. **原生登录。** 账号和密码由 NekoPak 自己的登录表单提交（`auth_sign_in`，见 `docs/CONTRACT_PROPOSAL_UI_001.md` §P23）。核心用它换 access/refresh token，token 存 Windows 凭据管理器（keyring），**密码不落盘、不进日志、不回传前端**。不做内嵌网页登录窗口。
+3. **原生登录。** 账号和密码由 NekoPak 自己的登录表单提交（`auth_sign_in`，见 `docs/03_CONTRACTS.md`）。核心用它换 access/refresh token，token 存 Windows 凭据管理器（keyring），**密码不落盘、不进日志、不回传前端**。不做内嵌网页登录窗口。
 4. WebDAV、Rclone 只服务挂载与同步，不参与普通文件浏览和下载。
 5. 界面里不放“非官方接口”“Connected Apps 规则”之类的说明文字；这些只留在开发文档与 `THIRD_PARTY_NOTICES.md`。
 
@@ -141,4 +141,4 @@ auth_sign_in(username, password)
 
 1. `cargo test` 覆盖：登录（成功 / 密码错 / 需要人机验证）、刷新竞态、分页重复 token、批量操作异步轮询、幂等回放、错误映射表每一行。
 2. 用真实账号跑通：登录 → 列目录 → 新建、重命名、移动、移至回收站、还原 → 下载一个文件（断点续传）→ 添加一条磁力链接 → 配额显示。
-3. 前端以 Tauri 运行时 E2E 全绿；每项“待验证”的接口在 `docs/IMPLEMENTATION_NOTES.md` 写明实测结果。
+3. 前端以 Tauri 运行时 E2E 全绿；每项“待验证”的接口在对应验收报告写明实测结果。

@@ -17,8 +17,8 @@ use std::{
     time::Duration,
 };
 
-const RELEASES: &str = "https://api.github.com/repos/NekoPak/NikoPak/releases?per_page=30";
-const PREFIX: &str = "https://github.com/NekoPak/NikoPak/releases/download/";
+const RELEASES: &str = "https://api.github.com/repos/NekoPak/NekoPak/releases?per_page=30";
+const PREFIX: &str = "https://github.com/NekoPak/NekoPak/releases/download/";
 const MAX_MANIFEST: usize = 128 * 1024;
 const MAX_PACKAGE: u64 = 256 * 1024 * 1024;
 
@@ -993,7 +993,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let app = UpdateService::production(dir.path().join("updates")).unwrap();
         for url in [
-            "http://github.com/NekoPak/NikoPak/file",
+            "http://github.com/NekoPak/NekoPak/file",
             "https://github.com.evil.test/file",
             "https://user:pass@github.com/file",
             "https://github.com:444/file",
