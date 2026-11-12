@@ -30,6 +30,7 @@ mod generated {
 mod host;
 mod i18n;
 mod media;
+mod models;
 mod names;
 mod nav;
 mod overlay;

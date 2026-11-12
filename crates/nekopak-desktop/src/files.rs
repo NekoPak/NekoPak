@@ -1,5 +1,6 @@
 //! File browser controller: loading with pagination, sorting, filtering,
 //! selection, keyboard handling and menus for every list-like route.
+use crate::models::sync_rows;
 use crate::{
     actions,
     app::{error_text, error_title, request, App, Ctx},
@@ -748,11 +749,16 @@ pub fn rebuild(ctx: &Ctx) {
             .filter_map(|(index, entry)| {
                 let kind = names::file_kind(&entry.name, entry.kind, entry.mime_type.as_deref());
                 (filter.is_none() || filter == Some(kind))
-                    .then(|| (SortKey::new(&entry.name), entry, kind, index))
+                    // Recent keeps the service order, so its names are never compared.
+                    .then(|| {
+                        let key = SortKey::new(if server_order { "" } else { &entry.name });
+                        (key, entry, kind, index)
+                    })
             })
             .collect();
         if !server_order {
-            keyed.sort_by(|a, b| {
+            // The original index breaks ties, so an unstable sort gives a stable order.
+            keyed.sort_unstable_by(|a, b| {
                 if folders_first && a.1.kind != b.1.kind {
                     return if a.1.kind == EntryKind::Folder {
                         Ordering::Less
@@ -866,8 +872,18 @@ fn resolve_locations(ctx: &Ctx) {
                 continue;
             }
             if let Some(model) = state.rows.clone() {
+                // Only rows under the parents answered in this batch can change.
+                let answered: HashSet<&str> = chunk.iter().map(String::as_str).collect();
                 for (visible, at) in state.order.iter().enumerate() {
-                    let Some(location) = state.location_of(&state.items[*at]) else {
+                    let entry = &state.items[*at];
+                    if !entry
+                        .parent_id
+                        .as_deref()
+                        .is_some_and(|parent| answered.contains(parent))
+                    {
+                        continue;
+                    }
+                    let Some(location) = state.location_of(entry) else {
                         continue;
                     };
                     if let Some(mut row) = model.row_data(visible) {
@@ -933,22 +949,74 @@ fn push_rows(ctx: &Ctx) {
     let grid_view = ctx.prefs.borrow().account.view == "grid";
     if let Some(grid) = &state.grid {
         if grid_view {
-            let columns = state.columns.max(1);
-            let lines: Vec<GridRow> = rows
-                .chunks(columns)
-                .enumerate()
-                .map(|(line, cells)| GridRow {
-                    cells: ModelRc::new(VecModel::from(cells.to_vec())),
-                    first: (line * columns) as i32,
-                })
-                .collect();
-            grid.set_vec(lines);
+            sync_grid(grid, &rows, state.columns.max(1));
         } else if grid.row_count() > 0 {
             grid.set_vec(Vec::new());
         }
     }
     if let Some(model) = &state.rows {
-        model.set_vec(rows);
+        sync_rows(model, rows);
+    }
+}
+
+/// Grid lines hold one nested model each; reuse those models in place when the
+/// column count still matches so only the changed cards are re-rendered.
+fn sync_grid(grid: &VecModel<GridRow>, rows: &[FileRow], columns: usize) {
+    let lines = rows.len().div_ceil(columns);
+    let reusable = grid.row_count() == lines
+        && (0..lines).all(|line| {
+            grid.row_data(line).is_some_and(|row| {
+                row.first == (line * columns) as i32
+                    && row
+                        .cells
+                        .as_any()
+                        .downcast_ref::<VecModel<FileRow>>()
+                        .is_some()
+            })
+        });
+    if reusable {
+        for (line, cells) in rows.chunks(columns).enumerate() {
+            if let Some(row) = grid.row_data(line) {
+                if let Some(model) = row.cells.as_any().downcast_ref::<VecModel<FileRow>>() {
+                    sync_rows(model, cells.to_vec());
+                }
+            }
+        }
+        return;
+    }
+    grid.set_vec(
+        rows.chunks(columns)
+            .enumerate()
+            .map(|(line, cells)| GridRow {
+                cells: ModelRc::new(VecModel::from(cells.to_vec())),
+                first: (line * columns) as i32,
+            })
+            .collect::<Vec<_>>(),
+    );
+}
+
+/// Updates one visible row in both the list model and, in grid view, the card.
+fn patch_row(state: &FilesState, index: usize, grid_view: bool, patch: impl Fn(&mut FileRow)) {
+    if let Some(model) = &state.rows {
+        if let Some(mut row) = model.row_data(index) {
+            patch(&mut row);
+            model.set_row_data(index, row);
+        }
+    }
+    if !grid_view {
+        return;
+    }
+    let columns = state.columns.max(1);
+    let Some(line) = state
+        .grid
+        .as_ref()
+        .and_then(|grid| grid.row_data(index / columns))
+    else {
+        return;
+    };
+    if let Some(mut cell) = line.cells.row_data(index % columns) {
+        patch(&mut cell);
+        line.cells.set_row_data(index % columns, cell);
     }
 }
 
@@ -1256,19 +1324,12 @@ pub fn set_selection(ctx: &Ctx, selection: HashSet<String>, focus: Option<usize>
         if focus.is_some() {
             state.focus = focus;
         }
-        if !grid_view {
-            if let Some(model) = state.rows.clone() {
-                for index in changed {
-                    if let Some(mut row) = model.row_data(index) {
-                        row.selected = state.selected.contains(row.id.as_str());
-                        model.set_row_data(index, row);
-                    }
-                }
-            }
+        for index in changed {
+            let selected = state
+                .visible(index)
+                .is_some_and(|entry| state.selected.contains(&entry.id));
+            patch_row(&state, index, grid_view, |row| row.selected = selected);
         }
-    }
-    if grid_view {
-        push_rows(ctx);
     }
     push_selection(ctx);
 }
