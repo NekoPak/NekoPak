@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "product": "NekoPak",
+  "version": "0.2.0",
+  "tested_code_commit": "f3cb3ed87353ec4c781d79f4f7b5dffe53686e08",
+  "source_branches": {
+    "claude_native_desktop": "d3bfe4fca6229884e63481789d033c897303b1c1",
+    "desktop_performance": "ba9f0a18d7163c88742ac89a496fb0c0cb0a2f50",
+    "published_0.1.4": "00fe237d3cd07e8894b6a0f2b180979c06586c0b"
+  },
+  "local_checks": {
+    "production_frontend_build": "passed",
+    "vitest": {
+      "passed": 118,
+      "failed": 0
+    },
+    "api_contract": {
+      "passed": 6,
+      "failed": 0
+    },
+    "python_unittest": {
+      "passed": 24,
+      "skipped": 4,
+      "failed": 0
+    },
+    "desktop_browser": {
+      "passed": 57,
+      "failed": 0,
+      "external_requests": 0
+    },
+    "mobile_browser": {
+      "passed": 12,
+      "failed": 0
+    },
+    "generated_native_assets": "passed: 202 files match generator output",
+    "version_consistency": "passed: JSON manifests, both lockfiles, 9 Rust packages at 0.2.0; Android versionCode 200",
+    "local_documentation_links": "passed",
+    "rust_format": "passed",
+    "rust_core": {
+      "passed": 117,
+      "failed": 0,
+      "ignored": 15
+    },
+    "rust_native_provider": "passed: cargo check -p nekopak-provider-native --locked",
+    "source_history_and_feature_preservation": "passed: all three source branches are ancestors; Android keepalive/service code, desktop performance modules, compact mobile CSS, lazy locales and narrow desktop columns retained",
+    "rust_toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)"
+  },
+  "remote_status": {
+    "status": "blocked_by_github_write_permissions",
+    "git_push": "HTTP 403 permission denied",
+    "git_blobs_api": "HTTP 403 Resource not accessible by integration",
+    "create_pull_request_api": "HTTP 403 Resource not accessible by integration",
+    "integration_branch_pushed": false,
+    "pr_created": false,
+    "merged": false,
+    "tag_created": false,
+    "release_published": false,
+    "required_next_step": "Restore the GitHub connection write access for NekoPak/NekoPak, push the prepared branch, run integrated CI, merge, then push v0.2.0 and verify signed artifacts."
+  },
+  "validation_limits": [
+    "No new Windows/Android or integrated GitHub CI ran for this candidate because it could not be pushed.",
+    "Native desktop GUI compilation/smoke tests were not run locally; this executor lacks the required fontconfig/xkbcommon development libraries and Xvfb.",
+    "No physical device, live account, Windows tray/autostart/drop/manual-preview acceptance in this session."
+  ],
+  "recorded_at": "2026-11-12T17:00:25.329954+00:00"
+}
