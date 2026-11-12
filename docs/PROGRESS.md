@@ -24,8 +24,7 @@ Windows CI 全绿；图片查看器、媒体库、视频画面预览与选段标
 
 - [x] Windows CI run 43057240688（提交 6f05a55）全绿：发行版 exe 在 Windows 上启动成功，
       Media Foundation 解码测试为强制项（`NEKOPAK_REQUIRE_MEDIA_FOUNDATION=1`）并通过。
-      体积已写入 `NATIVE_DESKTOP.md`。出窗时间 / 内存的具体数字在该 run 的步骤日志
-      “Launch the release build…” 里，**还没抄进文档**（日志很长，下次只取那一步）。
+      体积已写入 `NATIVE_DESKTOP.md`。出窗时间 / 内存数字已于 11-12 抄进 `NATIVE_DESKTOP.md`。
 - [ ] 用户曾提到“下载文件这里显示这么大，不可以选择小一点的吗”，后来重发消息时去掉了这句，
       含义未确认；如再提起先问清指哪里（手机传输页 / 桌面侧栏“下载” / 桌面传输列表 / 安装包体积）。
 - [x] 网页语言包按需加载（`src/lib/i18n.ts` 的 `ensureLocale`）：主包 663 → 366 kB
@@ -41,8 +40,7 @@ Windows CI 全绿；图片查看器、媒体库、视频画面预览与选段标
       网格视图单选 / 全选 / 取消截图核对正确。Windows 目标交叉 clippy 通过；`collate.rs` 新增仅 Windows 运行的测试，
       在 CI 上核对排序键顺序与 `CompareStringEx` 一致；
       **没有在 Windows 真机上对比排序结果**，也没有大目录的耗时对比数字。
-- [ ] 下一步候选：`cldapi.dll` 改运行时加载（放宽到更早的 Windows 10）；把 CI 启动测量的
-      数字抄进 `NATIVE_DESKTOP.md`；Android 真机上看手机界面。
+- [ ] 下一步候选：`cldapi.dll` 改运行时加载（放宽到更早的 Windows 10）；Android 真机上看手机界面。
 
 ## 等用户决定 / 需要用户做
 
