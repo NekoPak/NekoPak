@@ -118,7 +118,10 @@ impl AppService {
             #[cfg(target_os = "android")]
             let base = self.data_root.clone();
             #[cfg(not(target_os = "android"))]
+            // Windows publishes USERPROFILE; other desktops use HOME. Without
+            // either the path stays empty and the UI asks for a folder.
             let base = std::env::var_os("USERPROFILE")
+                .or_else(|| std::env::var_os("HOME"))
                 .map(std::path::PathBuf::from)
                 .unwrap_or_default();
             #[cfg(target_os = "android")]
@@ -303,7 +306,10 @@ fn validate(settings: &Value) -> Result<(), ClientError> {
         .filter(|s| !s.is_empty())
     {
         validate_destination(path)?;
-        if !Path::new(path).is_file() || !path.to_ascii_lowercase().ends_with(".exe") {
+        // Only Windows identifies programs by extension.
+        if !Path::new(path).is_file()
+            || (cfg!(windows) && !path.to_ascii_lowercase().ends_with(".exe"))
+        {
             return Err(ClientError::new(
                 ErrorCode::Conflict,
                 "请选择已安装的播放器 EXE。",

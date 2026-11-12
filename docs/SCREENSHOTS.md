@@ -4,6 +4,27 @@
 
 截图来自运行中的应用界面，没有重绘控件或拼接虚构功能。桌面截图使用内置离线演示；手机图片分别注明浏览器样例、原生调试版或已签名发行版。样例文件、速度与账号不能作为真实 PikPak 服务验收证据。
 
+## 原生桌面客户端
+
+以下截图由原生客户端在离线演示数据下自行输出（`automation` 构建的脚本化截图，Linux、
+1280×760）。Windows 上的字体和窗口边框会不同。
+
+![文件浏览，浅色](screenshots/native/files-light.png)
+
+![文件浏览，深色](screenshots/native/files-dark.png)
+
+![命令面板（Ctrl+K）](screenshots/native/palette.png)
+
+![媒体库缩略图墙；图片为演示数据在运行时生成](screenshots/native/gallery.png)
+
+![图片查看器](screenshots/native/viewer.png)
+
+![传输页](screenshots/native/transfers.png)
+
+![设置](screenshots/native/settings.png)
+
+下面“桌面”一节的旧截图来自手机 / 网页界面开发时的 WebView 桌面布局，保留作对照。
+
 ## 桌面文件浏览
 
 侧栏、路径导航、文件排序和操作工具栏。浅色与深色使用相同的演示文件夹。

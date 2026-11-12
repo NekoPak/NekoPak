@@ -1,0 +1,428 @@
+// Transfers: downloads, uploads and cloud tasks grouped by what needs attention.
+import { ListView } from "std-widgets.slint";
+import { Pal } from "../generated/palette.slint";
+import { Icons } from "../generated/icons.slint";
+import { Tk, Tr } from "../tokens.slint";
+import { Btn, IconBtn, Icon, Busy, Meter, EmptyState, Chip } from "../widgets.slint";
+import { Transfers, TransferRow } from "../state.slint";
+
+component Row inherits Rectangle {
+    in property <TransferRow> item;
+    callback primary();
+    callback menu(length, length);
+    callback toggle();
+    callback activated();
+    height: item.header ? 44px : 62px;
+    if root.item.header: Rectangle {
+        border-radius: Tk.r-sm;
+        background: head.has-hover ? Tk.hover : transparent;
+        accessible-role: button;
+        accessible-label: root.item.title + " " + root.item.count;
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            spacing: 8px;
+            Text {
+                text: root.item.title;
+                color: Pal.primary;
+                font-size: Tk.fs-sm;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+
+            Text {
+                horizontal-stretch: 1;
+                text: root.item.count;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-xs;
+                vertical-alignment: center;
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Icon {
+                    source: root.item.collapsed ? Icons.chevron-down : Icons.chevron-up;
+                }
+            }
+        }
+
+        head := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                root.toggle();
+            }
+        }
+    }
+    if !root.item.header: Rectangle {
+        border-radius: Tk.r-md;
+        background: ta.has-hover ? Tk.hover : transparent;
+        accessible-role: list-item;
+        accessible-label: root.item.name + "，" + root.item.state-text + (root.item.percent != "" ? "，" + root.item.percent : "");
+        ta := TouchArea {
+            double-clicked => {
+                root.activated();
+            }
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.up && event.button == PointerEventButton.right) {
+                    root.menu(root.absolute-position.x + self.mouse-x, root.absolute-position.y + self.mouse-y);
+                }
+            }
+        }
+
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 4px;
+            spacing: 14px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 10px;
+                    background: root.item.kind-tone == "cloud" ? Pal.code-container : root.item.kind-tone == "upload" ? Pal.ok-container : root.item.kind-tone == "clip" ? Pal.video-container : Pal.primary-container;
+                    Icon {
+                        source: root.item.kind-icon;
+                        tint: root.item.kind-tone == "cloud" ? Pal.on-code-container : root.item.kind-tone == "upload" ? Pal.on-ok-container : root.item.kind-tone == "clip" ? Pal.on-video-container : Pal.on-primary-container;
+                        size: 22px;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 3;
+                min-width: 160px;
+                alignment: center;
+                spacing: 3px;
+                Text {
+                    text: root.item.name;
+                    color: Pal.on-surface;
+                    font-size: Tk.fs-md;
+                    font-weight: 500;
+                    overflow: elide;
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    Text {
+                        text: root.item.state-text;
+                        color: root.item.state-tone == "error" ? Pal.error : root.item.state-tone == "ok" ? Pal.ok : root.item.state-tone == "warn" ? Pal.warn : Pal.primary;
+                        font-size: Tk.fs-xs;
+                        font-weight: 500;
+                    }
+
+                    Text {
+                        text: root.item.detail;
+                        color: root.item.state-tone == "error" ? Pal.error : Pal.on-surface-variant;
+                        font-size: Tk.fs-xs;
+                        overflow: elide;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 2;
+                min-width: 90px;
+                alignment: center;
+                Meter {
+                    value: root.item.progress;
+                    tone: root.item.progress-tone;
+                }
+            }
+
+            Text {
+                width: 52px;
+                text: root.item.percent;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-sm;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+            }
+
+            Text {
+                width: 150px;
+                text: root.item.size;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-sm;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            VerticalLayout {
+                width: 120px;
+                alignment: center;
+                spacing: 2px;
+                Text {
+                    text: root.item.speed;
+                    color: Pal.on-surface;
+                    font-size: Tk.fs-sm;
+                    overflow: elide;
+                }
+
+                if root.item.eta != "": Text {
+                    text: root.item.eta;
+                    color: Pal.on-surface-variant;
+                    font-size: Tk.fs-xs;
+                    overflow: elide;
+                }
+            }
+
+            if root.width > 900px: Text {
+                horizontal-stretch: 2;
+                min-width: 80px;
+                text: root.item.destination;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-xs;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 36px;
+                    height: 36px;
+                    if root.item.primary-action != "": IconBtn {
+                        icon: root.item.primary-icon;
+                        tip: root.item.primary-tip;
+                        clicked => {
+                            root.primary();
+                        }
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: Icons.more;
+                    tip: Tr.t("更多操作");
+                    clicked => {
+                        root.menu(self.abs-x - 190px, self.abs-y + self.height + 4px);
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component TransfersPage inherits Rectangle {
+    VerticalLayout {
+        spacing: 0px;
+        HorizontalLayout {
+            height: Tk.row-top;
+            padding-right: 8px;
+            spacing: 4px;
+            alignment: start;
+            for tab in Transfers.tabs: VerticalLayout {
+                alignment: center;
+                Chip {
+                    text: tab.label;
+                    count: tab.detail;
+                    selected: tab.selected;
+                    clicked => {
+                        Transfers.tab(tab.id);
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            height: Tk.row-cmd;
+            padding-right: 8px;
+            spacing: 4px;
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    text: Tr.t("全部继续");
+                    icon: Icons.play;
+                    enabled: Transfers.can-resume-all;
+                    clicked => {
+                        Transfers.resume-all();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    text: Tr.t("全部暂停");
+                    icon: Icons.pause;
+                    enabled: Transfers.can-pause-all;
+                    clicked => {
+                        Transfers.pause-all();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    text: Tr.t("清理已结束");
+                    icon: Icons.trash-sweep;
+                    enabled: Transfers.can-clear;
+                    clicked => {
+                        Transfers.clear-finished();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: Icons.refresh;
+                    tip: Tr.t("刷新（F5）");
+                    clicked => {
+                        Transfers.refresh();
+                    }
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            if Transfers.can-add-link: VerticalLayout {
+                alignment: center;
+                Btn {
+                    height: 40px;
+                    text: Tr.t("添加链接");
+                    icon: Icons.bolt;
+                    kind: "filled";
+                    clicked => {
+                        Transfers.add-link();
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+            border-radius: Tk.r-lg;
+            background: Tk.raised;
+            clip: true;
+            if Transfers.phase == "loading": Busy {
+                size: 32px;
+            }
+            if Transfers.phase != "loading" && Transfers.rows.length == 0: EmptyState {
+                icon: Transfers.phase == "error" ? Icons.alert-circle : Icons.download;
+                error: Transfers.phase == "error";
+                title: Transfers.state-title;
+                body: Transfers.state-body;
+                action: Transfers.phase == "error" ? Tr.t("重试") : "";
+                action-clicked => {
+                    Transfers.refresh();
+                }
+            }
+            if Transfers.phase != "loading" && Transfers.rows.length > 0: ListView {
+                x: 8px;
+                y: 4px;
+                width: parent.width - 12px;
+                height: parent.height - 8px;
+                for item in Transfers.rows: Row {
+                    item: item;
+                    primary => {
+                        Transfers.primary(item.id);
+                    }
+                    menu(x, y) => {
+                        Transfers.menu(item.id, x, y);
+                    }
+                    toggle => {
+                        Transfers.toggle-group(item.id);
+                    }
+                    activated => {
+                        Transfers.activated(item.id);
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            height: Tk.row-foot;
+            padding-left: 8px;
+            padding-right: 8px;
+            spacing: 16px;
+            HorizontalLayout {
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    Icon {
+                        source: Icons.download;
+                        size: 18px;
+                    }
+                }
+
+                Text {
+                    text: Transfers.down-speed;
+                    color: Pal.on-surface;
+                    font-size: Tk.fs-sm;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    Icon {
+                        source: Icons.upload;
+                        size: 18px;
+                    }
+                }
+
+                Text {
+                    text: Transfers.up-speed;
+                    color: Pal.on-surface;
+                    font-size: Tk.fs-sm;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    height: 32px;
+                    text: Transfers.limit-label;
+                    icon: Icons.speed;
+                    kind: "outline";
+                    clicked => {
+                        Transfers.limit-menu(self.abs-x, self.abs-y - 150px);
+                    }
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Text {
+                text: Transfers.eta-label;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-sm;
+                vertical-alignment: center;
+            }
+
+            if Transfers.quota-label != "": Text {
+                text: Transfers.quota-label;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-sm;
+                vertical-alignment: center;
+            }
+            if Transfers.quota-value >= 0: VerticalLayout {
+                width: 140px;
+                alignment: center;
+                Meter {
+                    value: Transfers.quota-value;
+                    tone: Transfers.quota-value >= 1 ? "error" : "primary";
+                }
+            }
+            if Transfers.quota-text != "": Text {
+                text: Transfers.quota-text;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-sm;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

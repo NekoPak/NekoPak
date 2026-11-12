@@ -1,0 +1,503 @@
+// View models shared between Rust and the UI. Rust owns all data and
+// behaviour; Slint renders it and reports intent through callbacks.
+
+export struct NavEntry {
+    id: string,
+    label: string,
+    icon: image,
+    icon-active: image,
+    active: bool,
+    badge: string,
+    tip: string,
+    pinned: bool,
+}
+
+export struct TabEntry {
+    id: int,
+    title: string,
+    icon: image,
+    active: bool,
+}
+
+export struct MenuEntry {
+    id: string,
+    label: string,
+    icon: image,
+    hint: string,
+    enabled: bool,
+    danger: bool,
+    separator: bool,
+    checked: bool,
+    reason: string,
+}
+
+export struct Crumb {
+    id: string,
+    name: string,
+}
+
+// kind: 0 folder 1 video 2 image 3 audio 4 doc 5 archive 6 code 7 other
+export struct FileRow {
+    id: string,
+    name: string,
+    kind: int,
+    folder: bool,
+    size: string,
+    modified: string,
+    type-label: string,
+    location: string,
+    starred: bool,
+    selected: bool,
+    cut: bool,
+    note: string,
+}
+
+export struct GridRow {
+    cells: [FileRow],
+    first: int,
+}
+
+export struct ToastEntry {
+    id: int,
+    text: string,
+    tone: string,
+    action: string,
+}
+
+export struct KeyValue {
+    key: string,
+    value: string,
+    mono: bool,
+}
+
+export struct Choice {
+    id: string,
+    label: string,
+    detail: string,
+    selected: bool,
+    enabled: bool,
+}
+
+// One input of a "form" dialog. kind: text | password | multiline | toggle | select | note
+export struct FormField {
+    id: string,
+    kind: string,
+    label: string,
+    value: string,
+    placeholder: string,
+    detail: string,
+    error: string,
+    checked: bool,
+    enabled: bool,
+    tone: string,
+}
+
+// One row of a generic panel page.
+// kind: header | note | info | toggle | select | button | item | progress | segment
+export struct PanelRow {
+    id: string,
+    kind: string,
+    title: string,
+    detail: string,
+    value: string,
+    icon: image,
+    file-kind: int,
+    tone: string,
+    checked: bool,
+    enabled: bool,
+    progress: float,
+    action: string,
+    action2: string,
+    danger: bool,
+    menu: bool,
+    selected: bool,
+    options: [Choice],
+}
+
+// One modal dialog. `kind` selects the body:
+//   confirm   title/body, optional checkbox `option`
+//   prompt    single text field with live validation (`error`, `hint`)
+//   details   key/value list
+//   picker    remote folder chooser (crumbs + rows)
+//   choice    radio list (`choices`)
+//   form      labelled inputs (`fields`)
+export struct DialogSpec {
+    id: int,
+    kind: string,
+    title: string,
+    body: string,
+    confirm: string,
+    cancel: string,
+    alt: string,
+    danger: bool,
+    dismissable: bool,
+    busy: bool,
+    confirm-enabled: bool,
+    label: string,
+    value: string,
+    placeholder: string,
+    error: string,
+    hint: string,
+    select-to: int,
+    password: bool,
+    option: string,
+    option-checked: bool,
+    details: [KeyValue],
+    crumbs: [Crumb],
+    rows: [FileRow],
+    choices: [Choice],
+    fields: [FormField],
+    phase: string,
+    width: length,
+}
+
+export global Shell {
+    // loading | ready | fatal
+    in property <string> boot: "loading";
+    in property <string> boot-error-title;
+    in property <string> boot-error-body;
+    in property <string> page: "files";
+    in property <bool> collapsed-pref: false;
+    in property <bool> demo: false;
+    in property <[NavEntry]> nav-quick;
+    in property <[NavEntry]> nav-library;
+    in property <[NavEntry]> nav-tools;
+    in property <bool> transfers-active;
+    in property <string> transfers-sub;
+    in property <string> transfers-count;
+    in property <bool> transfers-alert;
+    in property <string> account-name;
+    in property <string> account-sub;
+    in property <string> account-initial;
+    in property <bool> account-warn;
+    in property <bool> account-active;
+    in property <bool> settings-active;
+    in property <[TabEntry]> tabs;
+    in property <string> banner;
+    in property <string> banner-tone: "info";
+    in property <string> banner-action;
+    // Shown while files from the system hover over the window.
+    in property <string> drop-hint;
+    in property <bool> drop-ok;
+    callback navigate(string);
+    callback nav-context(string, length, length);
+    callback toggle-sidebar();
+    callback open-transfers();
+    callback open-account();
+    callback open-settings();
+    callback open-demo();
+    callback tab-activate(int);
+    callback tab-close(int);
+    callback tab-new();
+    callback banner-action-clicked();
+    callback retry-boot();
+    // Global shortcut; returns true when handled.
+    callback shortcut(string, bool, bool, bool) -> bool;
+}
+
+export global Menu {
+    in property <bool> open;
+    in property <[MenuEntry]> items;
+    in property <string> title;
+    in property <length> x;
+    in property <length> y;
+    in property <int> current: -1;
+    callback activated(string);
+    callback dismissed();
+    callback move(int);
+    callback activate-current();
+}
+
+export global Dialogs {
+    in property <[DialogSpec]> stack;
+    callback action(int, string, string);
+    callback edited(int, string);
+    callback option-toggled(int, bool);
+    callback row-activated(int, int);
+    callback crumb(int, string);
+    callback choice(int, string);
+    callback field-edited(int, string, string);
+    callback field-toggled(int, string, bool);
+    callback field-action(int, string, length, length);
+}
+
+export global Toasts {
+    in property <[ToastEntry]> items;
+    callback action(int);
+    callback dismiss(int);
+}
+
+export global Files {
+    // files | recent | starred | trash | search | local | shared
+    in property <string> mode: "files";
+    in property <string> title;
+    in property <image> title-icon;
+    in property <[Crumb]> crumbs;
+    in property <bool> can-back;
+    in property <bool> can-forward;
+    in property <bool> can-up;
+    in-out property <bool> searching;
+    in-out property <string> search-text;
+    in property <int> search-focus-rev;
+    // loading | ready | error | signed-out
+    in property <string> phase: "loading";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <string> state-action;
+    in property <string> state-action2;
+    in property <image> state-icon;
+    in property <bool> state-error;
+    in property <[FileRow]> rows;
+    in property <[GridRow]> grid;
+    in property <string> view: "list";
+    in property <int> grid-size: 1;
+    in property <string> sort-key: "name";
+    in property <bool> sort-desc;
+    in property <string> sort-label;
+    in property <string> filter-label;
+    in property <bool> filter-active;
+    in property <string> count-label;
+    in property <bool> has-more;
+    in property <bool> loading-more;
+    in property <string> more-error;
+    in property <int> selected-count;
+    in property <string> selection-summary;
+    in property <[MenuEntry]> selection-actions;
+    in property <int> focus-index: -1;
+    in property <bool> show-location;
+    in property <bool> can-write;
+    in property <bool> can-upload;
+    in property <bool> can-add-link;
+    in property <bool> can-organize;
+    in property <bool> can-media;
+    in property <string> paste-label;
+    in property <bool> refreshing;
+    in-out property <length> viewport-y;
+    in-out property <length> visible-height;
+    in-out property <int> columns: 4;
+    // Dragging rows onto folders moves them (Ctrl copies).
+    in property <bool> can-drag;
+    in property <data-transfer> drag-data;
+    callback drag-started(int);
+    callback drag-finished();
+    // Target folder id, or `nav:<sidebar id>`.
+    callback can-drop-on(string) -> bool;
+    callback dropped-on(string, bool);
+    callback back();
+    callback forward();
+    callback up();
+    callback home();
+    callback crumb(string);
+    callback recent-menu(length, length);
+    callback submit-search(string);
+    callback close-search();
+    callback open-search();
+    callback new-menu(length, length);
+    callback sort-menu(length, length);
+    callback filter-menu(length, length);
+    callback organize-menu(length, length);
+    callback media-library();
+    callback refresh();
+    callback set-view(string);
+    callback add-link();
+    callback paste();
+    callback header-sort(string);
+    callback toggle-all();
+    callback clear-selection();
+    callback selection-action(string, length, length);
+    callback row-clicked(int, bool, bool);
+    callback row-toggled(int);
+    callback row-activated(int);
+    callback row-context(int, length, length);
+    callback background-context(length, length);
+    callback key(string, bool, bool, bool) -> bool;
+    callback near-end();
+    callback load-all();
+    callback retry-more();
+    callback state-action-clicked();
+    callback state-action2-clicked();
+    callback columns-changed(int);
+}
+
+export global Panel {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <image> icon;
+    in property <bool> can-back;
+    in property <[MenuEntry]> actions;
+    in property <[Choice]> tabs;
+    in property <[PanelRow]> rows;
+    // loading | ready | error | empty
+    in property <string> phase: "ready";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <string> state-action;
+    in property <image> state-icon;
+    in property <bool> state-error;
+    callback back();
+    callback action(string, length, length);
+    callback tab(string);
+    // row id, what (click | toggle | action | action2 | menu | option id), x, y
+    callback row(string, string, length, length);
+    callback state-action-clicked();
+}
+
+export struct TransferRow {
+    id: string,
+    header: bool,
+    title: string,
+    count: string,
+    collapsed: bool,
+    name: string,
+    kind-icon: image,
+    kind-tone: string,
+    state-text: string,
+    state-tone: string,
+    detail: string,
+    progress: float,
+    progress-tone: string,
+    percent: string,
+    size: string,
+    speed: string,
+    eta: string,
+    destination: string,
+    primary-icon: image,
+    primary-tip: string,
+    primary-action: string,
+}
+
+export global Transfers {
+    in property <[Choice]> tabs;
+    in property <[TransferRow]> rows;
+    in property <string> phase: "loading";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <bool> can-resume-all;
+    in property <bool> can-pause-all;
+    in property <bool> can-clear;
+    in property <string> down-speed;
+    in property <string> up-speed;
+    in property <string> limit-label;
+    in property <string> eta-label;
+    in property <string> quota-label;
+    in property <float> quota-value: -1;
+    in property <string> quota-text;
+    in property <bool> can-add-link;
+    callback tab(string);
+    callback resume-all();
+    callback pause-all();
+    callback clear-finished();
+    callback refresh();
+    callback add-link();
+    callback limit-menu(length, length);
+    callback toggle-group(string);
+    callback primary(string);
+    callback menu(string, length, length);
+    callback activated(string);
+}
+
+// One line of the command palette; headers are not selectable.
+export struct PaletteItem {
+    label: string,
+    hint: string,
+    shortcut: string,
+    icon: image,
+    header: bool,
+}
+
+export global Palette {
+    in property <bool> open;
+    in-out property <string> query;
+    in property <[PaletteItem]> items;
+    in property <int> current: -1;
+    callback edited(string);
+    callback move(int);
+    callback hover(int);
+    callback activate(int);
+    callback dismissed();
+}
+
+// In-app viewer for pictures and videos.
+export global Viewer {
+    in property <bool> open;
+    // image | video
+    in property <string> kind: "image";
+    in property <string> title;
+    in property <string> subtitle;
+    // loading | ready | error | info (a video without a frame decoder)
+    in property <string> phase: "loading";
+    in property <string> note;
+    in property <image> picture;
+    in-out property <float> zoom: 1;
+    in property <bool> can-prev;
+    in property <bool> can-next;
+    in property <bool> can-download;
+    in property <bool> can-external;
+    // Video frame preview (platform decoder present).
+    in property <bool> can-frames;
+    in property <bool> playing;
+    in property <float> position;
+    in property <string> time-label;
+    in property <string> duration-label;
+    // Clip selection on the frame preview: marks as 0..1, -1 when unset.
+    in property <bool> can-clip;
+    in property <float> clip-from: -1;
+    in property <float> clip-to: -1;
+    in property <string> clip-from-label;
+    in property <string> clip-to-label;
+    callback mark(bool);
+    callback clip();
+    callback close();
+    callback step(int);
+    callback download();
+    callback external();
+    callback properties();
+    callback toggle-play();
+    // position 0..1; `true` once the pointer is released
+    callback seek(float, bool);
+    callback key(string, bool) -> bool;
+}
+
+// One tile of the media library; the thumbnail arrives after the listing.
+export struct GalleryTile {
+    id: string,
+    name: string,
+    kind: int,
+    detail: string,
+    thumb: image,
+    loaded: bool,
+    failed: bool,
+}
+
+export struct GalleryRow {
+    tiles: [GalleryTile],
+    first: int,
+}
+
+export global Gallery {
+    in property <string> title;
+    // images | videos
+    in property <string> mode: "images";
+    // loading | ready | error | empty
+    in property <string> phase: "loading";
+    in property <string> state-title;
+    in property <string> state-body;
+    in property <bool> state-error;
+    in property <[GalleryRow]> rows;
+    in property <string> count-label;
+    in property <string> images-count;
+    in property <string> videos-count;
+    in property <bool> has-more;
+    in property <bool> loading-more;
+    in-out property <length> viewport-y;
+    in-out property <length> visible-height;
+    callback back();
+    callback set-mode(string);
+    callback open(int);
+    callback context(int, length, length);
+    callback columns-changed(int);
+    callback scrolled();
+    callback near-end();
+    callback retry();
+    callback refresh();
+}

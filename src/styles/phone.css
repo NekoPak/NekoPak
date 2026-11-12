@@ -158,3 +158,58 @@
 .phone-domain-results code { flex:1; }
 .phone-domain-results small { flex-basis:100%; color:var(--on-surface-variant); }
 .phone-settings .field>.select { width:100%; min-height:48px; }
+
+/* --- Touch feel and polish ------------------------------------------------ */
+/* No grey flash on tap and no double-tap zoom delay; pressed states are drawn
+   by the controls themselves. */
+.phone-root, .phone-root button, .phone-root a, .phone-root [role=button] { -webkit-tap-highlight-color:transparent; }
+.phone-root button, .phone-root a, .phone-root [role=button], .phone-root input, .phone-root select { touch-action:manipulation; }
+.phone-root button { -webkit-user-select:none; user-select:none; }
+.mobile-bottom-nav button:active .mobile-nav-icon { background:var(--hover); }
+.mobile-bottom-nav .mobile-nav-icon { transition:background-color .15s ease; }
+/* List rows: the divider starts after the icon, like a native list. */
+.mobile-file-scroll:not(.mobile-file-grid) .mobile-file-row { border-bottom:0; position:relative; }
+.mobile-file-scroll:not(.mobile-file-grid) .mobile-file-row::after { content:""; position:absolute; left:70px; right:0; bottom:0; height:1px; background:color-mix(in srgb,var(--outline-variant) 40%,transparent); }
+.mobile-file-open:active { opacity:.72; }
+.mobile-file-grid .mobile-file-row:active { background:var(--hover); }
+/* Transfer cards: tonal surface without an outline, tighter action row. */
+.phone-task-card { border:0; padding:14px 14px 12px; margin-bottom:10px; }
+.phone-task-card.state-failed { background:color-mix(in srgb,var(--error-container) 55%,var(--surface-low)); }
+.phone-task-card.state-completed .phone-task-icon { background:var(--ok-container,var(--primary-container)); color:var(--on-ok-container,var(--on-primary-container)); }
+.phone-task-actions { padding-top:6px; }
+.phone-task-actions .btn { min-height:38px; margin:0; }
+.phone-task-card > :last-child { margin-bottom:0; }
+/* Media library: an edge-to-edge photo wall instead of desktop cards. */
+.phone-root .gallery-scroll { padding:8px 4px 20px; }
+.phone-root .gallery-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; }
+.phone-root .gallery-card { padding:0; gap:4px; background:none; border-radius:6px; overflow:hidden; }
+.phone-root .gallery-card:active { opacity:.72; }
+.phone-root .gallery-image { min-height:0; aspect-ratio:1; background:var(--surface-container); border-radius:6px; overflow:hidden; }
+.phone-root .gallery-image img { height:100%; border-radius:0; display:block; }
+.phone-root .gallery-card:has(img) > span { display:none; }
+.phone-root .gallery-card > span { font-size:12px; padding:0 4px 6px; text-align:center; }
+.phone-root .gallery-viewer { margin:0 4px 12px; }
+/* Sheets slide up; nothing moves when the user asked for less motion. */
+@keyframes phone-sheet-in { from { transform:translateY(24px); opacity:0; } to { transform:none; opacity:1; } }
+.mobile-action-sheet, .phone-modal-backdrop .modal { animation:phone-sheet-in .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .mobile-action-sheet, .phone-modal-backdrop .modal { animation:none; } }
+:root[data-motion=reduce] .mobile-action-sheet, :root[data-motion=reduce] .phone-modal-backdrop .modal { animation:none; }
+/* The secondary task action reads as a button, not as stray text. */
+.phone-task-actions .btn-ghost { background:var(--surface-high); }
+
+/* --- Compact transfers: more tasks per screen ------------------------------ */
+.phone-transfer-summary { padding:0 18px 6px; font-size:12px; }
+.phone-transfer-summary strong { font-size:16px; }
+.phone-transfer-tabs button { min-height:40px; font-size:13px; }
+.phone-task-scroll { padding:6px 12px 16px; }
+.phone-transfer-note { padding:2px 4px 8px; }
+.phone-task-card { padding:8px 4px 9px 10px; margin-bottom:6px; border-radius:12px; }
+.phone-task-title { gap:10px; margin-bottom:7px; }
+.phone-task-icon { width:32px; height:32px; border-radius:9px; }
+.phone-task-title strong { font-size:14px; font-weight:500; }
+.phone-task-title small { font-size:11.5px; }
+.phone-task-title .btn { width:36px; min-width:36px; height:36px; min-height:36px; padding:0; flex:none; color:var(--primary); }
+.phone-task-title .mobile-icon-button { width:32px; height:36px; }
+.phone-task-card .lp, .phone-task-stats, .phone-task-error { margin-right:8px; }
+.phone-task-stats { font-size:11.5px; padding-top:5px; }
+.phone-task-error { font-size:12px; padding-top:6px; }

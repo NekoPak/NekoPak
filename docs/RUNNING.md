@@ -23,7 +23,7 @@ Extract `NekoPak-0.1.3-windows-x64-portable.zip` and double-click `NekoPak/nekop
 Keep the directory's notices and licenses alongside the executable. Alternatively, run
 `NekoPak-0.1.3-windows-x64-setup.exe` for per-user installation, shortcuts and an uninstaller.
 The native application embeds its frontend resources and does not self-extract them on startup.
-The required runtime is Windows x64 with Microsoft Edge WebView2 Evergreen.
+The desktop client is native (see `docs/NATIVE_DESKTOP.md`): Windows x64, Windows 10 1709 or later. WebView2 is not required.
 No compiler, terminal command, CLI installation, client registration or environment
 variable is needed to run the provided application. Enter the account email and
 password in NekoPak; the login button is enabled on normal startup.
@@ -83,7 +83,7 @@ must use the Windows executable, which sends requests through the Rust backend.
 
 ## Build from source (development only)
 
-- Windows x64, separately installed Microsoft Edge WebView2 Evergreen.
+- Windows x64, Windows 10 1709 or later. No WebView2. Video frame preview uses Media Foundation when present.
 - Rust 1.98+ MSVC, Visual Studio C++ desktop tools and Windows SDK.
 - Node 22+, npm; Python 3.12+ for packaging. The Tauri build CLI is a development
   tool and is unrelated to the removed PikPak CLI backend.

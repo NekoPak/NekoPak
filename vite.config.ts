@@ -28,6 +28,7 @@ export default defineConfig({
   },
   test: {
     include: ["tests/unit/**/*.test.{ts,tsx}"],
+    setupFiles: ["tests/unit/setup-locales.ts"],
     environment: "node",
   },
 });

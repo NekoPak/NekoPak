@@ -1,10 +1,13 @@
 {
+  "mainBinaryName": "nekopak",
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "publisher": "NekoPak",
     "category": "Utility",
-    "shortDescription": "NekoPak desktop cloud client",
+    "shortDescription": "NekoPak native desktop cloud client",
     "license": "MIT",
     "licenseFile": "../LICENSE",
     "resources": {
@@ -21,11 +24,19 @@
       "../dist/portable/NekoPak/RELEASE_SIGNING.md": "RELEASE_SIGNING.md"
     },
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "webviewInstallMode": {
+        "type": "skip"
+      },
       "allowDowngrades": false,
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["SimpChinese", "TradChinese", "English", "Japanese", "Korean"],
+        "languages": [
+          "SimpChinese",
+          "TradChinese",
+          "English",
+          "Japanese",
+          "Korean"
+        ],
         "displayLanguageSelector": true,
         "compression": "lzma",
         "startMenuFolder": "NekoPak",

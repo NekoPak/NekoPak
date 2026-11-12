@@ -1,0 +1,639 @@
+// Shared native controls. Every interactive control is keyboard reachable,
+// exposes an accessible role/label and shows a focus ring for keyboard focus.
+import { Pal } from "generated/palette.slint";
+import { Icons } from "generated/icons.slint";
+import { Tk, Tr } from "tokens.slint";
+
+// One tooltip for the whole window; controls only report hover.
+export global Tip {
+    out property <string> text;
+    out property <length> x;
+    out property <length> y;
+    out property <bool> wanted: false;
+    in-out property <bool> visible: false;
+    public function show(text: string, x: length, y: length) {
+        self.text = text;
+        self.x = x;
+        self.y = y;
+        self.wanted = text != "";
+        if (text == "") {
+            self.visible = false;
+        }
+    }
+    public function hide() {
+        self.wanted = false;
+        self.visible = false;
+    }
+}
+
+export component Icon inherits Image {
+    in property <color> tint: Pal.on-surface-variant;
+    in property <length> size: 20px;
+    width: size;
+    height: size;
+    colorize: tint;
+    image-fit: contain;
+    accessible-role: none;
+}
+
+export component FocusRing inherits Rectangle {
+    in property <bool> active;
+    in property <length> radius: Tk.r-sm;
+    border-radius: radius;
+    border-width: active ? 2px : 0px;
+    border-color: Pal.primary;
+}
+
+// kind: filled | tonal | outline | quiet | danger | danger-quiet
+export component Btn inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <string> kind: "quiet";
+    in property <bool> enabled: true;
+    in property <bool> active: false;
+    in property <bool> caret: false;
+    in property <bool> busy: false;
+    in property <string> tip;
+    in property <length> icon-size: 20px;
+    callback clicked();
+    out property <bool> pressed: ta.pressed;
+    out property <length> abs-x: self.absolute-position.x;
+    out property <length> abs-y: self.absolute-position.y;
+    property <color> fg: !enabled ? Pal.on-surface
+        : kind == "filled" ? Pal.on-primary
+        : kind == "tonal" ? Pal.on-secondary-container
+        : kind == "danger" ? Pal.on-error
+        : kind == "danger-quiet" ? Pal.error
+        : kind == "outline" ? Pal.primary
+        : active ? Pal.on-secondary-container : Pal.on-surface;
+    public function activate() {
+        if (root.enabled && !root.busy) {
+            root.clicked();
+        }
+    }
+    height: 36px;
+    min-width: self.height;
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    opacity: enabled ? 1 : 0.42;
+    background: !enabled && (kind == "filled" || kind == "danger" || kind == "tonal") ? Pal.on-surface.with-alpha(0.12)
+        : kind == "filled" ? Pal.primary
+        : kind == "tonal" ? Pal.secondary-container
+        : kind == "danger" ? Pal.error
+        : active ? Pal.secondary-container : transparent;
+    border-width: kind == "outline" ? 1px : 0px;
+    border-color: Pal.outline-variant;
+    accessible-role: button;
+    accessible-label: text != "" ? text : tip;
+    accessible-enabled: enabled;
+    accessible-action-default => {
+        root.activate();
+    }
+    animate background { duration: Tk.t1; }
+    Rectangle {
+        border-radius: root.border-radius;
+        background: !root.enabled ? transparent : ta.pressed ? root.fg.with-alpha(0.14) : ta.has-hover ? root.fg.with-alpha(0.08) : transparent;
+    }
+
+    FocusRing {
+        active: fs.has-focus;
+        radius: root.border-radius;
+    }
+
+    HorizontalLayout {
+        padding-left: root.text == "" ? 0px : root.icon.width > 0 ? 12px : 16px;
+        padding-right: root.text == "" ? 0px : root.caret ? 8px : 16px;
+        spacing: 6px;
+        alignment: center;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.icon;
+                tint: root.fg;
+                size: root.icon-size;
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.fg;
+            font-size: Tk.fs-md;
+            font-weight: 500;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if root.caret: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: Icons.chevron-down;
+                tint: root.fg;
+                size: 18px;
+            }
+        }
+    }
+
+    fs := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.activate();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            Tip.hide();
+            root.activate();
+        }
+        changed has-hover => {
+            if (self.has-hover && root.tip != "") {
+                Tip.show(root.tip, root.absolute-position.x + root.width / 2, root.absolute-position.y + root.height + 6px);
+            } else {
+                Tip.hide();
+            }
+        }
+    }
+}
+
+export component IconBtn inherits Btn {
+    width: self.height;
+}
+
+export component Field inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    in property <string> label;
+    in property <bool> password: false;
+    in property <bool> enabled: true;
+    in property <bool> invalid: false;
+    in property <bool> read-only: false;
+    in property <image> lead-icon;
+    out property <bool> has-focus: input.has-focus;
+    property <bool> reveal: false;
+    callback edited(string);
+    callback accepted(string);
+    callback escape();
+    public function focus-input() {
+        input.focus();
+    }
+    public function select-all() {
+        input.select-all();
+    }
+    public function select-range(from: int, to: int) {
+        input.set-selection-offsets(from, to);
+    }
+    height: 40px;
+    border-radius: Tk.r-sm;
+    border-width: input.has-focus || invalid ? 2px : 1px;
+    border-color: invalid ? Pal.error : input.has-focus ? Pal.primary : Pal.outline-variant;
+    background: enabled ? Tk.raised : Pal.surface-high;
+    opacity: enabled ? 1 : 0.6;
+    forward-focus: input;
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: root.password ? 2px : 12px;
+        spacing: 8px;
+        if root.lead-icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.lead-icon;
+                size: 20px;
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            clip: true;
+            if input.text == "": Text {
+                x: 0;
+                width: parent.width;
+                text: root.placeholder;
+                color: Pal.on-surface-variant.with-alpha(0.72);
+                font-size: Tk.fs-md;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            input := TextInput {
+                x: 0;
+                width: parent.width;
+                height: parent.height;
+                font-size: Tk.fs-md;
+                color: Pal.on-surface;
+                selection-background-color: Pal.primary.with-alpha(0.35);
+                selection-foreground-color: Pal.on-surface;
+                single-line: true;
+                vertical-alignment: center;
+                enabled: root.enabled;
+                read-only: root.read-only;
+                input-type: root.password && !root.reveal ? InputType.password : InputType.text;
+                accessible-label: root.label != "" ? root.label : root.placeholder;
+                edited => {
+                    root.edited(self.text);
+                }
+                accepted => {
+                    root.accepted(self.text);
+                }
+                key-pressed(event) => {
+                    if (event.text == Key.Escape) {
+                        root.escape();
+                        return accept;
+                    }
+                    return reject;
+                }
+            }
+        }
+
+        if root.password: VerticalLayout {
+            alignment: center;
+            IconBtn {
+                icon: root.reveal ? Icons.visibility-off : Icons.visibility;
+                tip: root.reveal ? Tr.t("隐藏密码") : Tr.t("显示密码");
+                clicked => {
+                    root.reveal = !root.reveal;
+                }
+            }
+        }
+    }
+}
+
+// state: 0 unchecked, 1 checked, 2 indeterminate
+export component Check inherits Rectangle {
+    in property <int> state: 0;
+    in property <bool> enabled: true;
+    in property <string> label;
+    callback toggled();
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    background: ta.has-hover ? Tk.hover : transparent;
+    accessible-role: checkbox;
+    accessible-label: label;
+    accessible-checked: state == 1;
+    accessible-checkable: true;
+    accessible-action-default => {
+        root.toggled();
+    }
+    FocusRing {
+        active: fs.has-focus;
+        radius: 18px;
+    }
+
+    Icon {
+        source: root.state == 1 ? Icons.checkbox-fill : root.state == 2 ? Icons.indeterminate-fill : Icons.checkbox-off;
+        tint: root.state == 0 ? Pal.on-surface-variant : Pal.primary;
+        size: 22px;
+    }
+
+    fs := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == Key.Return) {
+                root.toggled();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.toggled();
+        }
+    }
+}
+
+export component Toggle inherits Rectangle {
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    in property <string> label;
+    callback toggled(bool);
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    opacity: enabled ? 1 : 0.42;
+    background: checked ? Pal.primary : Pal.surface-highest;
+    border-width: checked ? 0px : 2px;
+    border-color: Pal.outline;
+    accessible-role: switch;
+    accessible-label: label;
+    accessible-checked: checked;
+    accessible-checkable: true;
+    accessible-action-default => {
+        root.toggled(!root.checked);
+    }
+    animate background { duration: Tk.t2; }
+    FocusRing {
+        active: fs.has-focus;
+        radius: 12px;
+    }
+
+    Rectangle {
+        width: root.checked ? 16px : 12px;
+        height: self.width;
+        border-radius: self.width / 2;
+        x: root.checked ? root.width - self.width - 4px : 6px;
+        y: (root.height - self.height) / 2;
+        background: root.checked ? Pal.on-primary : Pal.outline;
+        animate x, width { duration: Tk.t2; easing: ease-out; }
+    }
+
+    fs := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == Key.Return) {
+                root.toggled(!root.checked);
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.toggled(!root.checked);
+        }
+    }
+}
+
+// value < 0 draws an indeterminate track. tone: primary | ok | error | muted
+export component Meter inherits Rectangle {
+    in property <float> value;
+    in property <string> tone: "primary";
+    property <color> fill: tone == "ok" ? Pal.ok : tone == "error" ? Pal.error : tone == "muted" ? Pal.outline : Pal.primary;
+    height: 4px;
+    border-radius: 2px;
+    background: tone == "error" ? Pal.error-container : Pal.primary.with-alpha(0.18);
+    clip: true;
+    accessible-role: progress-indicator;
+    accessible-value: value < 0 ? "" : Math.round(value * 100) + "%";
+    if root.value >= 0: Rectangle {
+        x: 0;
+        width: Math.max(root.value > 0 ? 4px : 0px, root.width * Math.min(1, root.value));
+        border-radius: 2px;
+        background: root.fill;
+        animate width { duration: Tk.t3; easing: ease-out; }
+    }
+    if root.value < 0: Rectangle {
+        property <float> phase: 0;
+        width: root.width * 0.3;
+        x: (root.width + self.width) * phase - self.width;
+        border-radius: 2px;
+        background: root.fill;
+        init => {
+            self.phase = 1;
+        }
+        animate phase {
+            duration: Tk.reduce-motion ? 0ms : 1400ms;
+            iteration-count: -1;
+            easing: ease-in-out;
+        }
+    }
+}
+
+export component Busy inherits Rectangle {
+    in property <length> size: 24px;
+    in property <color> tint: Pal.primary;
+    width: size;
+    height: size;
+    accessible-role: progress-indicator;
+    Image {
+        property <angle> spin: 0deg;
+        width: root.size;
+        height: root.size;
+        source: @image-url("../assets/spinner.svg");
+        colorize: root.tint;
+        transform-rotation: self.spin;
+        init => {
+            self.spin = 360deg;
+        }
+        animate spin {
+            duration: 900ms;
+            iteration-count: -1;
+            easing: linear;
+        }
+    }
+}
+
+export component Chip inherits Rectangle {
+    in property <string> text;
+    in property <string> count;
+    in property <bool> selected;
+    callback clicked();
+    height: 40px;
+    border-radius: 20px;
+    background: selected ? Pal.primary : ta.has-hover ? Tk.hover : transparent;
+    accessible-role: tab;
+    accessible-label: text;
+    accessible-item-selected: selected;
+    accessible-action-default => {
+        root.clicked();
+    }
+    animate background { duration: Tk.t1; }
+    FocusRing {
+        active: fs.has-focus;
+        radius: 20px;
+    }
+
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 8px;
+        Text {
+            text: root.text;
+            color: root.selected ? Pal.on-primary : Pal.on-surface;
+            font-size: Tk.fs-md;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+
+        if root.count != "": Text {
+            text: root.count;
+            color: root.selected ? Pal.on-primary : Pal.on-surface-variant;
+            font-size: Tk.fs-xs;
+            vertical-alignment: center;
+        }
+    }
+
+    fs := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == Key.Return) {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+export component Divider inherits Rectangle {
+    height: 1px;
+    background: Pal.outline-variant.with-alpha(0.6);
+}
+
+// File-kind badge. kind: 0 folder 1 video 2 image 3 audio 4 doc 5 archive 6 code 7 other
+export component KindIcon inherits Rectangle {
+    in property <int> kind;
+    in property <length> size: 32px;
+    width: size;
+    height: size;
+    border-radius: size / 4;
+    background: kind == 0 ? Pal.primary-container
+        : kind == 1 ? Pal.video-container
+        : kind == 2 ? Pal.image-container
+        : kind == 3 ? Pal.audio-container
+        : kind == 4 ? Pal.doc-container
+        : kind == 5 ? Pal.archive-container
+        : kind == 6 ? Pal.code-container : Pal.other-container;
+    Icon {
+        size: root.size * 0.62;
+        source: root.kind == 0 ? Icons.folder-fill
+            : root.kind == 1 ? Icons.video
+            : root.kind == 2 ? Icons.image
+            : root.kind == 3 ? Icons.audio
+            : root.kind == 4 ? Icons.doc
+            : root.kind == 5 ? Icons.archive
+            : root.kind == 6 ? Icons.code : Icons.file;
+        tint: root.kind == 0 ? Pal.on-primary-container
+            : root.kind == 1 ? Pal.on-video-container
+            : root.kind == 2 ? Pal.on-image-container
+            : root.kind == 3 ? Pal.on-audio-container
+            : root.kind == 4 ? Pal.on-doc-container
+            : root.kind == 5 ? Pal.on-archive-container
+            : root.kind == 6 ? Pal.on-code-container : Pal.on-other-container;
+    }
+}
+
+// tone: info | ok | warn | error
+export component Banner inherits Rectangle {
+    in property <string> text;
+    in property <string> tone: "info";
+    in property <string> action;
+    callback action-clicked();
+    property <color> fg: tone == "error" ? Pal.on-error-container : tone == "warn" ? Pal.on-warn-container : tone == "ok" ? Pal.on-ok-container : Pal.on-surface;
+    border-radius: Tk.r-sm;
+    background: tone == "error" ? Pal.error-container : tone == "warn" ? Pal.warn-container : tone == "ok" ? Pal.ok-container : transparent;
+    min-height: 36px;
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 8px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.tone == "error" ? Icons.alert-circle : root.tone == "warn" ? Icons.alert : root.tone == "ok" ? Icons.check-circle : Icons.info;
+                tint: root.fg;
+            }
+        }
+
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            color: root.fg;
+            font-size: Tk.fs-sm;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+
+        if root.action != "": VerticalLayout {
+            alignment: center;
+            Btn {
+                text: root.action;
+                kind: "outline";
+                height: 30px;
+                clicked => {
+                    root.action-clicked();
+                }
+            }
+        }
+    }
+}
+
+export component EmptyState inherits Rectangle {
+    in property <image> icon: Icons.inventory;
+    in property <string> title;
+    in property <string> body;
+    in property <string> action;
+    in property <string> action2;
+    in property <bool> error: false;
+    callback action-clicked();
+    callback action2-clicked();
+    VerticalLayout {
+        alignment: center;
+        spacing: 10px;
+        padding: 24px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 72px;
+                height: 72px;
+                border-radius: 36px;
+                background: root.error ? Pal.error-container : Pal.surface-high;
+                Icon {
+                    source: root.icon;
+                    size: 36px;
+                    tint: root.error ? Pal.on-error-container : Pal.on-surface-variant;
+                }
+            }
+        }
+
+        Text {
+            text: root.title;
+            color: Pal.on-surface;
+            font-size: Tk.fs-lg;
+            font-weight: 600;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+
+        if root.body != "": HorizontalLayout {
+            alignment: center;
+            Text {
+                max-width: 460px;
+                text: root.body;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-md;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+        if root.action != "" || root.action2 != "": HorizontalLayout {
+            alignment: center;
+            spacing: 8px;
+            padding-top: 6px;
+            if root.action != "": Btn {
+                text: root.action;
+                kind: "filled";
+                clicked => {
+                    root.action-clicked();
+                }
+            }
+            if root.action2 != "": Btn {
+                text: root.action2;
+                kind: "outline";
+                clicked => {
+                    root.action2-clicked();
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,71 @@
+// Non-colour design tokens and derived surface roles. Colours come from the
+// generated palette, which is produced from the same seeds as the web UI.
+import { Palette } from "std-widgets.slint";
+import { Pal } from "generated/palette.slint";
+
+export global Tk {
+    // "system" | "light" | "dark"
+    in property <string> theme-pref: "system";
+    out property <bool> dark: theme-pref == "dark" || (theme-pref == "system" && Palette.color-scheme == ColorScheme.dark);
+    in property <bool> reduce-motion: false;
+    in property <bool> compact: false;
+
+    out property <color> frame: Pal.surface-container;
+    out property <color> canvas: Pal.surface;
+    out property <color> side: Pal.surface-low;
+    out property <color> raised: Pal.surface-lowest;
+    out property <color> hover: Pal.on-surface.with-alpha(0.07);
+    out property <color> press: Pal.on-surface.with-alpha(0.11);
+    out property <color> hover-primary: Pal.primary.with-alpha(0.09);
+    out property <color> selected: Pal.primary.with-alpha(dark ? 0.20 : 0.12);
+    out property <color> scrim: #00000052;
+    out property <color> shadow: dark ? #00000099 : #00000033;
+
+    out property <length> fs-xs: 12px;
+    out property <length> fs-sm: 13px;
+    out property <length> fs-md: 14px;
+    out property <length> fs-lg: 16px;
+    out property <length> fs-xl: 20px;
+    out property <length> fs-2xl: 28px;
+
+    out property <length> r-xs: 4px;
+    out property <length> r-sm: 8px;
+    out property <length> r-md: 12px;
+    out property <length> r-lg: 16px;
+    out property <length> r-xl: 20px;
+
+    out property <length> gap: 8px;
+    out property <length> row-top: 56px;
+    out property <length> row-cmd: 52px;
+    out property <length> row-foot: 48px;
+    out property <length> sidebar-w: 248px;
+    out property <length> rail-w: 76px;
+    out property <length> row-h: compact ? 36px : 44px;
+
+    // WinUI-like timings; collapse to nothing when the user disables motion.
+    out property <duration> t1: reduce-motion ? 0ms : 83ms;
+    out property <duration> t2: reduce-motion ? 0ms : 167ms;
+    out property <duration> t3: reduce-motion ? 0ms : 250ms;
+
+    public function apply-scheme() {
+        Palette.color-scheme = theme-pref == "dark" ? ColorScheme.dark : theme-pref == "light" ? ColorScheme.light : ColorScheme.unknown;
+    }
+}
+
+// Developer-authored copy is written in Simplified Chinese (the source
+// language shared with the web UI) and translated through the Rust catalog.
+export global Tr {
+    in property <int> rev: 0;
+    pure callback translate(string) -> string;
+    pure callback format1(string, string) -> string;
+    pure callback format2(string, string, string) -> string;
+    public pure function t(source: string) -> string {
+        return rev >= 0 ? translate(source) : source;
+    }
+    public pure function x(source: string, a: string) -> string {
+        return rev >= 0 ? format1(source, a) : source;
+    }
+    public pure function x2(source: string, a: string, b: string) -> string {
+        return rev >= 0 ? format2(source, a, b) : source;
+    }
+}
