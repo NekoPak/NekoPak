@@ -187,4 +187,68 @@ mod tests {
         assert_eq!(natural("9", "10"), Ordering::Less);
         assert_eq!(natural("007", "7"), Ordering::Equal);
     }
+
+    /// The precomputed system keys must order names exactly like the
+    /// per-comparison system call they replace.
+    #[cfg(windows)]
+    #[test]
+    fn system_keys_match_compare_string() {
+        let names = [
+            "第10讲.mp4",
+            "第2讲.mp4",
+            "第1讲.mp4",
+            "a100",
+            "a20",
+            "a020",
+            "A3",
+            "a3",
+            "File.txt",
+            "file.txt",
+            "file2.txt",
+            "file10.txt",
+            "é.txt",
+            "e.txt",
+            "Z",
+            "z",
+            "张三",
+            "李四",
+            "王五",
+            "阿",
+            "中文",
+            "日本語",
+            "한국어",
+            "Ünïcode",
+            "_x",
+            "-x",
+            "x y",
+            "x-y",
+            "007",
+            "7",
+            "",
+            "😀.png",
+        ];
+        let keys: Vec<SortKey> = names.iter().map(|name| SortKey::new(name)).collect();
+        let call = |a: &SortKey, b: &SortKey| {
+            let a = SortKey {
+                bytes: Vec::new(),
+                wide: a.wide.clone(),
+            };
+            let b = SortKey {
+                bytes: Vec::new(),
+                wide: b.wide.clone(),
+            };
+            a.compare(&b)
+        };
+        for (i, a) in keys.iter().enumerate() {
+            if !names[i].is_empty() {
+                assert!(!a.bytes.is_empty(), "no sort key for {:?}", names[i]);
+            }
+            for (j, b) in keys.iter().enumerate() {
+                if a.bytes.is_empty() || b.bytes.is_empty() {
+                    continue;
+                }
+                assert_eq!(a.compare(b), call(a, b), "{:?} vs {:?}", names[i], names[j]);
+            }
+        }
+    }
 }

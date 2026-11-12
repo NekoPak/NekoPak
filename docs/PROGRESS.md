@@ -38,7 +38,8 @@ Windows CI 全绿；图片查看器、媒体库、视频画面预览与选段标
       大部分不同时才整表重置）；文件列表 `push_rows`、网格选中（`patch_row` 按格更新）、
       传输页 350 ms 刷新都改为原地更新；“位置”列每批只扫相关行；Windows 名称排序改用
       `LCMapStringEx` 预生成排序键。Linux：clippy、单元测试、两种渲染器冒烟测试通过，
-      网格视图单选 / 全选 / 取消截图核对正确。Windows 目标交叉 clippy 见下方记录；
+      网格视图单选 / 全选 / 取消截图核对正确。Windows 目标交叉 clippy 通过；`collate.rs` 新增仅 Windows 运行的测试，
+      在 CI 上核对排序键顺序与 `CompareStringEx` 一致；
       **没有在 Windows 真机上对比排序结果**，也没有大目录的耗时对比数字。
 - [ ] 下一步候选：`cldapi.dll` 改运行时加载（放宽到更早的 Windows 10）；把 CI 启动测量的
       数字抄进 `NATIVE_DESKTOP.md`；Android 真机上看手机界面。
