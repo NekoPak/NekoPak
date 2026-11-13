@@ -110,27 +110,49 @@ pub(super) async fn gateway_check(
 }
 
 async fn probe(client: Result<reqwest::Client, ClientError>, domain: &'static str) -> Value {
+    probe_endpoints(
+        client,
+        domain,
+        &format!("https://api-drive.{domain}/drive/v1/about"),
+        &format!("https://user.{domain}/v1/user/me"),
+    )
+    .await
+}
+
+pub(super) async fn probe_endpoints(
+    client: Result<reqwest::Client, ClientError>,
+    domain: &str,
+    drive: &str,
+    user: &str,
+) -> Value {
     let mut result = json!({"domain":domain,"usable":false});
     let Ok(client) = client else {
         result["error"] = "无法初始化安全探测连接".into();
         return result;
     };
-    let drive = format!("https://api-drive.{domain}/drive/v1/about");
-    let user = format!("https://user.{domain}/v1/user/me");
-    for (url, field) in [
-        (&drive, "latency_ms"),
-        (&drive, "warm_latency_ms"),
-        (&user, "auth_latency_ms"),
+    let ((cold, warm), auth) = tokio::join!(
+        async {
+            let cold = gateway_check(&client, drive).await;
+            let warm = gateway_check(&client, drive).await;
+            (cold, warm)
+        },
+        gateway_check(&client, user)
+    );
+    let mut failures = Vec::new();
+    for (measurement, field) in [
+        (cold, "latency_ms"),
+        (warm, "warm_latency_ms"),
+        (auth, "auth_latency_ms"),
     ] {
-        match gateway_check(&client, url).await {
+        match measurement {
             Ok(elapsed) => result[field] = elapsed.into(),
-            Err(reason) => {
-                result["error"] = reason.into();
-                return result;
-            }
+            Err(reason) => failures.push(reason),
         }
     }
-    result["usable"] = true.into();
+    result["usable"] = failures.is_empty().into();
+    if let Some(reason) = failures.first() {
+        result["error"] = (*reason).into();
+    }
     result
 }
 

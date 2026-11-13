@@ -154,6 +154,7 @@ impl AppService {
                         .map_err(|_| ClientError::new(ErrorCode::Internal, "无法保存更新设置。"))?;
                 }
                 "theme"
+                | "max_concurrent_transfers"
                 | "download_dir"
                 | "bandwidth_limit_kib_s"
                 | "ask_download_directory"
@@ -186,10 +187,10 @@ impl AppService {
                         .as_object()
                         .ok_or_else(|| ClientError::new(ErrorCode::Conflict, "下载设置无效。"))?
                     {
-                        if key != "default_quality" {
+                        if !matches!(key.as_str(), "default_quality" | "connections_per_task") {
                             return Err(ClientError::new(
                                 ErrorCode::Unsupported,
-                                "当前连接数由下载引擎管理。",
+                                "不支持该下载设置。",
                             ));
                         }
                         settings["download"][key] = value.clone();
@@ -280,6 +281,18 @@ impl AppService {
     }
 }
 fn validate(settings: &Value) -> Result<(), ClientError> {
+    if settings["max_concurrent_transfers"]
+        .as_u64()
+        .is_none_or(|n| !(1..=8).contains(&n))
+        || settings["download"]["connections_per_task"]
+            .as_u64()
+            .is_none_or(|n| !(1..=16).contains(&n))
+    {
+        return Err(ClientError::new(
+            ErrorCode::Conflict,
+            "下载任务数需为 1–8，连接数需为 1–16。",
+        ));
+    }
     if settings["updates"]["auto_check"].as_bool().is_none() {
         return Err(ClientError::new(
             ErrorCode::Conflict,

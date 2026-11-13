@@ -9,7 +9,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { inTauri } from "../lib/transport/tauri";
 import { useStore } from "../lib/store";
-import { app, hostSupports, isMobileHost } from "../state/app";
+import { app, hostSupports, isMobileHost, recoverNetwork } from "../state/app";
 import { navigate } from "../state/route";
 import { closeSide, side } from "../state/prefs";
 import { Icon } from "./Icon";
@@ -81,11 +81,13 @@ function Banners() {
       </div>,
     );
   }
-  if (s.quotaError?.code === "TRANSIENT_NETWORK") {
+  if (s.quotaError?.code === "TRANSIENT_NETWORK" && !s.networkBannerDismissed) {
     out.push(
-      <div class="banner banner-warn" role="status">
+      <div class="banner banner-warn network-banner" role="status">
         <Icon name="cloud" />
-        <span>{tr("无法连接远端服务：")}{s.quotaError.message}{tr("。进行中的传输会按退避策略重试。")}</span>
+        <span>{tr("网络连接失败")} · {tr("检查网络后重试。")}</span>
+        <Btn size="sm" label={tr("重新连接")} busy={s.networkRecovering} onClick={() => void recoverNetwork().catch(() => toast(tr("网络连接失败"), "error"))} />
+        <button type="button" class="banner-dismiss" aria-label={tr("关闭")} onClick={() => app.set({ networkBannerDismissed: true })}><Icon name="x" size={18} /></button>
       </div>,
     );
   }

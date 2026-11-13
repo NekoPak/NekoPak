@@ -21,7 +21,7 @@ if (!process.env.E2E_BASE) {
 const browser = await chromium.launch(process.env.E2E_BROWSER_PATH ? { executablePath: process.env.E2E_BROWSER_PATH } : { channel: process.env.E2E_BROWSER_CHANNEL ?? (process.platform === "win32" ? "msedge" : undefined) });
 const results = [], errors = [];
 
-function fixture({ signedIn, mobile = true, theme = "light" }) {
+function fixture({ signedIn, mobile = true, theme = "light", offline = false }) {
   localStorage.setItem("nekopak.disclaimer.v1", "1");
   localStorage.setItem("nekopak.language", "zh-CN");
   let signed = signedIn, id = 0;
@@ -33,7 +33,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
   let task = { id: "completed-a", remote_id: "file-a", backend: "rust_compat", name: file.name, kind: "download", state: "completed", destination: "/data/user/0/io.nekopak.desktop/files/Downloads/示例文件.txt", transferred_bytes: "12", total_bytes: "12", revision: "1", simulated: false, created_at: now, updated_at: now };
   let tasks=[task,{...task,id:"running-a",name:"旅行视频.mp4",state:"running",transferred_bytes:"4194304",total_bytes:"41943040",speed_bytes_per_sec:2097152},{...task,id:"cancelled-a",name:"已取消的备份.zip",state:"cancelled",transferred_bytes:"0"}];
   const settings = { schema_version: 1, theme, language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, background_transfers: true, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
-  window.__mobileFixture = { calls: [], exportResult: false, torrentResult: null, receivedBytes:"4194304", updatePhase:"idle" };
+  window.__mobileFixture = { offline, restoreOnReconnect: false, calls: [], exportResult: false, torrentResult: null, receivedBytes:"4194304", updatePhase:"idle" };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
@@ -62,8 +62,8 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
       if(command === "cloud_torrent_create")return {task_id:"torrent-cloud-a"};
       if(command === "cloud_torrent_release")return;
       if(command === "auth_preferences_update"){authPrefs=args.preferences;return authPrefs;}
-      if(command === "network_reconnect")return;
-      if(command === "network_domains_probe"){const selected=settings.experimental_network.server_domain??"auto";return {selected_domain:selected,active_domain:selected==="auto"?"mypikpak.com":selected,checked_at:now,results:["mypikpak.com","mypikpak.net","pikpak.me","pikpakdrive.com"].map((domain,index)=>({domain,usable:true,latency_ms:42+index*10,warm_latency_ms:12+index*5}))};}
+      if(command === "network_reconnect"){if(window.__mobileFixture.restoreOnReconnect)window.__mobileFixture.offline=false;return;}
+      if(command === "network_domains_probe"){const selected=settings.experimental_network.server_domain??"auto";return {selected_domain:selected,active_domain:selected==="auto"?"mypikpak.com":selected,checked_at:now,results:["mypikpak.com","mypikpak.net","pikpak.me","pikpakdrive.com"].map((domain,index)=>({domain,usable:true,latency_ms:42+index*10,warm_latency_ms:12+index*5,auth_latency_ms:22+index*5}))};}
       if (command === "auth_status") return { backend: "rust_compat", authenticated: signed, state: signed ? "signed_in" : "signed_out", account_id: signed ? "synthetic-account" : undefined, display_name: "fixture@example.test", credential_owner: "os_vault", account_tier: "unknown", checked_at: now };
       if (command === "auth_sign_in") {
         if (args.password === "synthetic-rejected") throw { code: "PERMISSION_DENIED", message: "测试凭据未通过", retryable: false, details: { reason: "invalid_credentials" } };
@@ -74,6 +74,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
       if (command === "settings_update") return Object.assign(settings, args.patch);
       if (command === "ui_prefs_get") return { account_id: "synthetic-account", prefs: { pins: [] } };
       if (command === "ui_prefs_update") return args.prefs;
+      if (command === "quota_get" && window.__mobileFixture.offline) throw {code:"TRANSIENT_NETWORK",message:"synthetic offline",retryable:true};
       if (command === "quota_get") return { backend: "rust_compat", source: "account", account_tier: "unknown", dimensions: [], limitations: [], checked_at: now };
       if (command === "transfers_list") return { items: signed ? tasks.map(task=>task.id==='running-a'?{...task,received_bytes:window.__mobileFixture.receivedBytes}:task) : [] };
       if (command === "jobs_list" || command === "shares_list") return { items: [] };
@@ -100,9 +101,9 @@ async function assertFits(page, name) {
   assert.deepEqual(overflow, [], `${name} has horizontal content overflow`);
 }
 
-async function context(width, signedIn = true, mobile = true, theme = "light") {
+async function context(width, signedIn = true, mobile = true, theme = "light", offline = false) {
   const ctx = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: true, isMobile: true, locale: "zh-CN", reducedMotion: "reduce" });
-  await ctx.addInitScript(fixture, { signedIn, mobile, theme });
+  await ctx.addInitScript(fixture, { signedIn, mobile, theme, offline });
   const page = await ctx.newPage();
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/*", route => {
@@ -115,6 +116,35 @@ async function context(width, signedIn = true, mobile = true, theme = "light") {
 }
 
 try {
+  {
+    const {ctx,page}=await context(390,true,true,"light",true);
+    try {
+      await page.locator('[data-id="folder-a"]').waitFor();
+      const banner=page.locator('.network-banner');
+      await banner.waitFor();
+      assert.equal(await page.getByRole('heading',{name:'登录 PikPak',exact:true}).count(),0);
+      await assertFits(page,'offline banner');
+      const retryRect=await banner.getByRole('button',{name:'重新连接',exact:true}).boundingBox();
+      const closeRect=await banner.getByRole('button',{name:'关闭',exact:true}).boundingBox();
+      assert(retryRect.x+retryRect.width<=closeRect.x || retryRect.y>=closeRect.y+closeRect.height,'retry and close targets must not overlap');
+      await page.screenshot({path:resolve(output,'offline-banner-390.png')});
+      await banner.getByRole('button',{name:'关闭',exact:true}).tap();
+      await banner.waitFor({state:'detached'});
+      await page.getByRole('button',{name:'传输',exact:true}).tap();
+      await page.locator('[data-task="running-a"]').waitFor();
+      assert.equal(await banner.count(),0,'dismissal persists across navigation');
+      await page.evaluate(()=>{window.__mobileFixture.offline=false;window.dispatchEvent(new Event('online'));});
+      await page.waitForFunction(()=>window.__mobileFixture.calls.filter(call=>call.command==='quota_get').length>=2);
+      await page.waitForTimeout(100);
+      await page.evaluate(()=>{window.__mobileFixture.offline=true;document.dispatchEvent(new Event('visibilitychange'));});
+      await banner.waitFor();
+      await page.evaluate(()=>{window.__mobileFixture.restoreOnReconnect=true;});
+      await banner.getByRole('button',{name:'重新连接',exact:true}).tap();
+      await banner.waitFor({state:'detached'});
+      assert(!await page.evaluate(()=>window.__mobileFixture.calls.some(call=>call.command==='auth_sign_in')));
+      results.push({name:'offline session, dismissible banner, route recovery',passed:true});
+    } finally {await ctx.close();}
+  }
   for (const width of [360,390,412]) for(const theme of ["light","dark"]) {
     const {ctx,page}=await context(width,true,true,theme);
     try {
@@ -184,15 +214,20 @@ try {
       await page.getByText('通过系统通知继续运行',{exact:false}).waitFor();
       await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`settings-${width}-${theme}.png`)});
       await assertFits(page,`${width} ${theme} settings`);
+      await page.getByLabel('同时传输数',{exact:true}).fill('3');
+      await page.getByLabel('每个任务的连接数',{exact:true}).fill('8');
       await keepAlive.tap();await page.getByText('切到后台或锁屏会暂停本地传输',{exact:false}).waitFor();
       await page.getByRole('button',{name:'保存',exact:true}).tap();
       await page.waitForFunction(()=>window.__mobileFixture.calls.some(call=>call.command==='settings_update'&&call.args.patch?.background_transfers===false));
+      assert(await page.evaluate(()=>window.__mobileFixture.calls.some(call=>call.command==='settings_update'&&call.args.patch.max_concurrent_transfers===3&&call.args.patch.download?.connections_per_task===8)));
       await keepAlive.tap();await page.getByRole('button',{name:'保存',exact:true}).tap();
       await page.waitForFunction(()=>window.__mobileFixture.calls.filter(call=>call.command==='settings_update').at(-1)?.args.patch?.background_transfers===true);
       await page.getByRole('button',{name:'返回',exact:true}).tap();await page.getByRole('button',{name:'网络',exact:true}).tap();
       await page.locator('#server-domain').selectOption('mypikpak.net');
       await page.getByRole('button',{name:'保存',exact:true}).tap();
-      await page.getByRole('button',{name:'测速',exact:true}).tap();await page.getByText('42 ms',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'测速',exact:true}).tap();await page.locator('.phone-domain-results').getByText('文件: 42 ms',{exact:false}).waitFor();
+      assert.equal(await page.locator('.phone-domain-results>div').count(),4);
+      await page.locator('.phone-domain-results').getByText('账号: 22 ms',{exact:false}).waitFor();
       await page.getByRole('button',{name:'重新连接',exact:true}).tap();await page.getByText('已重新连接',{exact:true}).waitFor();
       await page.waitForTimeout(220);await page.screenshot({path:resolve(output,`network-${width}-${theme}.png`)});
       const calls=await page.evaluate(()=>window.__mobileFixture.calls);

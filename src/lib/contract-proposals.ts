@@ -672,7 +672,7 @@ export type ServerDomain = "auto" | "mypikpak.com" | "mypikpak.net" | "pikpak.me
 export interface AuthPreferences { remember_account: boolean; restore_session: boolean; username?: string }
 export interface NetworkDomainReport {
   selected_domain: ServerDomain; active_domain: Exclude<ServerDomain, "auto">; checked_at: string;
-  results: { domain: Exclude<ServerDomain, "auto">; usable: boolean; latency_ms?: number; warm_latency_ms?: number; error?: string }[];
+  results: { domain: Exclude<ServerDomain, "auto">; usable: boolean; latency_ms?: number; warm_latency_ms?: number; auth_latency_ms?: number; error?: string }[];
 }
 
 /** Full command map: name -> [args, result]. Frozen names from §3 + §P commands. */

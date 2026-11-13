@@ -937,13 +937,9 @@ impl ProviderPort for NativeProvider {
         let mut session = self.session.lock().await;
         if self.supports_password_auth() {
             self.load(&mut session)?;
-            if session
-                .stored
-                .as_ref()
-                .is_some_and(|s| s.expires_at <= now() + 30)
-            {
-                self.refresh(&mut session).await?;
-            }
+            // Status describes the saved account, independently of network
+            // reachability. Remote operations refresh expired access tokens;
+            // only a definitive rejection there may expire the saved session.
         }
         if session
             .pending

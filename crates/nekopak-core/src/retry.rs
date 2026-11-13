@@ -1,4 +1,4 @@
-//! Bounded, durable recovery for idempotent read-only transfer steps.
+//! Durable recovery with bounded backoff for idempotent read-only transfer steps.
 //!
 //! Only ordinary and segment downloads are eligible. Uploads and remote write
 //! operations deliberately remain under their existing unknown-outcome policy.
@@ -51,9 +51,9 @@ fn parse(raw: &str) -> Result<RetryRecord, ClientError> {
 }
 
 impl AppService {
-    /// Schedule a bounded retry for an idempotent, read-only transfer step.
-    /// Returns true when the error was handled as a scheduled retry (including
-    /// the exhaustion transition), and false when the caller should preserve
+    /// Keep temporary network outages recoverable at a capped retry rate.
+    /// Returns true when the error was handled as a scheduled retry,
+    /// and false when the caller should preserve
     /// its normal failure handling.
     pub(crate) fn schedule_transfer_retry(
         &self,
@@ -76,19 +76,8 @@ impl AppService {
             .record_get(SCOPE, KIND, &task.id)?
             .map(|raw| parse(&raw))
             .transpose()?
-            .map(|record| record.attempts.saturating_add(1))
+            .map(|record| record.attempts.saturating_add(1).min(MAX_ATTEMPTS))
             .unwrap_or(1);
-        if attempts > MAX_ATTEMPTS {
-            let failed = self.store()?.update(
-                &current,
-                TaskState::Failed,
-                current.transferred_bytes.0,
-                Some(error),
-            )?;
-            self.records()?.record_remove(SCOPE, KIND, &task.id)?;
-            self.emit(&failed);
-            return Ok(true);
-        }
         let delay = match attempts {
             1 => 1,
             2 => 2,
@@ -134,7 +123,7 @@ impl AppService {
     }
 
     /// Gate the normal worker path until a retry is due. The record remains
-    /// until bytes make progress so repeated failures exhaust the same budget.
+    /// until bytes make progress so repeated failures retain their backoff.
     pub(crate) fn retry_ready(&self, task: &TransferTask) -> Result<bool, ClientError> {
         let Some(raw) = self.records()?.record_get(SCOPE, KIND, &task.id)? else {
             return Ok(true);
@@ -177,7 +166,7 @@ impl AppService {
     }
 
     /// A user-requested reconnect may wake safe, already-scheduled reads. It
-    /// does not resume manual pauses or reset the bounded failure budget.
+    /// does not resume manual pauses or bypass a server's Retry-After.
     pub(crate) fn retry_waiting_now(&self) -> Result<(), ClientError> {
         let _gate = self
             .download_gate
@@ -221,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn automatic_read_retries_are_bounded_and_do_not_include_writes_or_integrity_errors() {
+    fn network_outages_remain_recoverable_with_capped_backoff_and_never_replay_writes() {
         let dir = tempfile::tempdir().unwrap();
         let app = AppService::mock(&dir.path().join("queue.db"), Scenario::Free);
         let mut task = insert(&app, TaskKind::Download);
@@ -240,14 +229,22 @@ mod tests {
             assert_eq!(record.attempts, attempt);
             assert!(!app.retry_ready(&task).unwrap());
         }
-        app.schedule_transfer_retry(&task, network()).unwrap();
-        assert_eq!(app.task(&task.id).unwrap().state, TaskState::Failed);
-        assert!(app
-            .records()
-            .unwrap()
-            .record_get(SCOPE, KIND, &task.id)
-            .unwrap()
-            .is_none());
+        for _ in 0..20 {
+            app.schedule_transfer_retry(&task, network()).unwrap();
+            task = app.task(&task.id).unwrap();
+            assert_eq!(task.state, TaskState::Retrying);
+            let raw = app
+                .records()
+                .unwrap()
+                .record_get(SCOPE, KIND, &task.id)
+                .unwrap()
+                .unwrap();
+            let record = parse(&raw).unwrap();
+            assert_eq!(record.attempts, MAX_ATTEMPTS);
+            assert!(record.next_at >= now_ms() + 29_000);
+        }
+        app.retry_waiting_now().unwrap();
+        assert!(app.retry_ready(&task).unwrap());
         let upload = insert(&app, TaskKind::Upload);
         assert!(!app.schedule_transfer_retry(&upload, network()).unwrap());
         let original = insert(&app, TaskKind::Download);
