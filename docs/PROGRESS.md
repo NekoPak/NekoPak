@@ -22,7 +22,8 @@
 - 本地验证已通过：生产前端构建，Vitest 118 + API 6，Python 24（另 4 跳过），桌面浏览器 57（0 外部请求），手机浏览器 12；原生资源生成检查 202 文件；版本、原分支历史及功能保留、文档相对链接检查通过。
 - Rust 1.99.1：`cargo fmt --all --check`、核心测试 117（另 15 显式忽略）及 `cargo check -p nekopak-provider-native --locked` 均通过。详见 [预检证据](evidence/release-0.2.0-preflight.json)。
 - 11-12 的 GitHub 403 已定位为缺少 NekoPak 组织的 App 安装授权。用户于 11-13 完成组织授权，现已验证整合分支推送成功；历史预检文件中的阻塞状态为 11-12 的快照。
-- 整合分支 `codex/release-0.2.0` 已推送；准备创建到 `main` 的 PR，并运行整合后的完整跨平台 CI。合并、`v0.2.0` 标签与签名 Release 尚待检查成功后执行，最近公开版本仍为 `v0.1.4`。
+- 整合分支 `codex/release-0.2.0` 已推送，[PR #1](https://github.com/NekoPak/NekoPak/pull/1) 已创建，无合并冲突；合并、`v0.2.0` 标签与签名 Release 待整合检查成功后执行。
+- 首轮整合 CI：Linux / macOS 核心、Linux 原生双渲染器冒烟与 Android APK 已通过。Windows 全工作区静态检查与 Rust 测试通过，但接口样例导出检查发现 10 份样例的 `app_status.version` 仍为 0.1.3，已同步到 0.2.0；保留 Windows 特有能力字段，重跑整合 CI。
 - 完整收尾包保存到 `/workspace/shared/downloads/NekoPak-0.2.0-handoff.zip`，包含自足 Git bundle、相对 main 的二进制补丁、发布说明、拟用 PR 描述和本地验证日志。
 - 后续顺序：创建 PR → 等待整合后的 Windows / Linux / macOS / Android CI 全绿 → 按检查过的 head SHA 合并 → 从合并后的 main 创建并推送 `v0.2.0` → 跟进签名发布工作流 → 重新下载两端产物及清单，验签并检查更新源。
 
