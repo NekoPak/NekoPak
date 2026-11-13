@@ -19,3 +19,20 @@ jobs:
           echo "TMPDIR=$(cd "$RUNNER_TEMP/nekopak-tests" && pwd -P)" >> "$GITHUB_ENV"
       - run: cargo test -p nekopak-domain -p nekopak-provider -p nekopak-provider-mock -p nekopak-media -p nekopak-core --locked
       - run: cargo check -p nekopak-provider-native --locked
+  native-desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-0 xvfb fonts-noto-cjk
+      - run: node scripts/gen-native-assets.mjs --check
+      - run: cargo clippy -p nekopak-desktop --all-targets --features automation --locked -- -D warnings
+      - run: cargo test -p nekopak-desktop --locked
+      - run: cargo build -p nekopak-desktop --features automation --locked
+      - name: Headless UI smoke (offline mock, both renderers)
+        run: python3 tests/native/run.py

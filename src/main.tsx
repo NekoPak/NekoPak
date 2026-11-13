@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { App } from "./app/App";
-import { language, setLanguage } from "./lib/i18n";
+import { ensureLocale, language, setLanguage } from "./lib/i18n";
 import "./styles/schemes.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
@@ -13,4 +13,5 @@ import "./styles/phone.css";
 
 const root = document.getElementById("app");
 setLanguage(language.get().preference);
-if (root) render(<App />, root);
+// First paint waits for the one catalog this user needs (none for zh-CN).
+void ensureLocale().then(() => { if (root) render(<App />, root); });

@@ -17,7 +17,7 @@ def main():
     parser.add_argument("command", choices=["init", "configure-actions"])
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--keytool", type=Path)
-    parser.add_argument("--repository", default="NekoPak/NikoPak")
+    parser.add_argument("--repository", default="NekoPak/NekoPak")
     args = parser.parse_args()
     directory = args.directory.resolve(strict=True)
     root = Path(__file__).resolve().parents[1]

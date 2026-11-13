@@ -3,7 +3,7 @@
 2026-11-08：当前冻结变更见 §10–§12，后续小节覆盖此前实现状态。UI-001 的其他功能仍是
 提案，不因导入 v3 界面而自动成为已实现能力。§7–§9 保留为历史记录。
 
-此文件为 Astra 与 Opus 5.5 的**共享基线**。任何字段变更需提交双向兼容说明、更新 mock fixtures、更新 UI 类型定义与测试。示例命令只表示设计，不暗示已经实现。
+此文件是 Rust Core 与前端的**共享基线**。任何字段变更需提交双向兼容说明、更新 mock fixtures、更新 UI 类型定义与测试。示例命令只表示设计，不暗示已经实现。
 
 ## 1. 约定
 
@@ -200,7 +200,7 @@ pub trait BackendPort: Send + Sync {
 ## 8. 已撤销的 CLI 预览契约（历史）
 
 2026-11-08 完全移除本节旧实现，包括 official_cli_probe、official_cli_preview 模式、
-external_cli 凭据所有者与外部程序配置。旧观察见 [历史记录](history/CLI_ADAPTER.md)，
+external_cli 凭据所有者与外部程序配置。旧 CLI 探测记录已移除（见 git 历史），
 不是当前可调用接口。BackendId.official_cli 仅保留历史序列化兼容。
 当前主连接、命令与会话语义见 §10。
 
@@ -362,7 +362,7 @@ Rust/TS 接口、浏览器 Mock、契约与原生 E2E 同步维护。此节不�
   `media_probe`/`media_align` 与 `transfer_start.options` 采用 §P14，指定表示失效不得换档；
   ClipRange 的数字必须是 JS 安全整数，在 Rust 解析时拒绝非整数、越界和倒置时间。
 
-root 与媒体/协议/前端代理按照 docs/09_AGENT_HANDOFF.md 协调本节，具体新增本地源与
+root 与媒体/协议/前端代理按照本契约协调本节，具体新增本地源与
 播放器返回值在实现前继续补充，不改变已有字节/任务 revision 十进制字符串规则。
 
 - `experimental_network.block_access_domains=false` 是用户明确要求的独立开关，不受代理的
@@ -493,7 +493,7 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
   `update_cancel()->void`、`update_install({update_id})->{state:"installer_opened"|"permission_required"}`。
   更新与PikPak账号无关。状态阶段idle/checking/up_to_date/available/downloading/ready/error，包含
   当前版本、目标版本、preview通道、签名内更新说明、decimal下载字节、可选结构化错误。
-- Rust更新服务固定读取NekoPak/NikoPak公开release列表，选择较新且平台匹配的已签名清单；
+- Rust更新服务固定读取NekoPak/NekoPak公开release列表（0.1.3及更早读取NekoPak/NikoPak），选择较新且平台匹配的已签名清单；
   不接受UI任意URL／路径／公钥，不使用PikPak凭据。预览构建接受preview更新，stable构建只
   接受stable。没有可用release与请求失败分别显示，不把失败称为最新。
 - `settings.updates={auto_check:false}`可选启动检查；下载、安装始终用户触发。应用内代理设置
@@ -510,3 +510,24 @@ Rust Core/native provider，凭据由 Android Keystore 的不可导出 AES-GCM �
   后续状态轮询抹除。重启不会信任上次残留包，下次检查清理后重新下载和验证。
 
 公开release仍标预览，不能因此通过上游功能对齐门禁。测试与发布记录见UPDATES_PROGRESS_REPORT.md。
+
+## 18. Android 后台传输保活（0.1.4）
+
+仅追加字段，保持 `contract_version`、既有命令与事件形状。
+
+- `settings.background_transfers:boolean`，缺省 true；旧设置读取时补为 true，非布尔值被拒绝。
+  `app_status.features.background_transfers` 在 Android 改为 true；桌面一直为 true，
+  该设置在桌面不改变行为，界面也不显示。
+- Android 存在排队／运行／重试／校验中的本地任务（下载、片段；云下载任务不计）且该设置
+  开启时，宿主在 Activity 可见期间启动 `dataSync` 前台服务。服务运行时 Activity 被隐藏
+  不再 gate Core，也不暂停本地任务；云端任务轮询同样继续。
+- 服务未运行（设置关闭、系统拒绝启动）时沿用 §14：先同步 gate，再持久暂停，返回后由
+  用户继续。本地任务全部结束后服务停止；此时若 Activity 仍隐藏，Core 重新 gate。
+- 系统或用户先结束服务时，宿主一律通知 Rust：通知上的“全部暂停”总是持久暂停本地任务；
+  Android 15 的 `dataSync` 时长配额耗尽、从最近任务划掉应用、Activity 被 finish，在隐藏
+  状态下 gate 并持久暂停。任何路径都不自动恢复已暂停任务，也不在进程被杀后自行重启。
+- 通知只含任务数与总体百分比，不含文件名、账号或地址。通知权限（Android 13+）只询问
+  一次，拒绝只影响通知显示。部分唤醒锁限时 2 分钟，由 Rust 至少每 30 秒续期。
+- Activity 恢复时宿主发出 `nekopak://transfer/resync-required`，前端重新读取快照。
+
+设备行为的验收状态见 ANDROID.md；宿主构建与静态检查不等于设备实测。

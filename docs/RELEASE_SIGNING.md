@@ -1,6 +1,6 @@
 # 发布仓库、签名与多平台顺序
 
-用户确认的仓库是 https://github.com/NekoPak/NikoPak 。2026-11-08 的顺序为：先稳定Windows
+自 0.1.4 起源码、Actions、签名 Secrets 与 Release 全部在 https://github.com/NekoPak/NekoPak ；0.1.3 及更早版本发布在 NekoPak/NikoPak，下文旧记录保留原链接。2026-11-08 的顺序为：先稳定Windows
 桌面端，再适配Linux/macOS和Android。Android是后续明确目标，不因桌面预览而删掉。
 
 ## 密钥保管
@@ -26,6 +26,10 @@ Android已生成独立keystore，后续同一应用更新必须保留原签名�
 - `release.yml`：手动或v*/parity-*标签分别触发Windows和Android构建、测试、许可清单、签名及验证，
   上传Actions artifact。0.1.3起两端成功后由publish job验证安装器并发布完整公开预览Release。
   parity-*仍受严格功能门禁约束；当前publisher只接受0.x.y预览，不宣称功能对齐完成。
+- 0.2.0 起，同仓库 `codex/release-<版本>` PR 合并到 `main` 也会触发同一套签名发布，
+  publisher 在两个平台成功且安装器验收后创建 `v<版本>` tag 和完整预览 Release。
+  `scripts/release_context.py` 在读取签名秘密前检查触发上下文、源仓库、目标分支和版本；
+  未合并、其他工作分支、外部 fork 与版本不匹配均不能沿这条路径发布。
 - `portable-core.yml`：Linux/macOS核心测试和native provider编译，不能替代相应桌面真实验收。
 - `android.yml`：PR/main 日常 ARM64 debug APK，不使用发布私钥。debug 产物不可冒充正式签名。
 
@@ -34,15 +38,15 @@ Android已生成独立keystore，后续同一应用更新必须保留原签名�
 - `NekoPak-<version>-windows-x64-portable.zip`：解压为 `NekoPak/` 多文件目录，包含
   `nekopak.exe`、使用说明、完整许可证与依赖清单；可直接运行目录中的程序。
 - `NekoPak-<version>-windows-x64-setup.exe`：真实NSIS安装器，当前用户安装，提供
-  开始菜单快捷方式、卸载入口和中繁英日韩安装语言。缺WebView2时下载安装微软引导器，
-  不捆绑Chromium或完整WebView2运行时。安装器内容沿用便携目录的许可证资源。
+  开始菜单快捷方式、卸载入口和中繁英日韩安装语言。0.2.0 起使用 Slint 原生界面，
+  不依赖或安装 WebView2。安装器内容沿用便携目录的许可证资源。
 - `release-manifest.json`：对这两个产物的名称、版本、长度和SHA256签名；0.1.3起同时签入
   size-report.json，以绑定源码commit及干净构建状态；公钥单独附带。
 - Android APK由独立宿主和Rust library生成，使用独立keystore。设备验收状态见
   `ANDROID.md`；缺签名输入直接失败。检查包签名、SDK/ABI、ZIP和ELF16KiB对齐，
   发布清单另以Ed25519签名，不能将二者混为同一种签名。
 
-Tauri前端资源目前嵌入原生EXE，不属于启动时自解压的打包器。发行目录包含多个文件，
+0.2.0 起桌面界面由 Slint 直接绘制，资源嵌入 EXE，不属于启动时自解压的打包器。发行目录包含多个文件，
 不代表必须人为拆分Rust/TLS/SQLite库。两种布局的性能要量测启动时间、WebView2整体内存、
 I/O和安全扫描，不能仅按文件数判断。更新前端或媒体组件时可继续按实际需要分包。
 
@@ -60,7 +64,7 @@ EXE外部播放器不是Android可用功能，须按平台能力分别实现。
 ## 本机与仓库已配置
 
 2026-11-08 已生成发布签名，公钥入库，`NEKOPAK_RELEASE_PRIVATE_KEY` 已通过标准输入
-写入NekoPak/NikoPak Actions Secret。本机备份位于用户主目录 `.nekopak-release/`，
+写入NekoPak/NekoPak Actions Secret（0.1.3 及更早写入 NekoPak/NikoPak）。本机备份位于用户主目录 `.nekopak-release/`，
 Windows ACL仅当前用户和SYSTEM可读；保留备份，不要删掉或公开。使用已有ZIP实际签名和验签
 通过，测试证明修改包字节或签名覆盖的版本会拒绝。没有创建Windows Authenticode证书。
 
@@ -112,7 +116,7 @@ Maven POM许可证元数据的固定URL和哈希随包附带；原始文件与Gi
 
 ## 0.1.3公开更新协议
 
-生产客户端固定读取`https://api.github.com/repos/NekoPak/NikoPak/releases?per_page=30`，
+0.1.4 起生产客户端固定读取`https://api.github.com/repos/NekoPak/NekoPak/releases?per_page=30`（0.1.3 读取 NekoPak/NikoPak），
 按语义版本查找当前平台的新版本。预览版接受preview/stable，未来stable仅接受stable；
 不存在更高版本与网络／签名失败是不同状态。不会发送PikPak账号头或接受IPC任意URL。
 

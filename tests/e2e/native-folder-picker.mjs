@@ -9,7 +9,7 @@ const root=resolve(import.meta.dirname,'../..');const data=join(root,'target',`f
 const reserved=createServer();await new Promise(ok=>reserved.listen(0,'127.0.0.1',ok));const port=reserved.address().port;await new Promise(ok=>reserved.close(ok));
 const env={...process.env,NEKOPAK_BACKEND:'rust_compat',NEKOPAK_TEST_HIDE_WINDOW:'1',NEKOPAK_TEST_DATA_DIR:data,WEBVIEW2_USER_DATA_FOLDER:join(data,'webview'),WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`};
 delete env.NEKOPAK_API_CLIENT_ID;delete env.NEKOPAK_API_CLIENT_SECRET;
-const child=spawn(join(root,'target/debug/nekopak.exe'),[],{cwd:root,env,windowsHide:true,stdio:'ignore'});let browser;
+const child=spawn(join(root,'target/debug/nekopak-webview.exe'),[],{cwd:root,env,windowsHide:true,stdio:'ignore'});let browser;
 const poll=async(fn)=>{const until=Date.now()+20000;while(Date.now()<until){if(await fn())return;await new Promise(ok=>setTimeout(ok,100));}throw new Error('timeout');};
 const control=(action)=>new Promise((ok,fail)=>{const p=spawn('powershell.exe',['-NoProfile','-File',join(root,'tests/e2e/folder-dialog.ps1'),'-TargetProcessId',String(child.pid),'-Action',action,'-Directory',destination],{windowsHide:true});let out='';p.stdout.on('data',b=>out+=b);p.stderr.on('data',b=>out+=b);p.on('exit',code=>code===0?ok(out):fail(new Error(out)));});
 try{

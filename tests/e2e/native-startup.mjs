@@ -7,7 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const executable = join(root, 'target', 'debug', 'nekopak.exe');
+const executable = join(root, 'target', 'debug', 'nekopak-webview.exe');
 if (!existsSync(executable)) throw new Error('Build the debug desktop app first.');
 const data = join(root, 'target', `native-login-e2e-${randomUUID()}`);
 mkdirSync(data, { recursive: true });

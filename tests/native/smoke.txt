@@ -1,0 +1,54 @@
+# Offline mock walkthrough. Coordinates are logical pixels at 1280x760.
+wait 1500
+shot 01-files.png
+click 600 250
+wait 150
+rclick 600 300
+wait 300
+shot 02-context-menu.png
+key Escape
+ctrl a
+wait 200
+shot 03-select-all.png
+key Escape
+click 1136 122
+wait 400
+shot 04-grid.png
+click 1098 122
+wait 200
+click 120 82
+wait 700
+shot 05-transfers.png
+click 120 251
+wait 700
+shot 06-recent.png
+click 120 395
+wait 700
+shot 07-trash.png
+click 120 479
+wait 700
+shot 08-sync.png
+click 120 527
+wait 900
+shot 09-mount.png
+click 120 575
+wait 500
+shot 10-local.png
+click 217 726
+wait 600
+shot 11-settings.png
+click 1206 222
+wait 500
+shot 12-settings-dark.png
+ctrl 1
+wait 700
+ctrl f
+wait 300
+type 文件
+key Return
+wait 800
+shot 13-search-dark.png
+size 800 600
+wait 400
+shot 14-narrow-rail.png
+quit

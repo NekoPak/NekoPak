@@ -3,7 +3,7 @@
  *
  * Mirrors docs/03_CONTRACTS.md §2 and §4 verbatim. Do NOT rename fields or
  * change meanings here; additive proposals live in `contract-proposals.ts`
- * and docs/CONTRACT_PROPOSAL_UI_001.md until Astra and Opus both sign off.
+ * until the Rust contract in docs/03_CONTRACTS.md adopts them.
  *
  * Cross-boundary JSON is snake_case. u64 values travel as decimal strings.
  */

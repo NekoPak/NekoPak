@@ -11,6 +11,10 @@
 文件字节／暂停重启／系统导出检查见 `ANDROID.md`。真实账号、物理ARM64、手机上传／目录同步／
 前台服务仍未完成；原有Windows 24组对齐门禁没有因本轮平台工作而降低。
 
+**2026-11-12（0.1.4）：** Android 前台保活服务（后台继续本地传输）已实现并通过宿主单元测试、
+ARM64 调试包构建与包内静态检查；模拟器／实体机运行验收尚未执行，见 `ANDROID.md`。
+手机上传与目录同步仍未完成。
+
 ## Gate 0 — 来源、许可证、可行性（先于实际编码）
 
 - [ ] 选择路径 A（Piko AGPL Fork）或 B（Rust 独立仓 + 只读 Fork 参考）；以 `04_SOURCES_LICENSES.md` 为依据。
@@ -21,13 +25,13 @@
 - [ ] 记录基础参考包体积：Piko v1.4.0 Windows MSI 和 APK；明确比较对象、版本和压缩算法。
 - [ ] 开始编写 mock fixtures，不依赖真实云账户就可让 UI 开工。
 
-**完成标准：** 源码策略和许可证已书面确认，契约 v0.1 冻结，输出 `docs/IMPLEMENTATION_NOTES.md` 与风险列表。
+**完成标准：** 源码策略和许可证已书面确认，契约 v0.1 冻结，记录已核验事实与风险列表。
 
 ## M0 — 可运行空壳 + Mock（第一里程碑）
 
-**Astra：** 建 Cargo workspace、domain/core/mock、Tauri 命令、事件总线、结构化错误、SQLite 迁移、基础单元/契约测试。
+**Rust Core：** 建 Cargo workspace、domain/core/mock、Tauri 命令、事件总线、结构化错误、SQLite 迁移、基础单元/契约测试。
 
-**Opus 5.5：** 完整壳 UI：侧栏、文件列表、任务管理、同步/挂载禁用态、设置、亮暗主题；Mock 数据/失败情景；键盘快捷键和可访问状态。
+**前端：** 完整壳 UI：侧栏、文件列表、任务管理、同步/挂载禁用态、设置、亮暗主题；Mock 数据/失败情景；键盘快捷键和可访问状态。
 
 **验收：** Windows x64 `cargo test`、前端检查与 Tauri build 可跑；Mock 操作 100% 不调用真实服务；全 UI 点击有对应行为或明确 disabled 原因。
 
@@ -78,7 +82,7 @@
 - 公开 Issues：普通 bug、同步破坏性问题、高风险安全问题分级处理。
 - 客户端协议变化时明确错误并禁用未验证能力，不回退外部 CLI 或静默下载组件。
 
-## 首批 10 个 GitHub Issues（供 Astra / Opus 5.5 拆分）
+## 首批 10 个 GitHub Issues
 
 1. `[core] Define domain models & typed client errors` — 冻结模型、错误码、分页/ID。
 2. `[backend] Implement MockProvider with deterministic fixtures` — 七组账号/故障样本。

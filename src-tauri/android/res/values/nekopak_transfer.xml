@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nekopak_transfer_channel">Transfers</string>
+    <string name="nekopak_transfer_title">NekoPak is transferring</string>
+    <string name="nekopak_transfer_pause">Pause all</string>
+    <plurals name="nekopak_transfer_active">
+        <item quantity="one">%d task in progress</item>
+        <item quantity="other">%d tasks in progress</item>
+    </plurals>
+</resources>

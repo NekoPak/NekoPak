@@ -312,5 +312,165 @@
     "file": "licenses/upstream/cesu8-1.1.0/LICENSE-APACHE",
     "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "selected_license": "Apache-2.0 (one of the crate-declared dual licenses); standard text linked by the pinned source header."
+  },
+  {
+    "name": "accesskit",
+    "version": "0.24.1",
+    "upstream_commit": "a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-MIT",
+    "file": "licenses/upstream/accesskit-0.24.1/LICENSE-MIT",
+    "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+  },
+  {
+    "name": "accesskit",
+    "version": "0.24.1",
+    "upstream_commit": "a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-APACHE",
+    "file": "licenses/upstream/accesskit-0.24.1/LICENSE-APACHE",
+    "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+  },
+  {
+    "name": "accesskit_consumer",
+    "version": "0.38.0",
+    "upstream_commit": "c88605b96d04431f9c3c792464a0f2f253480e94",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
+    "file": "licenses/upstream/accesskit_consumer-0.38.0/LICENSE-MIT",
+    "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+  },
+  {
+    "name": "accesskit_consumer",
+    "version": "0.38.0",
+    "upstream_commit": "c88605b96d04431f9c3c792464a0f2f253480e94",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+    "file": "licenses/upstream/accesskit_consumer-0.38.0/LICENSE-APACHE",
+    "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+  },
+  {
+    "name": "accesskit_windows",
+    "version": "0.34.0",
+    "upstream_commit": "c88605b96d04431f9c3c792464a0f2f253480e94",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
+    "file": "licenses/upstream/accesskit_windows-0.34.0/LICENSE-MIT",
+    "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+  },
+  {
+    "name": "accesskit_windows",
+    "version": "0.34.0",
+    "upstream_commit": "c88605b96d04431f9c3c792464a0f2f253480e94",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+    "file": "licenses/upstream/accesskit_windows-0.34.0/LICENSE-APACHE",
+    "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+  },
+  {
+    "name": "accesskit_winit",
+    "version": "0.33.2",
+    "upstream_commit": "c88605b96d04431f9c3c792464a0f2f253480e94",
+    "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+    "file": "licenses/upstream/accesskit_winit-0.33.2/LICENSE-APACHE",
+    "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+  },
+  {
+    "name": "clipboard-win",
+    "version": "5.4.3",
+    "upstream_commit": "ed27008ae5d1f10cfbb266de039f0fb35fd05a56",
+    "url": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE",
+    "file": "licenses/upstream/clipboard-win-5.4.3/LICENSE",
+    "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+  },
+  {
+    "name": "gl_generator",
+    "version": "0.14.0",
+    "upstream_commit": "ea503e8d5fb6d73c6030e6191ce738cd3bf3433e",
+    "url": "https://raw.githubusercontent.com/brendanzab/gl-rs/ea503e8d5fb6d73c6030e6191ce738cd3bf3433e/LICENSE",
+    "file": "licenses/upstream/gl_generator-0.14.0/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "name": "khronos_api",
+    "version": "3.1.0",
+    "upstream_commit": "f150967b1c44ae888e6676f93f639ebc82771bdc",
+    "url": "https://raw.githubusercontent.com/brendanzab/gl-rs/f150967b1c44ae888e6676f93f639ebc82771bdc/LICENSE",
+    "file": "licenses/upstream/khronos_api-3.1.0/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "name": "lyon_algorithms",
+    "version": "1.0.22",
+    "upstream_commit": "db98d26a1a90076a7a894262dcb51117eef643c8",
+    "url": "https://raw.githubusercontent.com/nical/lyon/db98d26a1a90076a7a894262dcb51117eef643c8/LICENSE-MIT",
+    "file": "licenses/upstream/lyon_algorithms-1.0.22/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "name": "lyon_algorithms",
+    "version": "1.0.22",
+    "upstream_commit": "db98d26a1a90076a7a894262dcb51117eef643c8",
+    "url": "https://raw.githubusercontent.com/nical/lyon/db98d26a1a90076a7a894262dcb51117eef643c8/LICENSE-APACHE",
+    "file": "licenses/upstream/lyon_algorithms-1.0.22/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "name": "lyon_extra",
+    "version": "1.1.0",
+    "upstream_commit": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "url": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-MIT",
+    "file": "licenses/upstream/lyon_extra-1.1.0/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "name": "lyon_extra",
+    "version": "1.1.0",
+    "upstream_commit": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "url": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-APACHE",
+    "file": "licenses/upstream/lyon_extra-1.1.0/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "name": "lyon_geom",
+    "version": "1.0.20",
+    "upstream_commit": "db98d26a1a90076a7a894262dcb51117eef643c8",
+    "url": "https://raw.githubusercontent.com/nical/lyon/db98d26a1a90076a7a894262dcb51117eef643c8/LICENSE-MIT",
+    "file": "licenses/upstream/lyon_geom-1.0.20/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "name": "lyon_geom",
+    "version": "1.0.20",
+    "upstream_commit": "db98d26a1a90076a7a894262dcb51117eef643c8",
+    "url": "https://raw.githubusercontent.com/nical/lyon/db98d26a1a90076a7a894262dcb51117eef643c8/LICENSE-APACHE",
+    "file": "licenses/upstream/lyon_geom-1.0.20/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "name": "lyon_path",
+    "version": "1.0.19",
+    "upstream_commit": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "url": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-MIT",
+    "file": "licenses/upstream/lyon_path-1.0.19/LICENSE-MIT",
+    "sha256": "80f275e90d799911ed3830a7f242a2ef5a4ade2092fe0aa07bfb2d2cf2f2b95e"
+  },
+  {
+    "name": "lyon_path",
+    "version": "1.0.19",
+    "upstream_commit": "56219c95c658d4f39de7b190d98e57d5773ba241",
+    "url": "https://raw.githubusercontent.com/nical/lyon/56219c95c658d4f39de7b190d98e57d5773ba241/LICENSE-APACHE",
+    "file": "licenses/upstream/lyon_path-1.0.19/LICENSE-APACHE",
+    "sha256": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06"
+  },
+  {
+    "name": "rspolib",
+    "version": "0.1.2",
+    "upstream_commit": "8170d99ebad29d894712ccb3dc6d0be2198d3055",
+    "url": "https://raw.githubusercontent.com/mondeja/rspolib/8170d99ebad29d894712ccb3dc6d0be2198d3055/LICENSE",
+    "file": "licenses/upstream/rspolib-0.1.2/LICENSE",
+    "sha256": "4fe9b5fce8fd028261959d039d19ef66182be088ab48ffa97dbeaef7b35e39c3"
+  },
+  {
+    "name": "taffy",
+    "version": "0.10.1",
+    "upstream_commit": "639f0acdd20f914f847abffbeaa903d66cae4882",
+    "url": "https://raw.githubusercontent.com/DioxusLabs/taffy/639f0acdd20f914f847abffbeaa903d66cae4882/LICENSE.md",
+    "file": "licenses/upstream/taffy-0.10.1/LICENSE.md",
+    "sha256": "a7083ef3dd41a65eeb2162c2c091b0082e2724fb4c6ed029b363c7840d244ecd"
   }
 ]

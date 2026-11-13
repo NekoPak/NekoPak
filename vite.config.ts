@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 // Tauri v2 expects a fixed dev port and a static `dist` output.
-// src-tauri/tauri.conf.json (owned by Astra) should point
+// src-tauri/tauri.conf.json should point
 //   build.devUrl      -> http://localhost:5173
 //   build.frontendDist -> ../dist
 export default defineConfig({
@@ -28,6 +28,7 @@ export default defineConfig({
   },
   test: {
     include: ["tests/unit/**/*.test.{ts,tsx}"],
+    setupFiles: ["tests/unit/setup-locales.ts"],
     environment: "node",
   },
 });

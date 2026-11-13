@@ -271,6 +271,7 @@ function TransfersFooter({ tasks }: { tasks: TransferTaskExt[] }) {
 export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
   const phone = useMobileLayout();
   const mobile = useStore(app, isMobileHost);
+  const keepAlive = useStore(app, s => isMobileHost(s) && hostSupports("background_transfers", s) && (s.settings?.background_transfers ?? true));
   const st = useStore(transfers, (s) => s);
   const jobMap = useStore(jobs, (j) => j.jobs);
   const jobRows = useMemo(() => [...jobMap.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)), [jobMap]);
@@ -353,7 +354,7 @@ export function TransfersPage({ kind }: { tab?: string; kind?: Kind }) {
       </>}
       footer={<TransfersFooter tasks={all} />}
     >
-      {mobile ? <p class="mobile-transfer-note">{tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
+      {mobile ? <p class="mobile-transfer-note">{keepAlive ? tr("切到后台或锁屏后，本地传输通过系统通知继续运行，可在通知中全部暂停。系统收回后台时间或划掉应用时会暂停，返回后请手动继续。云端任务始终由服务端处理。") : tr("切到后台或锁屏会暂停本地传输，返回后请手动继续。云端任务继续由服务端处理。")}</p> : null}
       {st.phase === "error" && st.error ? (
         <div class="canvas-pad"><ErrorPanel error={st.error} onRetry={() => void loadSnapshot()} context="transfers_list" /></div>
       ) : st.phase === "loading" || st.phase === "idle" ? (
@@ -380,18 +381,12 @@ function PhoneTaskCard({task:t}:{task:TransferTaskExt}) {
   const pct=cloud&&t.progress_percent!==undefined?t.progress_percent:percent(bytes,t.total_bytes);
   const exportFile=async()=>{setExporting(true);try{if(await api.transferExport(t.id))toast(tr("文件已导出"),"success");}catch(e){toast(errorOf(e).message,"error");}finally{setExporting(false);}};
   return <article class={`phone-task-card state-${t.state}`} data-task={t.id} aria-label={t.name??t.remote_id}>
-    <div class="phone-task-title"><span class="phone-task-icon"><Icon name={cloud?"cloudDown":t.kind==="upload"?"upload":"download"} size={24}/></span><span><strong dir="auto">{t.name??t.remote_id}</strong><small>{KIND_LABEL[t.kind]} · {stateText(t)}</small></span><button type="button" class="mobile-icon-button" aria-label={tx("{0}的更多操作",t.name??t.remote_id)} onClick={()=>openMenu(0,0,[
+    <div class="phone-task-title"><span class="phone-task-icon"><Icon name={cloud?"cloudDown":t.kind==="upload"?"upload":"download"} size={20}/></span><span><strong dir="auto">{t.name??t.remote_id}</strong><small>{KIND_LABEL[t.kind]} · {stateText(t)}</small></span>{!cloud&&["queued","running","retrying"].includes(t.state)?<Btn iconOnly label={tr("暂停")} icon="pause" tone="quiet" onClick={()=>void control(t,"pause")}/>:null}{!cloud&&t.state==="paused"?<Btn iconOnly label={tr("继续")} icon="play" tone="quiet" onClick={()=>void control(t,"resume")}/>:null}{t.state==="failed"?<Btn iconOnly label={tr("重试")} icon="retry" tone="quiet" onClick={()=>void control(t,"retry")}/>:null}{exportable&&t.state==="completed"&&(t.kind==="download"||t.kind==="segment_download")?<Btn iconOnly label={tr("导出文件")} icon="download" tone="quiet" busy={exporting} onClick={()=>void exportFile()}/>:null}<button type="button" class="mobile-icon-button" aria-label={tx("{0}的更多操作",t.name??t.remote_id)} onClick={()=>openMenu(0,0,[
       ...(!FINISHED.has(t.state)?[{id:"cancel",label:tr("取消任务"),icon:"x",run:()=>void control(t,"cancel")}]:[{id:"forget",label:tr("移除记录"),icon:"trash",run:()=>void forgetTask(t)}]),
       ...(t.error?[{id:"diagnostics",label:tr("复制诊断信息"),icon:"copy",run:()=>void copyWithToast(diagnosticsText(t.error!,`task=${t.id}`),tr("诊断信息"))}]:[]),
     ],t.name??t.remote_id)}><Icon name="more"/></button></div>
     <Progress value={t.state==="completed"?100:pct} label={tx("{0} 进度",t.name??t.remote_id)} tone={t.state==="failed"?"error":t.state==="completed"?"ok":undefined}/>
     <div class="phone-task-stats"><span>{formatBytes(bytes)}{t.total_bytes?` / ${formatBytes(t.total_bytes)}`:""}</span><strong>{pct!==null?`${pct.toFixed(1)}%`:""}{t.state==="running"&&!cloud?` · ${formatSpeed(t.speed_bytes_per_sec)}`:""}</strong></div>
     {t.error?<p class="phone-task-error">{t.error.message}</p>:null}
-    <div class="phone-task-actions">
-      {!cloud&&["queued","running","retrying"].includes(t.state)?<Btn label={tr("暂停")} icon="pause" tone="ghost" onClick={()=>void control(t,"pause")}/>:null}
-      {!cloud&&t.state==="paused"?<Btn label={tr("继续")} icon="play" tone="primary" onClick={()=>void control(t,"resume")}/>:null}
-      {t.state==="failed"?<Btn label={tr("重试")} icon="retry" onClick={()=>void control(t,"retry")}/>:null}
-      {exportable&&t.state==="completed"&&(t.kind==="download"||t.kind==="segment_download")?<Btn label={tr("导出文件")} icon="download" busy={exporting} onClick={()=>void exportFile()}/>:null}
-    </div>
   </article>;
 }

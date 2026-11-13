@@ -1,0 +1,258 @@
+// Command palette (Ctrl+K): jump to a page or folder and run a command by
+// typing a few letters. The keyboard never leaves the search field.
+import { Pal } from "generated/palette.slint";
+import { Icons } from "generated/icons.slint";
+import { Tk, Tr } from "tokens.slint";
+import { Icon } from "widgets.slint";
+import { Palette, PaletteItem } from "state.slint";
+
+component Kbd inherits Rectangle {
+    in property <string> text;
+    height: 22px;
+    min-width: 22px;
+    border-radius: 6px;
+    background: Pal.surface-high;
+    border-width: 1px;
+    border-color: Pal.outline-variant;
+    HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        Text {
+            text: root.text;
+            color: Pal.on-surface-variant;
+            font-size: 11px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+component PaletteRow inherits Rectangle {
+    in property <PaletteItem> item;
+    in property <bool> current;
+    callback activated();
+    callback hovered();
+    height: 40px;
+    if root.item.header: Text {
+        x: 20px;
+        y: 14px;
+        text: root.item.label;
+        color: Pal.on-surface-variant;
+        font-size: Tk.fs-xs;
+        font-weight: 600;
+    }
+    if !root.item.header: Rectangle {
+        x: 8px;
+        width: root.width - 16px;
+        border-radius: Tk.r-sm;
+        background: root.current ? Tk.selected : transparent;
+        accessible-role: list-item;
+        accessible-label: root.item.label;
+        accessible-item-selected: root.current;
+        accessible-action-default => {
+            root.activated();
+        }
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            spacing: 12px;
+            VerticalLayout {
+                alignment: center;
+                Icon {
+                    source: root.item.icon;
+                    tint: root.current ? Pal.primary : Pal.on-surface-variant;
+                }
+            }
+
+            Text {
+                horizontal-stretch: 1;
+                text: root.item.label;
+                color: Pal.on-surface;
+                font-size: Tk.fs-md;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            if root.item.hint != "": Text {
+                text: root.item.hint;
+                color: Pal.on-surface-variant;
+                font-size: Tk.fs-xs;
+                vertical-alignment: center;
+            }
+            if root.item.shortcut != "": VerticalLayout {
+                alignment: center;
+                Kbd {
+                    text: root.item.shortcut;
+                }
+            }
+        }
+
+        ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                root.activated();
+            }
+            // Only real pointer movement changes the highlight, so the list
+            // scrolling under a resting pointer does not steal it.
+            moved => {
+                root.hovered();
+            }
+            changed has-hover => {
+                if (self.has-hover && (self.mouse-x != 0px || self.mouse-y != 0px)) {
+                    root.hovered();
+                }
+            }
+        }
+    }
+}
+
+export component PaletteLayer inherits Rectangle {
+    property <length> row-h: 40px;
+    property <int> current: Palette.current;
+    background: Tk.scrim;
+    changed current => {
+        if (current >= 0) {
+            if (current * row-h < -list.content-y) {
+                list.content-y = -(current <= 1 ? 0px : current * row-h);
+            } else if ((current + 1) * row-h > -list.content-y + list.height) {
+                list.content-y = -((current + 1) * row-h - list.height);
+            }
+        }
+    }
+    TouchArea {
+        clicked => {
+            Palette.dismissed();
+        }
+    }
+
+    card := Rectangle {
+        property <length> list-h: Math.min(Math.max(1, Palette.items.length) * root.row-h + 8px, root.height - self.y - 56px - 48px);
+        x: (root.width - self.width) / 2;
+        y: Math.max(40px, root.height * 0.12);
+        width: Math.min(640px, root.width - 48px);
+        height: 56px + 1px + list-h;
+        border-radius: Tk.r-xl;
+        background: Tk.raised;
+        border-width: 1px;
+        border-color: Pal.outline-variant.with-alpha(0.6);
+        drop-shadow-blur: 32px;
+        drop-shadow-offset-y: 12px;
+        drop-shadow-color: Tk.shadow;
+        accessible-role: AccessibleRole.list;
+        accessible-label: Tr.t("命令面板");
+        TouchArea { }
+
+        VerticalLayout {
+            spacing: 0px;
+            HorizontalLayout {
+                height: 56px;
+                padding-left: 20px;
+                padding-right: 16px;
+                spacing: 12px;
+                VerticalLayout {
+                    alignment: center;
+                    Icon {
+                        source: Icons.search;
+                        size: 22px;
+                    }
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                    if input.text == "": Text {
+                        x: 0;
+                        width: parent.width;
+                        text: Tr.t("输入命令、页面或文件夹名");
+                        color: Pal.on-surface-variant.with-alpha(0.72);
+                        font-size: Tk.fs-lg;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    input := TextInput {
+                        x: 0;
+                        width: parent.width;
+                        height: parent.height;
+                        text <=> Palette.query;
+                        font-size: Tk.fs-lg;
+                        color: Pal.on-surface;
+                        single-line: true;
+                        vertical-alignment: center;
+                        selection-background-color: Pal.primary.with-alpha(0.35);
+                        selection-foreground-color: Pal.on-surface;
+                        accessible-label: Tr.t("搜索命令");
+                        edited => {
+                            Palette.edited(self.text);
+                        }
+                        accepted => {
+                            Palette.activate(Palette.current);
+                        }
+                        key-pressed(event) => {
+                            if (event.text == Key.Escape) {
+                                Palette.dismissed();
+                            } else if (event.text == Key.DownArrow || (event.text == Key.Tab && !event.modifiers.shift)) {
+                                Palette.move(1);
+                            } else if (event.text == Key.UpArrow || event.text == Key.Tab) {
+                                Palette.move(-1);
+                            } else if (event.text == Key.PageDown) {
+                                Palette.move(8);
+                            } else if (event.text == Key.PageUp) {
+                                Palette.move(-8);
+                            } else {
+                                return reject;
+                            }
+                            return accept;
+                        }
+                        init => {
+                            self.focus();
+                            self.select-all();
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    Kbd {
+                        text: "Esc";
+                    }
+                }
+            }
+
+            Rectangle {
+                height: 1px;
+                background: Pal.outline-variant.with-alpha(0.6);
+            }
+
+            Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+                if Palette.items.length == 0: Text {
+                    text: Tr.t("没有匹配的命令");
+                    color: Pal.on-surface-variant;
+                    font-size: Tk.fs-md;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                list := Flickable {
+                    y: 4px;
+                    height: parent.height - 8px;
+                    content-height: Palette.items.length * root.row-h;
+                    content-width: self.width;
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 0px;
+                        for item[index] in Palette.items: PaletteRow {
+                            item: item;
+                            current: index == Palette.current;
+                            activated => {
+                                Palette.activate(index);
+                            }
+                            hovered => {
+                                Palette.hover(index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

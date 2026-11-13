@@ -1,0 +1,45 @@
+# 工作进度
+
+仓库：`NekoPak/NekoPak`。当前收尾分支：`codex/release-0.2.0`。
+原生桌面的模块与测试见 [NATIVE_DESKTOP.md](NATIVE_DESKTOP.md)，历史交接见 [HANDOFF_NATIVE_DESKTOP.md](HANDOFF_NATIVE_DESKTOP.md)。
+
+## 用户要求
+
+- Windows 必须使用 Slint 原生界面；没有把握不要大改已成型的 Windows UI。
+- 持续完善 Android，保留已实现的后台传输和任务恢复。
+- **禁止创建定时任务或自动唤醒。** 用户会自行开新会话，靠本文续做。
+- 不要停下来反复询问；按合理默认推进，及时记录实际验证范围，不把未验证写成通过。
+- 2026-11-12：用户要求合并 Claude 的工作，随后明确授权完成 Release、tag 与 README，离线休息。
+
+## 0.2.0 收尾（2026-11-13）
+
+- 从停在 0.1.3 的 `main` 新建整合分支，保留所有原始提交作者；用户已明确授权完成 PR 合并与发布。
+- 已整合 Claude 原生桌面分支 `d3bfe4f`：Slint、媒体预览、命令面板、拖放、紧凑手机传输页、按需语言包与窄窗口列。
+- 已整合桌面性能分支 `ba9f0a1`：列表 / 网格 / 传输增量更新、Windows 系统排序键及对应测试、Windows 启动与内存测量记录。
+- 已整合已发布的 `v0.1.4`（`00fe237`）：Android 后台传输、原签名身份、迁至本仓库的发布与更新源，以及文档整理；避免新版本回退已发布功能。
+- 两处文档冲突已解决；根据合并后的网页文案重新生成原生语言资源。
+- 版本准备为 0.2.0，Android versionCode 200；README 使用原生桌面截图、本仓库下载链接和准确的升级说明。
+- 本地验证已通过：生产前端构建，Vitest 118 + API 6，Python 24（另 4 跳过），桌面浏览器 57（0 外部请求），手机浏览器 12；原生资源生成检查 202 文件；版本、原分支历史及功能保留、文档相对链接检查通过。
+- Rust 1.99.1：`cargo fmt --all --check`、核心测试 117（另 15 显式忽略）及 `cargo check -p nekopak-provider-native --locked` 均通过。详见 [预检证据](evidence/release-0.2.0-preflight.json)。
+- 11-12 的 GitHub 403 已定位为缺少 NekoPak 组织的 App 安装授权。用户于 11-13 完成组织授权，现已验证整合分支推送成功；历史预检文件中的阻塞状态为 11-12 的快照。
+- 整合分支 `codex/release-0.2.0` 已推送，[PR #1](https://github.com/NekoPak/NekoPak/pull/1) 已创建，无合并冲突；合并、`v0.2.0` 标签与签名 Release 待整合检查成功后执行。
+- 首轮整合 CI：Linux / macOS 核心、Linux 原生双渲染器冒烟与 Android APK 已通过。Windows 全工作区静态检查与 Rust 测试通过，但接口样例导出检查发现 10 份样例的 `app_status.version` 仍为 0.1.3，已同步到 0.2.0；保留 Windows 特有能力字段，重跑整合 CI。
+- 完整收尾包保存到 `/workspace/shared/downloads/NekoPak-0.2.0-handoff.zip`，包含自足 Git bundle、相对 main 的二进制补丁、发布说明、拟用 PR 描述和本地验证日志。
+- 命令行会话令牌过期后，GitHub 连接仍可正常写入，已通过 Git 数据 API 提交修正，并核对远端 tree 与本地验证内容完全一致。
+- 签名发布已接入同仓库 `codex/release-<版本>` PR 合并到 main 的事件：同一工作流完成两端构建、签名、安装器验收后创建 tag 与 Release，保留 tag / 手动触发。触发上下文验证覆盖未合并、错误版本、外部 fork、其他分支和不安全输入。
+- 后续顺序：等待最新 head 的 Windows / Linux / macOS / Android CI 全绿 → 按检查过的 head SHA 合并 PR #1 → 跟进自动签名发布与 `v0.2.0` tag → 重新下载两端产物及清单，验签并检查更新源。
+
+## 已有验证证据
+
+- Claude 最后代码提交 `540295d` 的 Windows CI `43127986864` 和 Portable Rust core `43127986839` 全绿（包括 macOS、Linux、原生 UI 冒烟）。顶部 `d3bfe4f` 只改进度文档。
+- 桌面性能提交 `87ba601` 的 Windows CI `43130743570` 与 Portable Rust core `43130743556` 全绿。顶部 `ba9f0a1` 只补测量文档。
+- 0.1.4 签名发布 `43181049417` 成功，Windows 与 Android 包已在本仓库发布。
+- 上述属于各源分支的 CI 证据；不能替代尚未运行的整合后跨平台 CI。本轮本地结果单独记在上面的预检证据中。
+
+## 保留的边界
+
+- 本地未编译或运行 Slint 桌面 GUI 冒烟；执行器缺 fontconfig / xkbcommon 开发库及 Xvfb。本轮 Windows / Android 整合验证交给 GitHub CI，完成后补充结果。
+- Windows 真机人工验收仍待做：托盘、关闭到托盘、单实例、自启动、系统拖入、视频预览观感。
+- 真实账号流程与 Android 实体机后台运行未在本轮验证；Doze / 厂商省电可能提前结束后台任务。
+- 保持 Windows 10 1709+；不做无法在旧系统验证的 `cldapi.dll` 加载改造。
+- Android 普通上传与共享目录同步尚未支持。Linux / macOS 只有核心检查与 Linux 原生 UI 测试，暂不发布桌面包。

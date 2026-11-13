@@ -1,0 +1,173 @@
+// NekoPak native desktop window. No web view: every pixel here is drawn by
+// the Slint renderer (GPU when available, CPU otherwise).
+import { Pal } from "generated/palette.slint";
+import { Icons } from "generated/icons.slint";
+import { Tk, Tr } from "tokens.slint";
+import { Btn, Busy, Banner, EmptyState, Icon, Tip } from "widgets.slint";
+import { Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers, Palette, Viewer, Gallery } from "state.slint";
+import { Sidebar, TabStrip } from "shell.slint";
+import { MenuLayer, DialogLayer, ToastLayer, TipLayer } from "overlays.slint";
+import { PaletteLayer } from "palette.slint";
+import { ViewerLayer } from "viewer.slint";
+import { GalleryPage } from "pages/gallery.slint";
+import { FilesPage } from "pages/files.slint";
+import { PanelPage } from "pages/panel.slint";
+import { TransfersPage } from "pages/transfers.slint";
+
+export { Pal, Tk, Tr, Icons, Tip, Shell, Menu, Dialogs, Toasts, Files, Panel, Transfers, Palette, Viewer, Gallery }
+
+export component AppWindow inherits Window {
+    title: Shell.demo ? "NekoPak — Offline Mock" : "NekoPak";
+    icon: @image-url("../assets/icon.png");
+    preferred-width: 1280px;
+    preferred-height: 760px;
+    min-width: 720px;
+    min-height: 480px;
+    background: Tk.frame;
+    default-font-size: Tk.fs-md;
+    // Narrow windows always use the rail; the preference applies to wide windows.
+    property <bool> rail: self.width < 1000px || Shell.collapsed-pref;
+    property <string> theme-pref: Tk.theme-pref;
+    callback scheme-changed(bool);
+    changed theme-pref => {
+        Tk.apply-scheme();
+    }
+    property <bool> dark: Tk.dark;
+    changed dark => {
+        root.scheme-changed(Tk.dark);
+    }
+    // Clipboard bridge: Slint only exposes the clipboard through text inputs.
+    in-out property <string> clipboard-text <=> clipboard.text;
+    // Menus and dialogs take keyboard focus; give it back when they close so
+    // window shortcuts keep working without another click.
+    public function focus-root() {
+        keys.focus();
+    }
+    public function clipboard-copy() {
+        clipboard.select-all();
+        clipboard.copy();
+    }
+    public function clipboard-paste() {
+        clipboard.text = "";
+        clipboard.paste();
+    }
+    clipboard := TextInput {
+        visible: false;
+        width: 0px;
+        height: 0px;
+        single-line: false;
+    }
+
+    keys := FocusScope {
+        key-pressed(event) => {
+            return Shell.shortcut(event.text, event.modifiers.control || event.modifiers.meta, event.modifiers.shift, event.modifiers.alt) ? accept : reject;
+        }
+        if Shell.boot == "loading": VerticalLayout {
+            alignment: center;
+            spacing: 16px;
+            HorizontalLayout {
+                alignment: center;
+                Image {
+                    source: @image-url("../assets/app-icon.svg");
+                    width: 48px;
+                    height: 48px;
+                }
+            }
+
+            Text {
+                text: Tr.t("正在启动 NekoPak…");
+                color: Pal.on-surface-variant;
+                horizontal-alignment: center;
+            }
+        }
+        if Shell.boot == "fatal": EmptyState {
+            icon: Icons.alert-circle;
+            error: true;
+            title: Shell.boot-error-title;
+            body: Shell.boot-error-body;
+            action: Tr.t("重试");
+            action-clicked => {
+                Shell.retry-boot();
+            }
+        }
+        if Shell.boot == "ready": HorizontalLayout {
+            spacing: 0px;
+            Sidebar {
+                rail: root.rail;
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-right: Tk.gap;
+                padding-bottom: Tk.gap;
+                spacing: 0px;
+                TabStrip { }
+
+                if Shell.banner != "": Banner {
+                    text: Shell.banner;
+                    tone: Shell.banner-tone;
+                    action: Shell.banner-action;
+                    action-clicked => {
+                        Shell.banner-action-clicked();
+                    }
+                }
+                Rectangle {
+                    vertical-stretch: 1;
+                    if Shell.page == "files": FilesPage { }
+                    if Shell.page == "transfers": TransfersPage { }
+                    if Shell.page == "gallery": GalleryPage { }
+                    if Shell.page != "files" && Shell.page != "transfers" && Shell.page != "gallery": PanelPage { }
+                }
+            }
+        }
+    }
+
+    // Back/forward mouse buttons work anywhere in the window.
+    TouchArea {
+        width: 0px;
+        height: 0px;
+    }
+
+    // Files dragged in from the system: say where they would go before the drop.
+    if Shell.drop-hint != "": Rectangle {
+        background: Tk.scrim;
+        Rectangle {
+            x: 16px;
+            y: 16px;
+            width: parent.width - 32px;
+            height: parent.height - 32px;
+            border-radius: Tk.r-xl;
+            border-width: 2px;
+            border-color: Shell.drop-ok ? Pal.primary : Pal.outline;
+            background: Shell.drop-ok ? Pal.primary-container.with-alpha(0.94) : Pal.surface-container.with-alpha(0.96);
+            VerticalLayout {
+                alignment: center;
+                spacing: 14px;
+                HorizontalLayout {
+                    alignment: center;
+                    Icon {
+                        source: Shell.drop-ok ? Icons.upload : Icons.block;
+                        size: 48px;
+                        tint: Shell.drop-ok ? Pal.on-primary-container : Pal.on-surface-variant;
+                    }
+                }
+
+                Text {
+                    text: Shell.drop-hint;
+                    color: Shell.drop-ok ? Pal.on-primary-container : Pal.on-surface;
+                    font-size: Tk.fs-lg;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+    if Viewer.open: ViewerLayer { }
+    if Palette.open: PaletteLayer { }
+    if Dialogs.stack.length > 0: DialogLayer { }
+    if Menu.open: MenuLayer { }
+    ToastLayer { }
+
+    TipLayer { }
+}

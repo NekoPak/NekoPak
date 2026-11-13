@@ -52,8 +52,8 @@ $taskReport = @{
     architecture = $taskOs.OSArchitecture
     executable_sha256 = (Get-FileHash -LiteralPath $taskExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
     observations = $taskMeasurements
-    method = '3 sequential warm launches by default; window handle availability is not first rendered frame. Sample >=5s after handle. Includes descendants such as WebView2. Total working set can double-count shared pages. No workload throughput or GUI click verification.'
-    ui_automation = 'Unavailable: computer-use native pipe missing. IPC command roundtrip covered by Rust mock-runtime test.'
+    method = '3 sequential warm launches by default; window handle availability is not first rendered frame. Sample >=5s after handle. Includes child processes (the native client normally has none). Total working set can double-count shared pages. No workload throughput or GUI click verification.'
+    ui_automation = 'Not driven here; the scripted UI smoke test (tests/native) covers interaction on Linux.'
 }
 $taskOut = Join-Path $taskRoot 'dist'
 [System.IO.Directory]::CreateDirectory($taskOut) | Out-Null

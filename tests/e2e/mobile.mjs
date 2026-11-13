@@ -18,7 +18,7 @@ if (!process.env.E2E_BASE) {
     server.on("exit", code => { clearTimeout(timeout); fail(new Error(`Vite exited: ${code}`)); });
   });
 }
-const browser = await chromium.launch({ channel: process.env.E2E_BROWSER_CHANNEL ?? (process.platform === "win32" ? "msedge" : undefined) });
+const browser = await chromium.launch(process.env.E2E_BROWSER_PATH ? { executablePath: process.env.E2E_BROWSER_PATH } : { channel: process.env.E2E_BROWSER_CHANNEL ?? (process.platform === "win32" ? "msedge" : undefined) });
 const results = [], errors = [];
 
 function fixture({ signedIn, mobile = true, theme = "light" }) {
@@ -32,7 +32,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
   const file = { id: "file-a", parent_id: "root", name: "示例文件.txt", kind: "file", size_bytes: "12" };
   let task = { id: "completed-a", remote_id: "file-a", backend: "rust_compat", name: file.name, kind: "download", state: "completed", destination: "/data/user/0/io.nekopak.desktop/files/Downloads/示例文件.txt", transferred_bytes: "12", total_bytes: "12", revision: "1", simulated: false, created_at: now, updated_at: now };
   let tasks=[task,{...task,id:"running-a",name:"旅行视频.mp4",state:"running",transferred_bytes:"4194304",total_bytes:"41943040",speed_bytes_per_sec:2097152},{...task,id:"cancelled-a",name:"已取消的备份.zip",state:"cancelled",transferred_bytes:"0"}];
-  const settings = { schema_version: 1, theme, language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
+  const settings = { schema_version: 1, theme, language: "zh-CN", download_dir: "/data/user/0/io.nekopak.desktop/files/Downloads", max_concurrent_transfers: 1, bandwidth_limit_kib_s: 0, ask_download_directory: false, close_to_tray: false, background_transfers: true, cache: { dir: "", max_bytes: "536870912" }, experimental_network: { enabled: false, proxy_mode: "system", user_proxy_configured: false, custom_dns_mode: false, connection_diagnostics: false }, telemetry: false, download: { default_quality: "original", connections_per_task: 1 }, media: { player_path: "" } };
   window.__mobileFixture = { calls: [], exportResult: false, torrentResult: null, receivedBytes:"4194304", updatePhase:"idle" };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -45,7 +45,7 @@ function fixture({ signedIn, mobile = true, theme = "light" }) {
       if (command === "plugin:event|listen") return ++id;
       if (command === "plugin:event|unlisten") return;
       if (command.startsWith("plugin:window|")) return false;
-      if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, app_updates:true, torrent_import: true, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: !mobile, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
+      if (command === "app_status") return { version: "mobile-fixture", contract_version: "0.2", mode: "rust_compat_preview", storage: { status: "ready", schema_version: 1 }, features: { mobile, app_updates:true, torrent_import: true, desktop_window: !mobile, tray: !mobile, directory_picker: !mobile, player_config: !mobile, media_external: !mobile, transfer_open_directory: !mobile, transfer_export: mobile, background_transfers: true, auth_sign_in: true, auth_logout: true, settings: true, ui_prefs: true, media_session: true, upload: !mobile, upload_directory: !mobile, local_sources: false, sync: false, mount: false, autostart: false } };
       if(command==='update_status'||command==='update_check'){
         if(command==='update_check')window.__mobileFixture.updatePhase='available';
         const phase=window.__mobileFixture.updatePhase;
@@ -180,8 +180,15 @@ try {
       await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`appearance-${width}-${theme}.png`)});
       await page.getByRole('button',{name:'返回',exact:true}).tap();await page.getByRole('button',{name:'下载与传输',exact:true}).tap();
       assert.equal(await page.getByRole('button',{name:'选择播放器',exact:true}).count(),0);
+      const keepAlive=page.getByRole('switch',{name:'后台继续传输'});assert.equal(await keepAlive.getAttribute('aria-checked'),'true');
+      await page.getByText('通过系统通知继续运行',{exact:false}).waitFor();
       await page.waitForTimeout(220); await page.screenshot({path:resolve(output,`settings-${width}-${theme}.png`)});
       await assertFits(page,`${width} ${theme} settings`);
+      await keepAlive.tap();await page.getByText('切到后台或锁屏会暂停本地传输',{exact:false}).waitFor();
+      await page.getByRole('button',{name:'保存',exact:true}).tap();
+      await page.waitForFunction(()=>window.__mobileFixture.calls.some(call=>call.command==='settings_update'&&call.args.patch?.background_transfers===false));
+      await keepAlive.tap();await page.getByRole('button',{name:'保存',exact:true}).tap();
+      await page.waitForFunction(()=>window.__mobileFixture.calls.filter(call=>call.command==='settings_update').at(-1)?.args.patch?.background_transfers===true);
       await page.getByRole('button',{name:'返回',exact:true}).tap();await page.getByRole('button',{name:'网络',exact:true}).tap();
       await page.locator('#server-domain').selectOption('mypikpak.net');
       await page.getByRole('button',{name:'保存',exact:true}).tap();

@@ -1,0 +1,508 @@
+// In-app viewer: pictures with zoom and previous/next, and a video sheet with
+// a frame preview where the platform can decode one. Always dark, like a
+// lightbox, whatever the application theme is.
+import { Pal } from "generated/palette.slint";
+import { Icons } from "generated/icons.slint";
+import { Tk, Tr } from "tokens.slint";
+import { Icon, Busy, Tip } from "widgets.slint";
+import { Viewer } from "state.slint";
+
+component VBtn inherits Rectangle {
+    in property <image> icon;
+    in property <string> text;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    in property <bool> filled: false;
+    callback clicked();
+    height: 40px;
+    min-width: 40px;
+    border-radius: 20px;
+    horizontal-stretch: 0;
+    opacity: enabled ? 1 : 0.38;
+    background: filled ? #ffffff : ta.pressed ? #ffffff38 : ta.has-hover ? #ffffff24 : transparent;
+    accessible-role: button;
+    accessible-label: text != "" ? text : tip;
+    accessible-enabled: enabled;
+    accessible-action-default => {
+        root.clicked();
+    }
+    animate background { duration: Tk.t1; }
+    HorizontalLayout {
+        padding-left: root.text == "" ? 0px : 14px;
+        padding-right: root.text == "" ? 0px : 16px;
+        spacing: 8px;
+        alignment: center;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.icon;
+                tint: root.filled ? #14161c : #ffffff;
+                size: 20px;
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.filled ? #14161c : #ffffff;
+            font-size: Tk.fs-md;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+    }
+
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            Tip.hide();
+            root.clicked();
+        }
+        changed has-hover => {
+            if (self.has-hover && root.tip != "") {
+                Tip.show(root.tip, root.absolute-position.x + root.width / 2, root.absolute-position.y + root.height + 6px);
+            } else {
+                Tip.hide();
+            }
+        }
+    }
+}
+
+component Scrubber inherits Rectangle {
+    in property <float> value;
+    in property <bool> enabled: true;
+    // Selected range (clip), drawn under the progress; negative when unset.
+    in property <float> range-from: -1;
+    in property <float> range-to: -1;
+    callback moved(float);
+    callback released(float);
+    property <float> shown: ta.pressed ? Math.clamp(ta.mouse-x / self.width, 0, 1) : value;
+    height: 24px;
+    accessible-role: slider;
+    accessible-value: Math.round(value * 100);
+    Rectangle {
+        y: (parent.height - self.height) / 2;
+        height: 4px;
+        border-radius: 2px;
+        background: #ffffff3d;
+    }
+
+    if root.range-from >= 0 && root.range-to > root.range-from: Rectangle {
+        x: root.width * root.range-from;
+        y: (parent.height - self.height) / 2;
+        width: root.width * (root.range-to - root.range-from);
+        height: 10px;
+        border-radius: 3px;
+        background: Pal.inverse-primary.with-alpha(0.55);
+    }
+    Rectangle {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: root.width * root.shown;
+        height: 4px;
+        border-radius: 2px;
+        background: #ffffff;
+    }
+
+    if root.range-from >= 0: Rectangle {
+        x: Math.clamp(root.width * root.range-from - 1px, 0px, root.width - 2px);
+        y: (parent.height - self.height) / 2;
+        width: 2px;
+        height: 16px;
+        background: Pal.inverse-primary;
+    }
+    if root.range-to >= 0: Rectangle {
+        x: Math.clamp(root.width * root.range-to - 1px, 0px, root.width - 2px);
+        y: (parent.height - self.height) / 2;
+        width: 2px;
+        height: 16px;
+        background: Pal.inverse-primary;
+    }
+
+    Rectangle {
+        x: Math.clamp(root.width * root.shown - self.width / 2, 0px, root.width - self.width);
+        y: (parent.height - self.height) / 2;
+        width: ta.pressed || ta.has-hover ? 16px : 12px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #ffffff;
+        animate width { duration: Tk.t1; }
+    }
+
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        moved => {
+            if (self.pressed) {
+                root.moved(Math.clamp(self.mouse-x / root.width, 0, 1));
+            }
+        }
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.up && event.button == PointerEventButton.left) {
+                root.released(Math.clamp(self.mouse-x / root.width, 0, 1));
+            }
+        }
+    }
+}
+
+export component ViewerLayer inherits Rectangle {
+    property <bool> video: Viewer.kind == "video";
+    property <length> bar: 60px;
+    property <length> foot: root.video && Viewer.can-frames ? 76px : 0px;
+    // Size at which the picture fits the stage without being enlarged.
+    // Video frames are decoded small, so they are enlarged to fill the stage.
+    property <float> fit: Viewer.picture.width == 0 ? 1 : Math.min(root.video ? 16 : 1, Math.min(stage.width / (Viewer.picture.width * 1px), stage.height / (Viewer.picture.height * 1px)));
+    property <length> shown-w: Viewer.picture.width * 1px * fit * Viewer.zoom;
+    property <length> shown-h: Viewer.picture.height * 1px * fit * Viewer.zoom;
+    background: #0b0c10;
+    // Swallow everything behind the viewer.
+    TouchArea { }
+
+    fs := FocusScope {
+        key-pressed(event) => {
+            return Viewer.key(event.text, event.modifiers.control || event.modifiers.meta) ? accept : reject;
+        }
+    }
+
+    init => {
+        fs.focus();
+    }
+    stage := Rectangle {
+        y: root.bar;
+        height: root.height - root.bar - root.foot;
+        clip: true;
+        // Clicking the empty area around a picture closes the viewer.
+        TouchArea {
+            clicked => {
+                Viewer.close();
+            }
+        }
+
+        if Viewer.phase == "ready" && Viewer.picture.width > 0: flick := Flickable {
+            content-width: Math.max(self.width, root.shown-w);
+            content-height: Math.max(self.height, root.shown-h);
+            interactive: Viewer.zoom > 1;
+            Image {
+                x: (parent.content-width - self.width) / 2;
+                y: (parent.content-height - self.height) / 2;
+                width: root.shown-w;
+                height: root.shown-h;
+                source: Viewer.picture;
+                image-fit: fill;
+                image-rendering: Viewer.zoom * root.fit > 2 ? pixelated : smooth;
+                accessible-role: image;
+                accessible-label: Viewer.title;
+                TouchArea {
+                    double-clicked => {
+                        Viewer.zoom = Viewer.zoom > 1 ? 1 : 2.5;
+                    }
+                    scroll-event(event) => {
+                        if (event.modifiers.control || Viewer.zoom <= 1) {
+                            Viewer.zoom = Math.clamp(Viewer.zoom * (event.delta-y > 0 ? 1.2 : 1 / 1.2), 1, 8);
+                            return accept;
+                        }
+                        return reject;
+                    }
+                }
+            }
+        }
+        if Viewer.phase == "loading": VerticalLayout {
+            alignment: center;
+            spacing: 14px;
+            HorizontalLayout {
+                alignment: center;
+                Busy {
+                    size: 36px;
+                    tint: #ffffff;
+                }
+            }
+
+            Text {
+                text: Viewer.note != "" ? Viewer.note : Tr.t("正在加载预览…");
+                color: #ffffffb8;
+                font-size: Tk.fs-md;
+                horizontal-alignment: center;
+            }
+        }
+        if Viewer.phase == "error" || Viewer.phase == "info": VerticalLayout {
+            alignment: center;
+            spacing: 14px;
+            HorizontalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 88px;
+                    height: 88px;
+                    border-radius: 44px;
+                    background: #ffffff1a;
+                    Icon {
+                        source: Viewer.phase == "error" ? Icons.alert-circle : root.video ? Icons.video : Icons.image;
+                        tint: #ffffff;
+                        size: 40px;
+                    }
+                }
+            }
+
+            Text {
+                text: Viewer.phase == "error" ? Tr.t("无法预览") : Viewer.title;
+                color: #ffffff;
+                font-size: Tk.fs-lg;
+                font-weight: 600;
+                horizontal-alignment: center;
+                overflow: elide;
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                Text {
+                    max-width: Math.min(560px, root.width - 96px);
+                    text: Viewer.note;
+                    color: #ffffffb8;
+                    font-size: Tk.fs-md;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                spacing: 8px;
+                if root.video && Viewer.can-external: VBtn {
+                    icon: Icons.play-fill;
+                    text: Tr.t("用播放器打开");
+                    filled: true;
+                    clicked => {
+                        Viewer.external();
+                    }
+                }
+                if Viewer.can-download: VBtn {
+                    icon: Icons.download;
+                    text: Tr.t("下载");
+                    clicked => {
+                        Viewer.download();
+                    }
+                }
+            }
+        }
+        if Viewer.can-prev: Rectangle {
+            x: 16px;
+            y: (parent.height - self.height) / 2;
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            background: #00000066;
+            VBtn {
+                width: 44px;
+                height: 44px;
+                border-radius: 22px;
+                icon: Icons.arrow-back;
+                tip: Tr.t("上一个（←）");
+                clicked => {
+                    Viewer.step(-1);
+                }
+            }
+        }
+        if Viewer.can-next: Rectangle {
+            x: parent.width - self.width - 16px;
+            y: (parent.height - self.height) / 2;
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            background: #00000066;
+            VBtn {
+                width: 44px;
+                height: 44px;
+                border-radius: 22px;
+                icon: Icons.arrow-forward;
+                tip: Tr.t("下一个（→）");
+                clicked => {
+                    Viewer.step(1);
+                }
+            }
+        }
+    }
+
+    // Caption bar
+    HorizontalLayout {
+        y: 0px;
+        height: root.bar;
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 4px;
+        VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.x;
+                tip: Tr.t("关闭（Esc）");
+                clicked => {
+                    Viewer.close();
+                }
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            padding-left: 8px;
+            spacing: 2px;
+            Text {
+                text: Viewer.title;
+                color: #ffffff;
+                font-size: Tk.fs-md;
+                font-weight: 600;
+                overflow: elide;
+            }
+
+            if Viewer.subtitle != "": Text {
+                text: Viewer.subtitle;
+                color: #ffffffa8;
+                font-size: Tk.fs-xs;
+                overflow: elide;
+            }
+        }
+
+        if !root.video && Viewer.phase == "ready": VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.zoom-out;
+                tip: Tr.t("缩小（-）");
+                enabled: Viewer.zoom > 1;
+                clicked => {
+                    Viewer.zoom = Math.max(1, Viewer.zoom / 1.5);
+                }
+            }
+        }
+        if !root.video && Viewer.phase == "ready": Text {
+            width: 52px;
+            text: Math.round(Viewer.zoom * root.fit * 100) + "%";
+            color: #ffffffd0;
+            font-size: Tk.fs-sm;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        if !root.video && Viewer.phase == "ready": VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.zoom-in;
+                tip: Tr.t("放大（+）");
+                enabled: Viewer.zoom < 8;
+                clicked => {
+                    Viewer.zoom = Math.min(8, Viewer.zoom * 1.5);
+                }
+            }
+        }
+        if root.video && Viewer.can-external && Viewer.phase != "error" && Viewer.phase != "info": VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.external;
+                text: Tr.t("用播放器打开");
+                clicked => {
+                    Viewer.external();
+                }
+            }
+        }
+        if Viewer.can-download && Viewer.phase != "error" && Viewer.phase != "info": VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.download;
+                tip: Tr.t("下载");
+                clicked => {
+                    Viewer.download();
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.info;
+                tip: Tr.t("属性");
+                clicked => {
+                    Viewer.properties();
+                }
+            }
+        }
+    }
+
+    // Video transport: frame scrubbing and a silent preview.
+    if root.foot > 0px: HorizontalLayout {
+        y: root.height - root.foot;
+        height: root.foot;
+        padding-left: 20px;
+        padding-right: 24px;
+        spacing: 14px;
+        VerticalLayout {
+            alignment: center;
+            VBtn {
+                width: 44px;
+                height: 44px;
+                border-radius: 22px;
+                filled: true;
+                icon: Viewer.playing ? Icons.pause-fill : Icons.play-fill;
+                tip: Viewer.playing ? Tr.t("暂停（空格）") : Tr.t("预览播放（空格，无声音）");
+                clicked => {
+                    Viewer.toggle-play();
+                }
+            }
+        }
+
+        Text {
+            text: Viewer.time-label;
+            color: #ffffffd8;
+            font-size: Tk.fs-sm;
+            vertical-alignment: center;
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            Scrubber {
+                value: Viewer.position;
+                range-from: Viewer.clip-from;
+                range-to: Viewer.clip-to;
+                moved(value) => {
+                    Viewer.seek(value, false);
+                }
+                released(value) => {
+                    Viewer.seek(value, true);
+                }
+            }
+        }
+
+        Text {
+            text: Viewer.duration-label;
+            color: #ffffffa8;
+            font-size: Tk.fs-sm;
+            vertical-alignment: center;
+        }
+
+        if Viewer.can-clip: VerticalLayout {
+            alignment: center;
+            VBtn {
+                text: Viewer.clip-from-label != "" ? Tr.x("起点 {0}", Viewer.clip-from-label) : Tr.t("设为起点");
+                tip: Tr.t("把当前画面设为片段起点（I）");
+                clicked => {
+                    Viewer.mark(true);
+                }
+            }
+        }
+        if Viewer.can-clip: VerticalLayout {
+            alignment: center;
+            VBtn {
+                text: Viewer.clip-to-label != "" ? Tr.x("终点 {0}", Viewer.clip-to-label) : Tr.t("设为终点");
+                tip: Tr.t("把当前画面设为片段终点（O）");
+                clicked => {
+                    Viewer.mark(false);
+                }
+            }
+        }
+        if Viewer.can-clip: VerticalLayout {
+            alignment: center;
+            VBtn {
+                icon: Icons.clip;
+                text: Tr.t("下载片段…");
+                filled: Viewer.clip-from >= 0 && Viewer.clip-to > Viewer.clip-from;
+                enabled: Viewer.clip-from >= 0 && Viewer.clip-to > Viewer.clip-from;
+                clicked => {
+                    Viewer.clip();
+                }
+            }
+        }
+    }
+}

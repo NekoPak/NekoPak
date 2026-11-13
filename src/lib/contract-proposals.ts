@@ -2,11 +2,11 @@
  * PROPOSAL UI-001 — NOT FROZEN.
  *
  * docs/03_CONTRACTS.md §3 names these return types but does not define
- * them. The shapes below are the UI's proposal to Astra (see
- * docs/CONTRACT_PROPOSAL_UI_001.md). Everything here is additive: no
+ * them. The shapes below are UI-side contract additions (see
+ * docs/03_CONTRACTS.md). Everything here is additive: no
  * frozen field in contract.ts is renamed or re-purposed.
  *
- * When Astra freezes a shape, move it into contract.ts and delete it here.
+ * When the contract freezes a shape, move it into contract.ts and delete it here.
  */
 import type {
   BackendId,
@@ -612,6 +612,8 @@ export interface Settings {
   media?: { player_path: string };
   ask_download_directory?: boolean;
   close_to_tray?: boolean;
+  /** Mobile hosts: keep local transfers running behind a system notification. */
+  background_transfers?: boolean;
   language?: "system" | "zh-CN" | "zh-TW" | "en" | "ja-JP" | "ko-KR";
   schema_version: 1;
   theme: "system" | "light" | "dark";

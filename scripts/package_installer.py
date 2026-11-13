@@ -13,6 +13,8 @@ def main():
     executable = ROOT / 'target/release/nekopak.exe'
     if hashlib.sha256(executable.read_bytes()).hexdigest() != report['executable_sha256']:
         raise SystemExit('Build/package mismatch: create the portable package first.')
+    # The NSIS bundler only packages the already-built native executable
+    # (mainBinaryName); no WebView runtime is installed or required.
     # bundle, rather than build, avoids changing the already-measured executable.
     # This is artifact signing, not per-bundle Tauri updater signing.
     subprocess.run([
@@ -32,7 +34,7 @@ def main():
         'name': output.name, 'bytes': output.stat().st_size,
         'sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
         'type': 'NSIS, per-user install, shortcuts and uninstall support',
-        'webview2': 'Downloads Microsoft bootstrapper only if needed; runtime not bundled',
+        'webview2': 'Not required: the application renders its own native UI',
         'authenticode': False,
         'execution_test': 'Not installed by this packaging script.',
     }
