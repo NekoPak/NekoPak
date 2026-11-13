@@ -114,7 +114,7 @@ python scripts/check_parity.py
 
 ### 发布
 
-版本号写在 `package.json`、`Cargo.toml`、`src-tauri/tauri.conf.json`，同步更新两份 lockfile；Android `versionCode` 写在 `src-tauri/tauri.android.conf.json`。发布说明放在 `release/notes/<版本>.md`。推送 `v<版本>` tag 后，[`release.yml`](.github/workflows/release.yml) 会构建并签名 Windows 与 Android 包，在干净 runner 上验证安装器，然后在本仓库发布预览 Release 和更新清单。需要的 Secrets 见[发布与签名](docs/RELEASE_SIGNING.md)。
+版本号写在 `package.json`、`Cargo.toml`、`src-tauri/tauri.conf.json`，同步更新两份 lockfile 与接口样例中的应用版本；Android `versionCode` 写在 `src-tauri/tauri.android.conf.json`。发布说明放在 `release/notes/<版本>.md`。将本仓库的 `codex/release-<版本>` PR 合并到 `main` 后，[`release.yml`](.github/workflows/release.yml) 会构建并签名 Windows 与 Android 包，在干净 runner 上验证安装器，然后创建 `v<版本>` tag、预览 Release 和更新清单。也保留已有 tag 和手动触发方式；版本标签必须与源码一致。需要的 Secrets 见[发布与签名](docs/RELEASE_SIGNING.md)。
 
 ## 文档
 

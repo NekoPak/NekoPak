@@ -24,6 +24,7 @@ jobs:
       - if: startsWith(github.ref, 'refs/tags/parity-')
         run: python scripts/check_parity.py --release
       - run: python -m unittest discover -s tests -p test_parity.py
+      - run: python -m unittest discover -s tests -p test_release_context.py
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       # The video preview decodes with Media Foundation, an optional feature on
       # Windows Server. Install it so the decoder is exercised for real; the

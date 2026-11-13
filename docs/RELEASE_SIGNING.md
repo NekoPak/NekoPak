@@ -26,6 +26,10 @@ Android已生成独立keystore，后续同一应用更新必须保留原签名�
 - `release.yml`：手动或v*/parity-*标签分别触发Windows和Android构建、测试、许可清单、签名及验证，
   上传Actions artifact。0.1.3起两端成功后由publish job验证安装器并发布完整公开预览Release。
   parity-*仍受严格功能门禁约束；当前publisher只接受0.x.y预览，不宣称功能对齐完成。
+- 0.2.0 起，同仓库 `codex/release-<版本>` PR 合并到 `main` 也会触发同一套签名发布，
+  publisher 在两个平台成功且安装器验收后创建 `v<版本>` tag 和完整预览 Release。
+  `scripts/release_context.py` 在读取签名秘密前检查触发上下文、源仓库、目标分支和版本；
+  未合并、其他工作分支、外部 fork 与版本不匹配均不能沿这条路径发布。
 - `portable-core.yml`：Linux/macOS核心测试和native provider编译，不能替代相应桌面真实验收。
 - `android.yml`：PR/main 日常 ARM64 debug APK，不使用发布私钥。debug 产物不可冒充正式签名。
 

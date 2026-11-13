@@ -25,7 +25,9 @@
 - 整合分支 `codex/release-0.2.0` 已推送，[PR #1](https://github.com/NekoPak/NekoPak/pull/1) 已创建，无合并冲突；合并、`v0.2.0` 标签与签名 Release 待整合检查成功后执行。
 - 首轮整合 CI：Linux / macOS 核心、Linux 原生双渲染器冒烟与 Android APK 已通过。Windows 全工作区静态检查与 Rust 测试通过，但接口样例导出检查发现 10 份样例的 `app_status.version` 仍为 0.1.3，已同步到 0.2.0；保留 Windows 特有能力字段，重跑整合 CI。
 - 完整收尾包保存到 `/workspace/shared/downloads/NekoPak-0.2.0-handoff.zip`，包含自足 Git bundle、相对 main 的二进制补丁、发布说明、拟用 PR 描述和本地验证日志。
-- 后续顺序：创建 PR → 等待整合后的 Windows / Linux / macOS / Android CI 全绿 → 按检查过的 head SHA 合并 → 从合并后的 main 创建并推送 `v0.2.0` → 跟进签名发布工作流 → 重新下载两端产物及清单，验签并检查更新源。
+- 命令行会话令牌过期后，GitHub 连接仍可正常写入，已通过 Git 数据 API 提交修正，并核对远端 tree 与本地验证内容完全一致。
+- 签名发布已接入同仓库 `codex/release-<版本>` PR 合并到 main 的事件：同一工作流完成两端构建、签名、安装器验收后创建 tag 与 Release，保留 tag / 手动触发。触发上下文验证覆盖未合并、错误版本、外部 fork、其他分支和不安全输入。
+- 后续顺序：等待最新 head 的 Windows / Linux / macOS / Android CI 全绿 → 按检查过的 head SHA 合并 PR #1 → 跟进自动签名发布与 `v0.2.0` tag → 重新下载两端产物及清单，验签并检查更新源。
 
 ## 已有验证证据
 
