@@ -18,9 +18,9 @@
 
 | 平台 | 文件 | 说明 |
 |---|---|---|
-| Windows 安装版 | [Setup.exe](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-windows-x64-setup.exe) | Windows 10 1709+，x64；当前用户安装，带快捷方式和卸载入口，无需 WebView2 |
-| Windows 便携版 | [Portable.zip](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-windows-x64-portable.zip) | 完整解压后运行 `NekoPak/nekopak.exe`，保留同目录许可文件 |
-| Android | [ARM64 APK](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-android-arm64-v8a.apk) | Android 7.0（API 24）起，ARM64 设备，使用系统 WebView |
+| Windows 安装版 | [Setup.exe · 8.03 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-windows-x64-setup.exe) | Windows 10 1709+，x64；当前用户安装，带快捷方式和卸载入口，无需 WebView2 |
+| Windows 便携版 | [Portable.zip · 13.34 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-windows-x64-portable.zip) | 完整解压后运行 `NekoPak/nekopak.exe`，保留同目录许可文件 |
+| Android | [ARM64 APK · 16.93 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-android-arm64-v8a.apk) | Android 7.0（API 24）起，ARM64 设备，使用系统 WebView |
 
 每个 Release 还附带签名清单、许可证包和构建报告，核验方法见[发布与签名](docs/RELEASE_SIGNING.md)。Linux / macOS 目前只有核心 CI，没有经过桌面验收的发行包。
 
@@ -32,7 +32,7 @@
 - **浏览与预览**：图片查看器、媒体库、Windows 视频画面预览与片段标记、Ctrl+K 命令面板、F1 快捷键和文件拖放；窄窗口自动收起次要列。
 - **手机体验**：更紧凑的传输卡片、行内操作按钮、照片墙和触控反馈；语言包按需加载。保留 0.1.4 的 Android 后台下载和通知暂停。
 
-[完整发布说明](release/notes/0.2.0.md) · [原生桌面说明与验证范围](docs/NATIVE_DESKTOP.md)
+[完整发布说明](release/notes/0.2.0.md) · [原生桌面说明与验证范围](docs/NATIVE_DESKTOP.md) · [签名发布验收](docs/evidence/release-0.2.0-publication.json)
 
 ## 界面
 

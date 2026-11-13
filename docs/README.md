@@ -37,7 +37,7 @@
 
 按版本保留，其中的“尚未实现”指当时状态；浏览器演示不等于服务或设备实测。
 
-- 0.2.0（待发布）：[原生桌面与手机界面改进](../release/notes/0.2.0.md)、[本地预检证据](evidence/release-0.2.0-preflight.json)，整合 CI 与发布进度见 [工作进度](PROGRESS.md)。
+- 0.2.0：[公开下载](https://github.com/NekoPak/NekoPak/releases/tag/v0.2.0)、[原生桌面与手机界面改进](../release/notes/0.2.0.md)、[签名发布与验收](evidence/release-0.2.0-publication.json)，详见 [工作进度](PROGRESS.md)。
 - 0.1.4：Android 后台传输，见 [ANDROID.md](ANDROID.md#background-transfer-keep-alive-014) 与 [检查记录](evidence/background-transfer-checks.json)。
 - 0.1.3：[应用更新与实时进度](UPDATES_PROGRESS_REPORT.md)。
 - 0.1.2：[速度、种子和软键盘](SPEED_TORRENT_IME_REPORT.md)。

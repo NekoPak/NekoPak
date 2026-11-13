@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "product": "NekoPak",
+  "version": "0.2.0",
+  "verified_at": "2026-11-13T09:41:35.798257+00:00",
+  "release_url": "https://github.com/NekoPak/NekoPak/releases/tag/v0.2.0",
+  "source_commit": "c153f382f2adf5e52f6157e02a365cea23d72f55",
+  "platform_signatures_and_artifact_hashes": "passed",
+  "update_manifest_signature_and_both_packages": "passed",
+  "portable_executable_hash": "passed",
+  "android_native_library_hashes": "passed",
+  "source_and_lockfile_reports": "passed",
+  "android_signing_identity_from_verified_reports": "matches v0.1.4",
+  "android_version_code": 200,
+  "android_certificate_sha256": [
+    "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
+  ],
+  "assets": [
+    {
+      "name": "NekoPak-0.2.0-android-arm64-v8a-licenses.zip",
+      "bytes": 1440964,
+      "sha256": "a4dd767eaf08c16d96313ed2407d32fe5cb0a4b39a54b1ad2fd1d0213961d859"
+    },
+    {
+      "name": "NekoPak-0.2.0-android-arm64-v8a-report.json",
+      "bytes": 2931,
+      "sha256": "b2eecc53743343c7b61613a00b07d22199e27f9c7d0588355e576ce03480b1d7"
+    },
+    {
+      "name": "NekoPak-0.2.0-android-arm64-v8a.apk",
+      "bytes": 17750681,
+      "sha256": "4b09f698749ef6b59ce753dedf05fd3a59a75c1f31281323d536c3d8f1f7376d"
+    },
+    {
+      "name": "NekoPak-0.2.0-windows-x64-portable.zip",
+      "bytes": 13990659,
+      "sha256": "4cbad58e5eb6c6074ad4903272f921d97d83389695c614ec5cc8cb4a12915e16"
+    },
+    {
+      "name": "NekoPak-0.2.0-windows-x64-setup.exe",
+      "bytes": 8419848,
+      "sha256": "709567e0cdd23deb3bf7ed8c97cb0bafd9d16ca314005366a9b57cd6d70d4c22"
+    },
+    {
+      "name": "android-release-manifest.json",
+      "bytes": 789,
+      "sha256": "34a55033b70882d71aaaa420b66d46be2966088f318054e14d369867f0262f8b"
+    },
+    {
+      "name": "release-signing.pub",
+      "bytes": 45,
+      "sha256": "1e63a47e33a799e4bcf357427644f5617bdf694744910adf14498f43b0a8fa8f"
+    },
+    {
+      "name": "size-report.json",
+      "bytes": 4069,
+      "sha256": "ef4103b0a50ea139fff40257558278e1d083479af5098ed097fe8dec1f4645bd"
+    },
+    {
+      "name": "update-manifest.json",
+      "bytes": 3454,
+      "sha256": "b84054ed7fd30fb7ce98e758098319dd5e62f5c4502cf65c2df67fcd33f6e191"
+    },
+    {
+      "name": "windows-release-manifest.json",
+      "bytes": 781,
+      "sha256": "e96d0469b4c09df8b6f03d3a03b0608f64ceddf98caa1648b40936fa49e7e453"
+    }
+  ],
+  "limitations": "No physical-device, live-account, or manual Windows acceptance. APK signing checks run in packaging CI; local verification compares downloaded bytes with signed reports and the prior signed certificate report.",
+  "pr_url": "https://github.com/NekoPak/NekoPak/pull/1",
+  "checked_pr_head": "52ed417174c3b967acb8b83728394a3c7e486b28",
+  "merge_commit": "c153f382f2adf5e52f6157e02a365cea23d72f55",
+  "ci": [
+    {
+      "id": 43395169216,
+      "name": "Portable Rust core",
+      "conclusion": "success",
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43395169216"
+    },
+    {
+      "id": 43395169111,
+      "name": "Android preview checks",
+      "conclusion": "success",
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43395169111"
+    },
+    {
+      "id": 43395169144,
+      "name": "Windows desktop checks",
+      "conclusion": "success",
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43395169144"
+    }
+  ],
+  "windows_premerge_runtime": {
+    "observations": [
+      {
+        "total_private_working_set_bytes": 11935744,
+        "process_count": 1,
+        "processes": [
+          {
+            "private_working_set_bytes": 11935744,
+            "name": "nekopak",
+            "working_set_bytes": 41922560,
+            "pid": 620,
+            "private_committed_bytes": 13254656
+          }
+        ],
+        "run": 1,
+        "sampled_after_ms": 7893,
+        "total_working_set_bytes": 41922560,
+        "window_handle_ms": 233,
+        "main_window_title": "NekoPak — Offline Mock"
+      },
+      {
+        "total_private_working_set_bytes": 10956800,
+        "process_count": 1,
+        "processes": [
+          {
+            "private_working_set_bytes": 10956800,
+            "name": "nekopak",
+            "working_set_bytes": 39890944,
+            "pid": 3788,
+            "private_committed_bytes": 12124160
+          }
+        ],
+        "run": 2,
+        "sampled_after_ms": 5452,
+        "total_working_set_bytes": 39890944,
+        "window_handle_ms": 117,
+        "main_window_title": "NekoPak — Offline Mock"
+      },
+      {
+        "total_private_working_set_bytes": 11001856,
+        "process_count": 1,
+        "processes": [
+          {
+            "private_working_set_bytes": 11001856,
+            "name": "nekopak",
+            "working_set_bytes": 39936000,
+            "pid": 3756,
+            "private_committed_bytes": 12115968
+          }
+        ],
+        "run": 3,
+        "sampled_after_ms": 5453,
+        "total_working_set_bytes": 39936000,
+        "window_handle_ms": 118,
+        "main_window_title": "NekoPak — Offline Mock"
+      }
+    ],
+    "executable_sha256": "2c76bd328e9ff14c88d9b66883f9aeff66928054d4ad2b090390f8f9eae7e5f4",
+    "method": "3 sequential warm launches by default; window handle availability is not first rendered frame. Sample >=5s after handle. Includes child processes (the native client normally has none). Total working set can double-count shared pages. No workload throughput or GUI click verification.",
+    "ui_automation": "Not driven here; the scripted UI smoke test (tests/native) covers interaction on Linux.",
+    "os": "Microsoft Windows Server 2025 Datacenter",
+    "version": "10.0.26100",
+    "architecture": "64-bit"
+  },
+  "signed_release_workflow": {
+    "run_id": 43399829886,
+    "url": "https://github.com/NekoPak/NekoPak/actions/runs/43399829886",
+    "windows": "success",
+    "android": "success",
+    "publish_and_installer_acceptance": "success"
+  },
+  "tag_commit": "c153f382f2adf5e52f6157e02a365cea23d72f55",
+  "supplementary_linux_update_client_check": {
+    "status": "blocked_by_cloud_tls_environment",
+    "test": "public_release_feed_and_package_verify_with_production_trust",
+    "observed_error": "InvalidCertificate(UnknownIssuer)",
+    "diagnosis": "The HTTPS peer for api.github.com is issued by OpenAI, LLC / openai.com in this cloud executor; its private inspection CA is absent from the Linux Rustls built-in roots. The same public feed returns HTTP 200 with the executor CA configuration.",
+    "scope": "The mandatory PR/release workflows and independent public manifest/package signature checks passed; real Windows/Android update installation still needs device acceptance."
+  }
+}
