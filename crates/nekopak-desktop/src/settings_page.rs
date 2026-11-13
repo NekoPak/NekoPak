@@ -1043,26 +1043,6 @@ fn domain_probe_rows(value: &serde_json::Value) -> Vec<(String, String, bool)> {
         .unwrap_or_default()
 }
 
-#[cfg(test)]
-mod probe_tests {
-    use super::*;
-    #[test]
-    fn native_settings_reads_provider_results_and_keeps_partial_measurements() {
-        let report = json!({"selected_domain":"auto","active_domain":"mypikpak.net","results":[
-            {"domain":"mypikpak.com","usable":false,"latency_ms":42,"warm_latency_ms":12,"error":"connection failed"},
-            {"domain":"mypikpak.net","usable":true,"latency_ms":50,"warm_latency_ms":15,"auth_latency_ms":22},
-            {"domain":"pikpak.me","usable":false},
-            {"domain":"pikpakdrive.com","usable":false}
-        ]});
-        let rows = domain_probe_rows(&report);
-        assert_eq!(rows.len(), 4);
-        assert_eq!(rows[0].0, "mypikpak.com");
-        assert!(rows[0].1.contains("42 ms"));
-        assert!(rows[0].1.contains("—"));
-        assert!(rows[1].1.contains("22 ms"));
-    }
-}
-
 pub async fn shortcuts(ctx: &Ctx) {
     let rows = [
         ("Ctrl+K", "命令面板"),
@@ -1098,4 +1078,24 @@ pub async fn shortcuts(ctx: &Ctx) {
         None,
     )
     .await;
+}
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    #[test]
+    fn native_settings_reads_provider_results_and_keeps_partial_measurements() {
+        let report = json!({"selected_domain":"auto","active_domain":"mypikpak.net","results":[
+            {"domain":"mypikpak.com","usable":false,"latency_ms":42,"warm_latency_ms":12,"error":"connection failed"},
+            {"domain":"mypikpak.net","usable":true,"latency_ms":50,"warm_latency_ms":15,"auth_latency_ms":22},
+            {"domain":"pikpak.me","usable":false},
+            {"domain":"pikpakdrive.com","usable":false}
+        ]});
+        let rows = domain_probe_rows(&report);
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0].0, "mypikpak.com");
+        assert!(rows[0].1.contains("42 ms"));
+        assert!(rows[0].1.contains("—"));
+        assert!(rows[1].1.contains("22 ms"));
+    }
 }
