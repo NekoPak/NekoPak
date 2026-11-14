@@ -62,29 +62,41 @@ impl AppService {
         if self.provider.id() == BackendId::Mock {
             return Ok(());
         }
+        use futures_util::{stream::FuturesUnordered, StreamExt};
         let mut changed = self.subscribe();
+        let mut running = std::collections::HashSet::new();
+        let mut workers = FuturesUnordered::new();
         loop {
             if self.is_foreground() {
                 self.recover_transfer_retries()?;
-                let ready = self
-                    .store()?
-                    .active()?
-                    .iter()
-                    .filter(|task| {
-                        task.backend == BackendId::RustCompat && task.kind == TaskKind::Download
-                    })
-                    .try_fold(false, |ready, task| {
-                        Ok::<_, ClientError>(ready || self.retry_ready(task)?)
-                    })?;
-                if ready {
-                    self.tick_native_download().await?;
-                    tokio::task::yield_now().await;
-                    continue;
+                let settings = self.settings_get()?;
+                let limit = settings["max_concurrent_transfers"].as_u64().unwrap_or(1) as usize;
+                for task in self.ready_download_tasks()? {
+                    if running.len() >= limit {
+                        break;
+                    }
+                    if task.backend == BackendId::RustCompat
+                        && task.kind == TaskKind::Download
+                        && !running.contains(&task.id)
+                        && self.retry_ready(&task)?
+                    {
+                        running.insert(task.id.clone());
+                        workers.push(async move {
+                            let id = task.id.clone();
+                            (id, self.tick_download_task(task).await)
+                        });
+                    }
                 }
             }
-            // Notifications accelerate new user work; the timer also wakes due
-            // retries and observes foreground changes without busy polling.
+            // Each task can advance independently of another stalled task.
+            // Reducing the limit lets existing requests drain before starting
+            // more work; pause/cancel still cancels that task's shared context.
             tokio::select! {
+                Some((id, result)) = workers.next(), if !workers.is_empty() => {
+                    running.remove(&id);
+                    result?;
+                    tokio::task::yield_now().await;
+                },
                 _ = changed.recv() => {},
                 _ = tokio::time::sleep(std::time::Duration::from_millis(250)) => {},
             }
@@ -399,24 +411,42 @@ impl AppService {
             .ok_or_else(|| fault(ErrorCode::IntegrityFailed, "下载文件名无效。"))?;
         Ok((name.into(), file, length))
     }
+    fn ready_download_tasks(&self) -> Result<Vec<TransferTask>, ClientError> {
+        let mut tasks: Vec<_> = self
+            .store()?
+            .active()?
+            .into_iter()
+            .filter(|task| task.backend == BackendId::RustCompat && task.kind == TaskKind::Download)
+            .collect();
+        // Continue admitted tasks before promoting another queued task. Store
+        // revisions change on progress and are not a stable admission order.
+        tasks.sort_by_key(|task| {
+            (
+                !matches!(task.state, TaskState::Running | TaskState::Verifying),
+                task.revision.0,
+            )
+        });
+        Ok(tasks)
+    }
     pub(super) async fn tick_native_download(&self) -> Result<(), ClientError> {
         if !self.is_foreground() {
             return Ok(());
         }
-        let active = self.store()?.active()?;
-        let mut selected = None;
-        for task in active
+        let settings = self.settings_get()?;
+        let limit = settings["max_concurrent_transfers"].as_u64().unwrap_or(1) as usize;
+        let selected = self
+            .ready_download_tasks()?
             .into_iter()
-            .filter(|t| t.backend == BackendId::RustCompat && t.kind == TaskKind::Download)
-        {
-            if self.retry_ready(&task)? {
-                selected = Some(task);
-                break;
-            }
-        }
-        let Some(task) = selected else {
-            return Ok(());
-        };
+            .map(|task| self.retry_ready(&task).map(|ready| (task, ready)))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .filter_map(|(task, ready)| ready.then_some(task))
+            .take(limit);
+        futures_util::future::try_join_all(selected.map(|task| self.tick_download_task(task)))
+            .await?;
+        Ok(())
+    }
+    async fn tick_download_task(&self, task: TransferTask) -> Result<(), ClientError> {
         let result = self.step_native_download(&task).await;
         if result.is_err() {
             self.download_rates.remove(&task.id);
@@ -574,37 +604,78 @@ impl AppService {
                 return Ok(());
             };
             let observer = self.download_rates.start(&task.id, task.revision.0, start);
-            let result = context
-                .run(self.provider.download_chunk(
-                    &task.remote_id,
-                    &download.identity,
-                    &download.scope,
-                    start,
-                    block,
-                    observer,
-                ))
-                .await;
-            let chunk = result?;
-            if chunk.total != download.total
-                || chunk.bytes.is_empty()
-                || chunk.bytes.len() as u64 > block
-            {
-                return Err(fault(ErrorCode::IntegrityFailed, "下载长度发生变化。"));
+            // Split one bounded window into disjoint ranges. The memory bound
+            // follows the window size rather than multiplying by connections.
+            let window = block.min(download.total - start);
+            let connections = settings["download"]["connections_per_task"]
+                .as_u64()
+                .unwrap_or(1);
+            let range_size = window.div_ceil(connections).max(1);
+            let received = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+            let mut ranges = Vec::new();
+            let mut offset = start;
+            while offset < start + window {
+                let length = range_size.min(start + window - offset);
+                ranges.push((offset, length));
+                offset += length;
             }
+            let chunks = context
+                .run(futures_util::future::try_join_all(ranges.into_iter().map(
+                    |(offset, length)| {
+                        let observer = observer.clone();
+                        let received = received.clone();
+                        let previous = std::sync::atomic::AtomicU64::new(0);
+                        let progress = nekopak_provider::DownloadObserver::new(move |bytes| {
+                            use std::sync::atomic::Ordering;
+                            let old = previous.fetch_max(bytes, Ordering::Relaxed);
+                            if bytes > old {
+                                let total = received.fetch_add(bytes - old, Ordering::Relaxed)
+                                    + bytes
+                                    - old;
+                                observer.received(total);
+                            }
+                        });
+                        let download = &download;
+                        async move {
+                            let chunk = self
+                                .provider
+                                .download_chunk(
+                                    &task.remote_id,
+                                    &download.identity,
+                                    &download.scope,
+                                    offset,
+                                    length,
+                                    progress,
+                                )
+                                .await?;
+                            if chunk.total != download.total || chunk.bytes.len() as u64 != length {
+                                return Err(fault(
+                                    ErrorCode::IntegrityFailed,
+                                    "下载长度发生变化。",
+                                ));
+                            }
+                            Ok(chunk.bytes)
+                        }
+                    },
+                )))
+                .await?;
+            let chunk: Vec<u8> = chunks.into_iter().flatten().collect();
             if rate > 0 {
-                let duration = std::time::Duration::from_secs_f64(
-                    chunk.bytes.len() as f64 / (rate as f64 * 1024.0),
-                );
-                if let Some(remaining) = duration.checked_sub(started.elapsed()) {
-                    context
-                        .run(async {
-                            tokio::time::sleep(remaining).await;
-                            Ok(())
-                        })
-                        .await?;
-                }
+                let duration =
+                    std::time::Duration::from_secs_f64(chunk.len() as f64 / (rate as f64 * 1024.0));
+                let deadline = {
+                    let mut next = self.download_bandwidth.lock().await;
+                    *next = (*next).max(started) + duration;
+                    *next
+                };
+                context
+                    .run(async {
+                        tokio::time::sleep_until(deadline).await;
+                        Ok(())
+                    })
+                    .await?;
             }
-            chunk.bytes
+            chunk
         } else {
             vec![]
         };
@@ -977,6 +1048,7 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use nekopak_provider::{DownloadChunk, DownloadInfo};
+    use serde_json::json;
     use std::sync::atomic::{AtomicUsize, Ordering};
     struct ByteProvider {
         bytes: Vec<u8>,
@@ -988,6 +1060,10 @@ mod tests {
         hold_chunk: std::sync::atomic::AtomicBool,
         observed_chunk: tokio::sync::Notify,
         release_chunk: tokio::sync::Notify,
+        requests: std::sync::Mutex<Vec<(u64, u64)>>,
+        active_reads: AtomicUsize,
+        peak_reads: AtomicUsize,
+        delay_ms: AtomicUsize,
     }
     #[async_trait]
     impl ProviderPort for ByteProvider {
@@ -1075,6 +1151,20 @@ mod tests {
             if start as usize == self.fail_at.load(Ordering::Relaxed) {
                 return Err(fault(ErrorCode::TransientNetwork, "测试连接中断"));
             }
+            self.requests.lock().unwrap().push((start, length));
+            let active = self.active_reads.fetch_add(1, Ordering::SeqCst) + 1;
+            self.peak_reads.fetch_max(active, Ordering::SeqCst);
+            struct ReadGuard<'a>(&'a AtomicUsize);
+            impl Drop for ReadGuard<'_> {
+                fn drop(&mut self) {
+                    self.0.fetch_sub(1, Ordering::SeqCst);
+                }
+            }
+            let _read = ReadGuard(&self.active_reads);
+            tokio::time::sleep(std::time::Duration::from_millis(
+                self.delay_ms.load(Ordering::SeqCst) as u64,
+            ))
+            .await;
             let end = (start + length).min(self.bytes.len() as u64) as usize;
             if self.hold_chunk.load(Ordering::SeqCst) {
                 observer.received(65_536);
@@ -1099,6 +1189,10 @@ mod tests {
             hold_chunk: Default::default(),
             observed_chunk: Default::default(),
             release_chunk: Default::default(),
+            requests: Default::default(),
+            active_reads: Default::default(),
+            peak_reads: Default::default(),
+            delay_ms: Default::default(),
         })
     }
     async fn setup(size: usize) -> (tempfile::TempDir, Arc<ByteProvider>, AppService, TaskRef) {
@@ -1125,6 +1219,185 @@ mod tests {
         }
         panic!("download did not finish: {:?}", app.task(id).unwrap());
     }
+    #[tokio::test]
+    async fn connection_settings_control_real_parallel_ranges_and_preserve_final_bytes() {
+        for connections in [1, 4, 16] {
+            let (dir, provider, app, task) = setup(2 * BLOCK as usize + 19).await;
+            provider.delay_ms.store(15, Ordering::SeqCst);
+            app.settings_update(&json!({"download":{"connections_per_task":connections}}))
+                .unwrap();
+            app.tick().await.unwrap();
+            app.tick().await.unwrap();
+            assert_eq!(provider.peak_reads.load(Ordering::SeqCst), connections);
+            let mut ranges = provider.requests.lock().unwrap().clone();
+            ranges.sort_unstable();
+            let mut end = 0;
+            for (start, length) in ranges {
+                assert_eq!(start, end);
+                end += length;
+            }
+            assert_eq!(end, BLOCK);
+            // Changes apply at the next window, including reducing to one.
+            app.settings_update(&json!({"download":{"connections_per_task":1}}))
+                .unwrap();
+            provider.peak_reads.store(0, Ordering::SeqCst);
+            finish(&app, &task.task_id).await;
+            assert_eq!(provider.peak_reads.load(Ordering::SeqCst), 1);
+            let completed = app.task(&task.task_id).unwrap();
+            assert_eq!(
+                std::fs::read(completed.destination.unwrap()).unwrap(),
+                provider.bytes
+            );
+            drop(app);
+            let reopened =
+                AppService::with_provider(&dir.path().join("tasks.db"), provider.clone());
+            assert_eq!(
+                reopened.settings_get().unwrap()["download"]["connections_per_task"],
+                1
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn concurrent_task_limit_controls_workers_and_survives_restart() {
+        let (dir, provider, app, first) = setup(BLOCK as usize + 17).await;
+        provider.delay_ms.store(20, Ordering::SeqCst);
+        let mut ids = vec![first.task_id];
+        for n in 2..=3 {
+            let destination = dir.path().join(format!("output-{n}"));
+            std::fs::create_dir(&destination).unwrap();
+            ids.push(
+                app.transfer_start(
+                    &format!("file-{n}"),
+                    destination.to_str().unwrap(),
+                    None,
+                    &RequestContext::default(),
+                )
+                .await
+                .unwrap()
+                .task_id,
+            );
+        }
+        app.settings_update(
+            &json!({"max_concurrent_transfers":2,"download":{"connections_per_task":4}}),
+        )
+        .unwrap();
+        app.tick().await.unwrap();
+        assert_eq!(
+            ids.iter()
+                .filter(|id| app.task(id).unwrap().state == TaskState::Running)
+                .count(),
+            2
+        );
+        app.tick().await.unwrap();
+        assert_eq!(provider.peak_reads.load(Ordering::SeqCst), 8);
+        app.settings_update(&json!({"max_concurrent_transfers":1}))
+            .unwrap();
+        provider.peak_reads.store(0, Ordering::SeqCst);
+        for id in &ids {
+            finish(&app, id).await;
+        }
+        assert!(provider.peak_reads.load(Ordering::SeqCst) <= 4);
+        for id in &ids {
+            assert_eq!(
+                std::fs::read(app.task(id).unwrap().destination.unwrap()).unwrap(),
+                provider.bytes
+            );
+        }
+        drop(app);
+        let reopened = AppService::with_provider(&dir.path().join("tasks.db"), provider.clone());
+        assert_eq!(
+            reopened.settings_get().unwrap()["max_concurrent_transfers"],
+            1
+        );
+        for patch in [
+            json!({"max_concurrent_transfers":0}),
+            json!({"max_concurrent_transfers":9}),
+            json!({"download":{"connections_per_task":17}}),
+            json!({"download":{"connections_per_task":1.5}}),
+        ] {
+            assert_eq!(
+                reopened.settings_update(&patch).unwrap_err().code,
+                ErrorCode::Conflict
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn pause_and_cancel_stop_every_parallel_range_without_committing_partial_bytes() {
+        for action in [TransferAction::Pause, TransferAction::Cancel] {
+            let (_dir, provider, app, task) = setup(2 * BLOCK as usize).await;
+            app.settings_update(&json!({"download":{"connections_per_task":16}}))
+                .unwrap();
+            app.tick().await.unwrap();
+            provider.hold_chunk.store(true, Ordering::SeqCst);
+            let app = Arc::new(app);
+            let worker = app.clone();
+            let pending = tokio::spawn(async move { worker.tick().await });
+            tokio::time::timeout(std::time::Duration::from_secs(2), async {
+                while provider.active_reads.load(Ordering::SeqCst) < 16 {
+                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                }
+            })
+            .await
+            .unwrap();
+            app.transfer_control(&task.task_id, action).unwrap();
+            tokio::time::timeout(std::time::Duration::from_secs(2), pending)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            assert_eq!(provider.active_reads.load(Ordering::SeqCst), 0);
+            assert_eq!(app.task(&task.task_id).unwrap().transferred_bytes.0, 0);
+            assert!(matches!(
+                app.task(&task.task_id).unwrap().state,
+                TaskState::Paused | TaskState::Cancelled
+            ));
+        }
+    }
+
+    #[tokio::test]
+    async fn continuous_worker_respects_parallel_task_admission() {
+        let (dir, provider, app, first) = setup(2 * BLOCK as usize).await;
+        provider.delay_ms.store(20, Ordering::SeqCst);
+        let destination = dir.path().join("second");
+        std::fs::create_dir(&destination).unwrap();
+        let second = app
+            .transfer_start(
+                "file-2",
+                destination.to_str().unwrap(),
+                None,
+                &RequestContext::default(),
+            )
+            .await
+            .unwrap();
+        app.settings_update(
+            &json!({"max_concurrent_transfers":2,"download":{"connections_per_task":4}}),
+        )
+        .unwrap();
+        let app = Arc::new(app);
+        let worker = app.clone();
+        let running = tokio::spawn(async move { worker.run_download_queue().await });
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while app.task(&first.task_id).unwrap().state != TaskState::Completed
+                || app.task(&second.task_id).unwrap().state != TaskState::Completed
+            {
+                tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+        running.abort();
+        let _ = running.await;
+        assert_eq!(provider.peak_reads.load(Ordering::SeqCst), 8);
+        for id in [first.task_id, second.task_id] {
+            assert_eq!(
+                std::fs::read(app.task(&id).unwrap().destination.unwrap()).unwrap(),
+                provider.bytes
+            );
+        }
+    }
+
     #[tokio::test]
     async fn visible_progress_moves_inside_a_chunk_without_committing_unverified_bytes() {
         let (_directory, provider, app, task) = setup(2 * BLOCK as usize).await;

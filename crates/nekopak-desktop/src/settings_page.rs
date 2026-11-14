@@ -997,22 +997,7 @@ async fn probe(ctx: &Ctx) {
         .await;
     match result {
         Ok(value) => {
-            let rows: Vec<(String, String, bool)> = value["domains"]
-                .as_array()
-                .or(value.as_array())
-                .map(|list| {
-                    list.iter()
-                        .map(|entry| {
-                            let domain = entry["domain"].as_str().unwrap_or_default().to_owned();
-                            let result = match entry["latency_ms"].as_u64() {
-                                Some(latency) => format!("{latency} ms"),
-                                None => tr("不可用"),
-                            };
-                            (domain, result, false)
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
+            let rows = domain_probe_rows(&value);
             if rows.is_empty() {
                 ctx.toast(tr("没有可用的测速结果"), "warning");
             } else {
@@ -1021,6 +1006,41 @@ async fn probe(ctx: &Ctx) {
         }
         Err(error) => ctx.toast_error(&error),
     }
+}
+
+fn domain_probe_rows(value: &serde_json::Value) -> Vec<(String, String, bool)> {
+    value["results"]
+        .as_array()
+        .or(value.as_array())
+        .map(|list| {
+            list.iter()
+                .map(|entry| {
+                    let domain = entry["domain"].as_str().unwrap_or_default().to_owned();
+                    let latency = |field: &str| {
+                        entry[field]
+                            .as_u64()
+                            .map(|ms| format!("{ms} ms"))
+                            .unwrap_or_else(|| "—".into())
+                    };
+                    let result = format!(
+                        "{} · {}: {} · {}: {} · {}: {}",
+                        tr(if entry["usable"] == true {
+                            "可用"
+                        } else {
+                            "不可用"
+                        }),
+                        tr("文件"),
+                        latency("latency_ms"),
+                        tr("复用连接"),
+                        latency("warm_latency_ms"),
+                        tr("账号"),
+                        latency("auth_latency_ms")
+                    );
+                    (domain, result, false)
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub async fn shortcuts(ctx: &Ctx) {
@@ -1058,4 +1078,24 @@ pub async fn shortcuts(ctx: &Ctx) {
         None,
     )
     .await;
+}
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    #[test]
+    fn native_settings_reads_provider_results_and_keeps_partial_measurements() {
+        let report = json!({"selected_domain":"auto","active_domain":"mypikpak.net","results":[
+            {"domain":"mypikpak.com","usable":false,"latency_ms":42,"warm_latency_ms":12,"error":"connection failed"},
+            {"domain":"mypikpak.net","usable":true,"latency_ms":50,"warm_latency_ms":15,"auth_latency_ms":22},
+            {"domain":"pikpak.me","usable":false},
+            {"domain":"pikpakdrive.com","usable":false}
+        ]});
+        let rows = domain_probe_rows(&report);
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0].0, "mypikpak.com");
+        assert!(rows[0].1.contains("42 ms"));
+        assert!(rows[0].1.contains("—"));
+        assert!(rows[1].1.contains("22 ms"));
+    }
 }

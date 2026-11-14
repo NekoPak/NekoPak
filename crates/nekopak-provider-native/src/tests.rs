@@ -980,16 +980,40 @@ async fn temporary_refresh_failure_keeps_saved_session_and_recovers_without_pass
     {
         let mut session = provider.session.lock().await;
         session.stored.as_mut().unwrap().expires_at = now();
+        vault
+            .save(&serde_json::to_string(session.stored.as_ref().unwrap()).unwrap())
+            .unwrap();
+        *session = Session::default();
     }
     let before = vault.load().unwrap().unwrap();
+    let requests_before = server.requests.lock().unwrap().len();
+    let restored = provider.auth_status().await.unwrap();
+    assert!(restored.authenticated);
     assert_eq!(
-        provider.auth_status().await.unwrap_err().code,
+        provider.account_scope().await.unwrap(),
+        restored.account_id.clone().unwrap()
+    );
+    assert_eq!(
+        provider.discover().await.unwrap().status,
+        BackendStatus::Ready
+    );
+    assert_eq!(
+        server.requests.lock().unwrap().len(),
+        requests_before,
+        "local session restoration must not require the old network route"
+    );
+    assert_eq!(
+        provider.stat("file-1").await.unwrap_err().code,
         ErrorCode::TransientNetwork
     );
     assert_eq!(vault.load().unwrap().unwrap().as_str(), before.as_str());
     offline.store(false, Ordering::SeqCst);
     provider.configure_network("none", None, false).unwrap();
-    assert!(provider.auth_status().await.unwrap().authenticated);
+    assert_eq!(
+        provider.auth_status().await.unwrap().account_id,
+        restored.account_id
+    );
+    provider.stat("file-1").await.unwrap();
     assert_eq!(
         server
             .requests
@@ -1124,6 +1148,37 @@ async fn remembered_login_preferences_are_vault_only_and_restore_can_be_disabled
                 .code,
             ErrorCode::Conflict
         );
+    }
+}
+
+#[tokio::test]
+async fn domain_measurements_keep_drive_results_when_auth_is_unreachable() {
+    for auth_usable in [true, false] {
+        let server = Server::new(move |request| {
+            assert_eq!(request.method, "GET");
+            assert!(!request.headers.contains_key("authorization"));
+            assert!(!request.headers.contains_key("x-device-id"));
+            if request.path == "/auth" && !auth_usable {
+                reply(503, json!({"error":"unavailable"}))
+            } else {
+                let mut response = reply(401, json!({"error":"unauthenticated","error_code":16}));
+                response.delay = Duration::from_millis(15);
+                response
+            }
+        })
+        .await;
+        let result = network::probe_endpoints(
+            Ok(reqwest::Client::builder().no_proxy().build().unwrap()),
+            "synthetic.test",
+            &format!("{}/drive", server.origin),
+            &format!("{}/auth", server.origin),
+        )
+        .await;
+        assert_eq!(result["usable"], auth_usable);
+        assert!(result["latency_ms"].as_u64().unwrap() >= 10);
+        assert!(result["warm_latency_ms"].as_u64().unwrap() >= 10);
+        assert_eq!(result["auth_latency_ms"].is_number(), auth_usable);
+        assert_eq!(server.requests.lock().unwrap().len(), 3);
     }
 }
 
@@ -1933,6 +1988,7 @@ async fn session_restoration_refreshes_without_password_and_revocation_erases_to
         session.loaded = false;
     }
     assert!(provider.auth_status().await.unwrap().authenticated);
+    provider.stat("file-1").await.unwrap();
     assert_eq!(
         server
             .requests

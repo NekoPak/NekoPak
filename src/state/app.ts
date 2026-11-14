@@ -25,6 +25,8 @@ export interface AppState {
   authBusy: boolean;
   quota?: QuotaReport;
   quotaError?: ClientError;
+  networkBannerDismissed?: boolean;
+  networkRecovering?: boolean;
   quotaLoading: boolean;
   settings?: Settings;
   settingsError?: ClientError;
@@ -124,7 +126,7 @@ export function hostSupports(feature: string, s: AppState = app.get()): boolean 
 
 function clearAccountData(): void {
   resetSessionUi();
-  app.set(s => ({ quota: undefined, quotaError: undefined, epoch: s.epoch + 1, sessionEpoch: s.sessionEpoch + 1 }));
+  app.set(s => ({ quota: undefined, quotaError: undefined, networkBannerDismissed: false, epoch: s.epoch + 1, sessionEpoch: s.sessionEpoch + 1 }));
   scheduleReload(0);
 }
 
@@ -134,6 +136,32 @@ export async function recoverAuth(): Promise<void> {
     if (app.get().runtime === "tauri") await api.networkReconnect();
     await resync();
   } finally { app.set({ authBusy: false }); }
+}
+
+let networkRecovery: Promise<void> | undefined;
+export function recoverNetwork(): Promise<void> {
+  if (networkRecovery) return networkRecovery;
+  app.set({ networkRecovering: true });
+  networkRecovery = (async () => {
+    if (app.get().runtime === "tauri") {
+      await api.networkReconnect();
+      if (app.get().quotaError?.code === "TRANSIENT_NETWORK" && (app.get().settings?.experimental_network.server_domain ?? "auto") === "auto") {
+        await api.networkDomainsProbe();
+      }
+    }
+    await resync();
+  })().finally(() => { networkRecovery = undefined; app.set({ networkRecovering: false }); });
+  return networkRecovery;
+}
+
+function startNetworkRecovery(): void {
+  const recover = () => {
+    const state = app.get();
+    // Returning from an external verification page must preserve its challenge.
+    if (state.runtime === "tauri" && signedIn(state) && !state.authFlow && !state.authBusy && document.visibilityState !== "hidden") void recoverNetwork().catch(() => undefined);
+  };
+  window.addEventListener("online", recover);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") recover(); });
 }
 
 export interface Gate {
@@ -231,14 +259,17 @@ export async function refreshAuth(): Promise<void> {
 
 export async function refreshQuota(): Promise<void> {
   if (!signedIn()) {
-    app.set({ quota: undefined, quotaError: undefined });
+    app.set({ quota: undefined, quotaError: undefined, networkBannerDismissed: false });
     return;
   }
   app.set({ quotaLoading: true });
+  const generation = sessionGeneration();
   try {
     const quota = await api.quotaGet();
-    app.set({ quota, quotaError: undefined, quotaLoading: false });
+    if (generation !== sessionGeneration()) return;
+    app.set({ quota, quotaError: undefined, quotaLoading: false, networkBannerDismissed: false });
   } catch (e) {
+    if (generation !== sessionGeneration()) return;
     app.set({ quotaError: errorOf(e), quotaLoading: false });
   }
 }
@@ -413,7 +444,7 @@ export async function boot(): Promise<void> {
     await on(EVENTS.backendStatus, () => void refreshCaps());
     await on(EVENTS.quotaChanged, (ev) => {
       const q = ev.quota as QuotaReport | undefined;
-      if (q && Array.isArray(q.items)) app.set({ quota: q, quotaError: undefined });
+      if (q && Array.isArray(q.items)) app.set({ quota: q, quotaError: undefined, networkBannerDismissed: false });
     });
     await on(PROPOSED_EVENTS.authChanged, (ev) => {
       const patch: Partial<AppState> = {};
@@ -435,8 +466,9 @@ export async function boot(): Promise<void> {
 
     await Promise.all([refreshCaps(), refreshAuth()]);
     await startTransfers();
-    await refreshQuota();
     app.set({ boot: "ready" });
+    startNetworkRecovery();
+    void refreshQuota();
   } catch (e) {
     app.set({ boot: "fatal", bootError: errorOf(e) });
   }

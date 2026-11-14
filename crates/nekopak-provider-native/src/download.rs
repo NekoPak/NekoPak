@@ -208,11 +208,13 @@ impl NativeProvider {
         let (result, etag) = match response {
             Ok(value) => value,
             Err(error) => {
-                self.read_cache
-                    .lock()
-                    .map_err(|_| wire::invalid())?
-                    .sources
-                    .remove(&key);
+                let mut cache = self.read_cache.lock().map_err(|_| wire::invalid())?;
+                cache.sources.remove(&key);
+                if error.code == ErrorCode::TransientNetwork {
+                    // A VPN/route change invalidates pooled CDN connections and
+                    // resolved addresses, as well as the signed source lease.
+                    cache.clients.clear();
+                }
                 return Err(error);
             }
         };

@@ -4033,7 +4033,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-app"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "jni 0.21.1",
  "ndk-context",
@@ -4056,10 +4056,11 @@ dependencies = [
 
 [[package]]
 name = "nekopak-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
+ "futures-util",
  "libc",
  "nekopak-domain",
  "nekopak-media",
@@ -4084,7 +4085,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-desktop"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "image",
@@ -4112,7 +4113,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-domain"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4120,7 +4121,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-media"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "nekopak-domain",
  "nekopak-provider",
@@ -4134,7 +4135,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-mount"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "nekopak-domain",
  "serde",
@@ -4147,7 +4148,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-provider"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "nekopak-domain",
@@ -4158,7 +4159,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-provider-mock"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "nekopak-domain",
@@ -4171,7 +4172,7 @@ dependencies = [
 
 [[package]]
 name = "nekopak-provider-native"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "base64 0.22.1",

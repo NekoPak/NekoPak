@@ -8,23 +8,32 @@
 
 *A lightweight, Rust-powered PikPak client for Windows and Android.*
 
-[下载 0.2.0 预览版](https://github.com/NekoPak/NekoPak/releases/tag/v0.2.0) · [使用指南](docs/USER_GUIDE.md) · [截图](docs/SCREENSHOTS.md) · [更新记录](CHANGELOG.md) · [问题反馈](https://github.com/NekoPak/NekoPak/issues)
+[下载 0.2.1 预览版](https://github.com/NekoPak/NekoPak/releases/tag/v0.2.1) · [使用指南](docs/USER_GUIDE.md) · [截图](docs/SCREENSHOTS.md) · [更新记录](CHANGELOG.md) · [问题反馈](https://github.com/NekoPak/NekoPak/issues)
 
 > **Pre-alpha 预览。** Windows x64 与 Android ARM64 提供可安装包；真实账号、实体手机和完整上游功能仍在逐项验收。NekoPak 是独立社区项目，与 PikPak 官方无隶属关系。
 
 ## 下载
 
-在 [0.2.0 Release](https://github.com/NekoPak/NekoPak/releases/tag/v0.2.0) 下载：
+在 [0.2.1 Release](https://github.com/NekoPak/NekoPak/releases/tag/v0.2.1) 下载：
 
 | 平台 | 文件 | 说明 |
 |---|---|---|
-| Windows 安装版 | [Setup.exe · 8.03 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-windows-x64-setup.exe) | Windows 10 1709+，x64；当前用户安装，带快捷方式和卸载入口，无需 WebView2 |
-| Windows 便携版 | [Portable.zip · 13.34 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-windows-x64-portable.zip) | 完整解压后运行 `NekoPak/nekopak.exe`，保留同目录许可文件 |
-| Android | [ARM64 APK · 16.93 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.0/NekoPak-0.2.0-android-arm64-v8a.apk) | Android 7.0（API 24）起，ARM64 设备，使用系统 WebView |
+| Windows 安装版 | [Setup.exe](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-windows-x64-setup.exe) | Windows 10 1709+，x64；当前用户安装，带快捷方式和卸载入口，无需 WebView2 |
+| Windows 便携版 | [Portable.zip](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-windows-x64-portable.zip) | 完整解压后运行 `NekoPak/nekopak.exe`，保留同目录许可文件 |
+| Android | [ARM64 APK](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-android-arm64-v8a.apk) | Android 7.0（API 24）起，ARM64 设备，使用系统 WebView |
 
 每个 Release 还附带签名清单、许可证包和构建报告，核验方法见[发布与签名](docs/RELEASE_SIGNING.md)。Linux / macOS 目前只有核心 CI，没有经过桌面验收的发行包。
 
-**升级：** 0.1.4 可在应用内更新到 0.2.0。0.1.3 及更早版本读取旧仓库，需要从这里手动安装一次。Windows 沿用原数据目录，保留会话、任务和设置；Android 沿用 APK 签名，可直接覆盖安装，无需卸载。之后在 Windows **设置 → 关于**、Android **我的 → 关于 → 应用更新**检查新版本。卸载 Android 应用会删除应用内下载和登录数据。
+**升级：** 0.1.4 / 0.2.0 可在应用内更新到 0.2.1。0.1.3 及更早版本读取旧仓库，需要从这里手动安装一次。Windows 沿用原数据目录，保留会话、任务和设置；Android 沿用 APK 签名，可直接覆盖安装，无需卸载。之后在 Windows **设置 → 关于**、Android **我的 → 关于 → 应用更新**检查新版本。卸载 Android 应用会删除应用内下载和登录数据。
+
+## 0.2.1 修复
+
+- 保存的登录会话在断网时也能恢复；接口调用需要时再刷新令牌，临时网络故障不清除账号。
+- Android 返回前台或网络恢复后重建连接；下载遇到临时断网持续退避重试，保留已校验的进度。黄色网络提示可关闭、可重新连接。
+- 下载设置真正接入引擎：同时下载任务 **1–8**、每任务连接 **1–16**，保存后用于后续下载块；调低并发数后，已发出的请求结束再收敛。
+- 四组服务器域名测速显示文件接口、复用连接和账号接口的真实耗时；修复 Windows 原生界面读取测速结果的字段错误。测速测量延迟与连通性，不测下载带宽。
+
+[0.2.1 发布说明](release/notes/0.2.1.md)。自动化覆盖网络故障、会话恢复、并行下载及手机界面；真实账号与关闭 VPN 后的实体手机效果仍需实测。
 
 ## 0.2.0 更新
 

@@ -699,6 +699,10 @@
   color: var(--on-warn-container);
 }
 
+.banner.network-banner { position: relative; padding-right: 48px; }
+.banner-dismiss { position: absolute; right: 4px; top: 4px; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.banner-dismiss:hover { background: var(--hover); }
+
 .banner-error {
   background: var(--error-container);
   color: var(--on-error-container);

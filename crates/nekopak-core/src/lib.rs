@@ -50,6 +50,7 @@ pub struct AppService {
     intents: Option<intents::IntentStore>,
     download_gate: std::sync::Mutex<()>,
     download_rates: rates::Rates,
+    download_bandwidth: tokio::sync::Mutex<tokio::time::Instant>,
     verified_downloads:
         std::sync::Mutex<std::collections::HashMap<String, (std::time::SystemTime, u64)>>,
     download_cancellations: std::sync::Mutex<std::collections::HashMap<String, RequestContext>>,
@@ -134,6 +135,7 @@ impl AppService {
             intents,
             download_gate: Default::default(),
             download_rates: Default::default(),
+            download_bandwidth: tokio::sync::Mutex::new(tokio::time::Instant::now()),
             verified_downloads: Default::default(),
             download_cancellations: Default::default(),
             scans: Default::default(),
