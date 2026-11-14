@@ -833,8 +833,21 @@ impl ProviderPort for NativeProvider {
         Ok(())
     }
     async fn account_scope(&self) -> Result<String, ClientError> {
-        let snapshot = self.snapshot().await?;
-        let subject = self.drive_subject(&snapshot).await?;
+        // Local task history and pause/cancel only need the saved identity.
+        // They must remain usable with an expired access token while offline.
+        let subject = {
+            let mut session = self.session.lock().await;
+            self.load(&mut session)?;
+            session.stored.as_ref().ok_or_else(expired)?.user_id.clone()
+        };
+        let subject = if subject.is_empty() {
+            // Legacy vault entries may lack a confirmed subject. Resolve that
+            // once through the authenticated API rather than inventing a scope.
+            let snapshot = self.snapshot().await?;
+            self.drive_subject(&snapshot).await?
+        } else {
+            subject
+        };
         Ok(format!(
             "{:x}",
             Sha256::digest(format!("{}\0{}", self.profile()?.id, subject))

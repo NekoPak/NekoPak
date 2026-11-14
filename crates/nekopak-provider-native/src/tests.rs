@@ -990,6 +990,10 @@ async fn temporary_refresh_failure_keeps_saved_session_and_recovers_without_pass
     let restored = provider.auth_status().await.unwrap();
     assert!(restored.authenticated);
     assert_eq!(
+        provider.account_scope().await.unwrap(),
+        restored.account_id.clone().unwrap()
+    );
+    assert_eq!(
         provider.discover().await.unwrap().status,
         BackendStatus::Ready
     );
