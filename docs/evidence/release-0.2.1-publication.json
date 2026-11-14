@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "product": "NekoPak",
+  "version": "0.2.1",
+  "verified_at": "2026-11-14T03:10:43.725581+00:00",
+  "release_url": "https://github.com/NekoPak/NekoPak/releases/tag/v0.2.1",
+  "source_commit": "1c35a3bc184f01bb8fbfcd4cccc69eb7c6df2a3a",
+  "platform_signatures_and_artifact_hashes": "passed",
+  "update_manifest_signature_and_both_packages": "passed",
+  "portable_executable_hash": "passed",
+  "android_native_library_hashes": "passed",
+  "source_and_lockfile_reports": "passed",
+  "android_signing_identity_from_verified_reports": "matches v0.2.0",
+  "android_version_code": 201,
+  "android_certificate_sha256": [
+    "3c7f59b7dd1ae693aa5dd5309966a2eee83bc9055a650bb32d9c035780b588ba"
+  ],
+  "assets": [
+    {
+      "name": "NekoPak-0.2.1-android-arm64-v8a-licenses.zip",
+      "bytes": 1445865,
+      "sha256": "4b3d1e6002ea25972b31318e718fff85498d0c5a88a4380b08ec103c227781f9"
+    },
+    {
+      "name": "NekoPak-0.2.1-android-arm64-v8a-report.json",
+      "bytes": 2931,
+      "sha256": "d1351baa02db27981ab4f3bc9fa2d900180e7eab84f70b05b47197dc12299379"
+    },
+    {
+      "name": "NekoPak-0.2.1-android-arm64-v8a.apk",
+      "bytes": 17812637,
+      "sha256": "6e0466089d878f2bdee56a34deee754fa56eecc95e0942757cc40f19a6addb80"
+    },
+    {
+      "name": "NekoPak-0.2.1-windows-x64-portable.zip",
+      "bytes": 14027327,
+      "sha256": "e69e9b5968b867a656a5593e0f0b93bbdebe00fd4a42894e65ddd7397b90c8c8"
+    },
+    {
+      "name": "NekoPak-0.2.1-windows-x64-setup.exe",
+      "bytes": 8433449,
+      "sha256": "3df9e46aa588bd9c24b0702eac41d9007ee98ef579e08becac02b72754f783b8"
+    },
+    {
+      "name": "android-release-manifest.json",
+      "bytes": 789,
+      "sha256": "a06178b0baf2aa3571f3cd61dadedefea340913dec7156ae0c844638888f13e9"
+    },
+    {
+      "name": "release-signing.pub",
+      "bytes": 45,
+      "sha256": "1e63a47e33a799e4bcf357427644f5617bdf694744910adf14498f43b0a8fa8f"
+    },
+    {
+      "name": "size-report.json",
+      "bytes": 4069,
+      "sha256": "98ac3699a418e804fc13b815f447e198783ce2536967a15af9a2abdfcc3ecac8"
+    },
+    {
+      "name": "update-manifest.json",
+      "bytes": 3510,
+      "sha256": "48ee8377a1bdfa76c2c91ed0a641a9e523669ee004ae68a82f196bbc1ece90eb"
+    },
+    {
+      "name": "windows-release-manifest.json",
+      "bytes": 781,
+      "sha256": "d4f4d2026dc50e7432db9494df4d02bd3b8c37dffc67c558716a40a1989365df"
+    }
+  ],
+  "limitations": "No physical-device, live-account, or manual Windows acceptance. APK signing checks run in packaging CI; local verification compares downloaded bytes with signed reports and the prior signed certificate report.",
+  "tag_commit_verified": "1c35a3bc184f01bb8fbfcd4cccc69eb7c6df2a3a",
+  "public_android_apk_download": "passed; anonymous HTTPS download matches the signed APK hash",
+  "merged_pr": "https://github.com/NekoPak/NekoPak/pull/2",
+  "ci_workflows": {
+    "portable_core_and_native_desktop": {
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43546390867",
+      "result": "passed"
+    },
+    "windows_full_checks": {
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43546390778",
+      "result": "passed"
+    },
+    "android_preview_checks": {
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43546390753",
+      "result": "passed"
+    },
+    "signed_build_installer_acceptance_and_publication": {
+      "url": "https://github.com/NekoPak/NekoPak/actions/runs/43547807208",
+      "result": "passed"
+    }
+  },
+  "physical_device_vpn_acceptance": "not performed; no physical Android device or live PikPak credentials available"
+}

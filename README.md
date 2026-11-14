@@ -18,9 +18,9 @@
 
 | 平台 | 文件 | 说明 |
 |---|---|---|
-| Windows 安装版 | [Setup.exe](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-windows-x64-setup.exe) | Windows 10 1709+，x64；当前用户安装，带快捷方式和卸载入口，无需 WebView2 |
-| Windows 便携版 | [Portable.zip](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-windows-x64-portable.zip) | 完整解压后运行 `NekoPak/nekopak.exe`，保留同目录许可文件 |
-| Android | [ARM64 APK](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-android-arm64-v8a.apk) | Android 7.0（API 24）起，ARM64 设备，使用系统 WebView |
+| Windows 安装版 | [Setup.exe · 8.04 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-windows-x64-setup.exe) | Windows 10 1709+，x64；当前用户安装，带快捷方式和卸载入口，无需 WebView2 |
+| Windows 便携版 | [Portable.zip · 13.38 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-windows-x64-portable.zip) | 完整解压后运行 `NekoPak/nekopak.exe`，保留同目录许可文件 |
+| Android | [ARM64 APK · 16.99 MiB](https://github.com/NekoPak/NekoPak/releases/download/v0.2.1/NekoPak-0.2.1-android-arm64-v8a.apk) | Android 7.0（API 24）起，ARM64 设备，使用系统 WebView |
 
 每个 Release 还附带签名清单、许可证包和构建报告，核验方法见[发布与签名](docs/RELEASE_SIGNING.md)。Linux / macOS 目前只有核心 CI，没有经过桌面验收的发行包。
 
@@ -33,7 +33,7 @@
 - 下载设置真正接入引擎：同时下载任务 **1–8**、每任务连接 **1–16**，保存后用于后续下载块；调低并发数后，已发出的请求结束再收敛。
 - 四组服务器域名测速显示文件接口、复用连接和账号接口的真实耗时；修复 Windows 原生界面读取测速结果的字段错误。测速测量延迟与连通性，不测下载带宽。
 
-[0.2.1 发布说明](release/notes/0.2.1.md)。自动化覆盖网络故障、会话恢复、并行下载及手机界面；真实账号与关闭 VPN 后的实体手机效果仍需实测。
+[0.2.1 发布说明](release/notes/0.2.1.md) · [签名与下载验收](docs/evidence/release-0.2.1-publication.json)。自动化覆盖网络故障、会话恢复、并行下载及手机界面；真实账号与关闭 VPN 后的实体手机效果仍需实测。
 
 ## 0.2.0 更新
 
